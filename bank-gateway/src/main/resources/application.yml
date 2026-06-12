@@ -19,14 +19,20 @@ spring:
               uri: lb://accounts-service
               predicates:
                 - Path=/api/accounts/**
+              filters:
+                - JwtTokenRelay
             - id: cash-service
               uri: lb://cash-service
               predicates:
                 - Path=/api/cash/**
+              filters:
+                - JwtTokenRelay
             - id: transfer-service
               uri: lb://transfer-service
               predicates:
                 - Path=/api/transfers/**
+              filters:
+                - JwtTokenRelay
   security:
     oauth2:
       resourceserver:
