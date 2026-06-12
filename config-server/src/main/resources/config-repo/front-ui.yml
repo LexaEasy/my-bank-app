@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: front-ui
+
+server:
+  port: 8085
