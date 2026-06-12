@@ -1,0 +1,23 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: accounts-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/bank
+    username: postgres
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
