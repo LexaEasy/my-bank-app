@@ -9,11 +9,14 @@ import org.springframework.web.client.RestClientException;
 public class HttpAccountsClient implements AccountsClient {
 
     private final RestClient restClient;
+    private final ServiceTokenProvider serviceTokenProvider;
 
     public HttpAccountsClient(
             RestClient.Builder restClientBuilder,
-            @Value("${bank.services.accounts.base-url}") String accountsBaseUrl
+            @Value("${bank.services.accounts.base-url}") String accountsBaseUrl,
+            ServiceTokenProvider serviceTokenProvider
     ) {
+        this.serviceTokenProvider = serviceTokenProvider;
         this.restClient = restClientBuilder
                 .baseUrl(accountsBaseUrl)
                 .build();
@@ -33,6 +36,7 @@ public class HttpAccountsClient implements AccountsClient {
         try {
             return restClient.post()
                     .uri(uri)
+                    .headers(headers -> headers.setBearerAuth(serviceTokenProvider.getAccessToken()))
                     .body(request)
                     .retrieve()
                     .body(AccountsBalanceResponse.class);

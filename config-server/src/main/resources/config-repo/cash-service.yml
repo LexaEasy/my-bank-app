@@ -1,6 +1,18 @@
 spring:
   application:
     name: cash-service
+  security:
+    oauth2:
+      client:
+        registration:
+          cash-service:
+            provider: keycloak
+            authorization-grant-type: client_credentials
+            client-id: cash-service
+            client-secret: ${CASH_SERVICE_CLIENT_SECRET:}
+        provider:
+          keycloak:
+            token-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/token
 
 bank:
   services:
