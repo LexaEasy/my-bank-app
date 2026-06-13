@@ -24,6 +24,8 @@ bank:
   services:
     accounts:
       base-url: http://localhost:8081
+    notifications:
+      base-url: http://localhost:8084
 
 management:
   endpoints:

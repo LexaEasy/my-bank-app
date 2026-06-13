@@ -5,6 +5,9 @@ import org.mockito.ArgumentCaptor;
 import ru.practicum.bank.cash.client.AccountsBalanceOperationRequest;
 import ru.practicum.bank.cash.client.AccountsBalanceResponse;
 import ru.practicum.bank.cash.client.AccountsClient;
+import ru.practicum.bank.cash.client.AccountsClientException;
+import ru.practicum.bank.cash.client.NotificationRequest;
+import ru.practicum.bank.cash.client.NotificationsClient;
 import ru.practicum.bank.cash.dto.CashOperationRequest;
 import ru.practicum.bank.cash.exception.InvalidAmountException;
 import ru.practicum.bank.cash.exception.InvalidAmountScaleException;
@@ -23,7 +26,8 @@ import static org.mockito.Mockito.when;
 class CashServiceTest {
 
     private final AccountsClient accountsClient = mock(AccountsClient.class);
-    private final CashService cashService = new CashService(accountsClient);
+    private final NotificationsClient notificationsClient = mock(NotificationsClient.class);
+    private final CashService cashService = new CashService(accountsClient, notificationsClient);
 
     @Test
     void shouldDepositMoneyThroughAccountsService() {
@@ -45,6 +49,13 @@ class CashServiceTest {
         assertThat(captor.getValue().amount()).isEqualByComparingTo(new BigDecimal("250.00"));
         assertThat(captor.getValue().currency()).isEqualTo(Currency.RUB);
         assertThat(captor.getValue().operationId()).isNotBlank();
+
+        var notificationCaptor = ArgumentCaptor.forClass(NotificationRequest.class);
+        verify(notificationsClient).notify(notificationCaptor.capture());
+        assertThat(notificationCaptor.getValue().recipientLogin()).isEqualTo("ivan");
+        assertThat(notificationCaptor.getValue().type()).isEqualTo("CASH_DEPOSIT");
+        assertThat(notificationCaptor.getValue().message()).isEqualTo("Счёт пополнен на 250.00 RUB");
+        assertThat(notificationCaptor.getValue().operationId()).isEqualTo(captor.getValue().operationId());
     }
 
     @Test
@@ -59,7 +70,24 @@ class CashServiceTest {
 
         assertThat(response.balance()).isEqualByComparingTo(new BigDecimal("900.00"));
         assertThat(response.message()).isEqualTo("Деньги сняты со счёта");
-        verify(accountsClient).withdraw(any());
+
+        var accountsCaptor = ArgumentCaptor.forClass(AccountsBalanceOperationRequest.class);
+        verify(accountsClient).withdraw(accountsCaptor.capture());
+        var notificationCaptor = ArgumentCaptor.forClass(NotificationRequest.class);
+        verify(notificationsClient).notify(notificationCaptor.capture());
+        assertThat(notificationCaptor.getValue().recipientLogin()).isEqualTo("ivan");
+        assertThat(notificationCaptor.getValue().type()).isEqualTo("CASH_WITHDRAW");
+        assertThat(notificationCaptor.getValue().message()).isEqualTo("Со счёта снято 100.00 RUB");
+        assertThat(notificationCaptor.getValue().operationId()).isEqualTo(accountsCaptor.getValue().operationId());
+    }
+
+    @Test
+    void shouldNotNotifyWhenAccountsDepositFails() {
+        when(accountsClient.deposit(any())).thenThrow(new AccountsClientException("Accounts service request failed"));
+
+        assertThatThrownBy(() -> cashService.deposit("ivan", request("250.00")))
+                .isInstanceOf(AccountsClientException.class);
+        verify(notificationsClient, never()).notify(any());
     }
 
     @Test
@@ -67,6 +95,7 @@ class CashServiceTest {
         assertThatThrownBy(() -> cashService.deposit("ivan", request("0.00")))
                 .isInstanceOf(InvalidAmountException.class);
         verify(accountsClient, never()).deposit(any());
+        verify(notificationsClient, never()).notify(any());
     }
 
     @Test
@@ -74,6 +103,7 @@ class CashServiceTest {
         assertThatThrownBy(() -> cashService.deposit("ivan", request("100.001")))
                 .isInstanceOf(InvalidAmountScaleException.class);
         verify(accountsClient, never()).deposit(any());
+        verify(notificationsClient, never()).notify(any());
     }
 
     private CashOperationRequest request(String amount) {
