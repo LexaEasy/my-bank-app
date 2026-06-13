@@ -2,5 +2,10 @@ spring:
   application:
     name: cash-service
 
+bank:
+  services:
+    accounts:
+      base-url: http://localhost:8081
+
 server:
   port: 8082

@@ -5,8 +5,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import ru.practicum.bank.cash.client.AccountsClientException;
 import ru.practicum.bank.cash.dto.ApiErrorResponse;
-import ru.practicum.bank.cash.exception.AccountsClientNotConfiguredException;
 import ru.practicum.bank.cash.exception.InvalidAmountException;
 import ru.practicum.bank.cash.exception.InvalidAmountScaleException;
 import ru.practicum.bank.cash.exception.MissingPreferredUsernameException;
@@ -38,9 +38,9 @@ public class CashExceptionHandler {
         return new ApiErrorResponse("UNAUTHORIZED", exception.getMessage());
     }
 
-    @ExceptionHandler(AccountsClientNotConfiguredException.class)
-    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
-    public ApiErrorResponse handleAccountsClientNotConfigured(AccountsClientNotConfiguredException exception) {
-        return new ApiErrorResponse("ACCOUNTS_CLIENT_NOT_CONFIGURED", exception.getMessage());
+    @ExceptionHandler(AccountsClientException.class)
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    public ApiErrorResponse handleAccountsClient(AccountsClientException exception) {
+        return new ApiErrorResponse("ACCOUNTS_SERVICE_UNAVAILABLE", exception.getMessage());
     }
 }

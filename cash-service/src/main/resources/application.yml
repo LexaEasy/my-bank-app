@@ -5,6 +5,11 @@ spring:
   application:
     name: cash-service
 
+bank:
+  services:
+    accounts:
+      base-url: http://localhost:8081
+
 management:
   endpoints:
     web:
