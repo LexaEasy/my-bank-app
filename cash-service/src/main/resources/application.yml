@@ -16,6 +16,9 @@ spring:
         provider:
           keycloak:
             token-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/token
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/bank-realm
 
 bank:
   services:
