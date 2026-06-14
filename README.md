@@ -2,35 +2,65 @@
 
 Учебное микросервисное приложение для девятого спринта. Пользователь входит через HTML-интерфейс, редактирует профиль аккаунта, пополняет и снимает виртуальные деньги, переводит деньги другим пользователям.
 
-## Цель проекта
+## Архитектура
 
-Реализовать приложение на Java 21 и Spring Boot с микросервисной архитектурой:
+Приложение собрано как Gradle multi-module проект на Java 21 и Spring Boot.
 
-- пользовательский Front UI работает только после OAuth2-входа;
-- Front UI обращается к backend только через Gateway;
-- Gateway пробрасывает пользовательский JWT в пользовательские сервисы;
-- межсервисные вызовы выполняются через Client Credentials Flow;
-- сервисы регистрируются в Eureka;
-- общая конфигурация читается из Spring Cloud Config Server;
-- данные хранятся в PostgreSQL, отдельная схема на сервис;
-- REST API проверяются тестами, включая Spring Cloud Contract для межсервисных контрактов.
-
-## Планируемые модули
-
-- `config-server` - Spring Cloud Config Server для локальных конфигураций.
-- `discovery-server` - Eureka Server для service discovery.
+- `front-ui` - HTML-интерфейс на Spring MVC и Thymeleaf.
 - `bank-gateway` - Spring Cloud Gateway, внешняя точка входа `/api`.
-- `accounts-service` - аккаунты, профиль пользователя, баланс, внутренние операции с балансом.
+- `accounts-service` - аккаунты, профиль пользователя, баланс и internal API баланса.
 - `cash-service` - пользовательские операции пополнения и снятия.
 - `transfer-service` - пользовательские переводы между аккаунтами.
 - `notifications-service` - прием уведомлений и запись событий в лог.
-- `front-ui` - HTML-интерфейс на Spring MVC и Thymeleaf.
+- `discovery-server` - Eureka Server для service discovery.
+- `config-server` - Spring Cloud Config Server для локальных конфигураций.
 
-Скелет фронта для будущего импорта находится вне репозитория: `C:\Projects\Y_Java\Sprint 9\my-bank-front-app`.
+Поток пользовательского запроса:
 
-## Основные внешние маршруты
+1. Пользователь входит во `front-ui` через Keycloak.
+2. `front-ui` вызывает backend только через `bank-gateway`.
+3. `bank-gateway` проверяет JWT и пробрасывает его в пользовательские сервисы.
+4. `cash-service` и `transfer-service` для межсервисных вызовов получают service JWT через Client Credentials Flow.
+5. Сервисы регистрируются в Eureka.
 
-Пользовательские endpoints публикуются через Gateway с префиксом `/api`:
+## Данные
+
+PostgreSQL используется как единая локальная инсталляция с отдельной схемой для данных аккаунтов:
+
+- `accounts_schema` - таблицы `accounts-service`;
+- `cash_schema` и `transfer_schema` не создаются, пока у сервисов нет собственных таблиц;
+- `notifications_schema` не создаётся, потому что уведомления пишутся только в application log.
+
+Для защиты конкурентных изменений баланса используется optimistic locking через поле `@Version` в entity аккаунта.
+
+## Пользователи
+
+Realm Keycloak: `bank-realm`.
+
+| Username | Password | Roles |
+| --- | --- | --- |
+| `ivan` | `ivan` | `USER`, `ACCOUNTS_READ`, `ACCOUNTS_WRITE`, `CASH_WRITE`, `TRANSFER_WRITE` |
+| `petr` | `petr` | `USER`, `ACCOUNTS_READ`, `ACCOUNTS_WRITE`, `CASH_WRITE`, `TRANSFER_WRITE` |
+| `anna` | `anna` | `USER`, `ACCOUNTS_READ`, `ACCOUNTS_WRITE`, `CASH_WRITE`, `TRANSFER_WRITE` |
+
+Начальные аккаунты:
+
+| Login | Name | Birthdate | Balance | Currency |
+| --- | --- | --- | --- | --- |
+| `ivan` | `Иванов Иван` | `1990-01-15` | `1000.00` | `RUB` |
+| `petr` | `Петров Пётр` | `1988-03-20` | `500.00` | `RUB` |
+| `anna` | `Сидорова Анна` | `1995-07-10` | `750.00` | `RUB` |
+
+## Основные URL
+
+- Front UI: `http://localhost:8085`
+- Gateway API: `http://localhost:8080`
+- Keycloak: `http://localhost:8180`
+- Eureka: `http://localhost:8761`
+- Config Server: `http://localhost:8888`
+- PostgreSQL: `localhost:5432`, database `bank`, user `postgres`
+
+Пользовательские endpoints публикуются через Gateway:
 
 - `GET /api/accounts/me`
 - `PUT /api/accounts/me`
@@ -39,52 +69,124 @@
 - `POST /api/cash/withdraw`
 - `POST /api/transfers`
 
-Internal endpoints `accounts-service` вида `/api/accounts/internal/...` не должны публиковаться во внешних маршрутах Gateway. Они предназначены только для прямых межсервисных вызовов с service JWT.
+Internal endpoints `accounts-service` вида `/api/accounts/internal/...` не публикуются через Gateway.
 
-## Денежные операции
+## Запуск через Docker Compose
 
-Для защиты конкурентных изменений баланса используется optimistic locking через поле `@Version` в entity аккаунта.
-
-## Тестовые пользователи
-
-Для локального Keycloak должны быть подготовлены пользователи:
-
-| Username | Password | Roles |
-| --- | --- | --- |
-| `ivan` | `test123` | `USER`, `ACCOUNTS_READ`, `ACCOUNTS_WRITE`, `CASH_WRITE`, `TRANSFER_WRITE` |
-| `petr` | `test123` | `USER`, `ACCOUNTS_READ`, `ACCOUNTS_WRITE`, `CASH_WRITE`, `TRANSFER_WRITE` |
-| `anna` | `test123` | `USER`, `ACCOUNTS_READ`, `ACCOUNTS_WRITE`, `CASH_WRITE`, `TRANSFER_WRITE` |
-
-## Начальные данные
-
-| Login | Name | Birthdate | Balance | Currency |
-| --- | --- | --- | --- | --- |
-| `ivan` | `Иванов Иван` | `1990-01-15` | `1000.00` | `RUB` |
-| `petr` | `Петров Пётр` | `1988-03-20` | `500.00` | `RUB` |
-| `anna` | `Сидорова Анна` | `1995-07-10` | `750.00` | `RUB` |
-
-## Локальная разработка
-
-Команды будут актуализироваться по мере добавления модулей:
+Сначала собрать executable JAR:
 
 ```powershell
-.\gradlew projects
-.\gradlew test
+.\gradlew.bat --no-daemon --console=plain bootJar
+```
+
+Проверить compose-файл:
+
+```powershell
 docker compose config
 ```
 
-После полной сборки ожидаемый ручной сценарий:
+Собрать образы:
 
-1. Войти во Front UI пользователем `ivan` / `test123`.
-2. Проверить баланс `1000.00 RUB`.
-3. Пополнить счет на `250.00` и получить баланс `1250.00`.
-4. Снять `100.00` и получить баланс `1150.00`.
-5. Перевести `150.00` пользователю `petr` и получить баланс `1000.00`.
-6. Попробовать снять `999999.00` и получить ошибку недостатка средств.
+```powershell
+docker compose build
+```
+
+Запустить приложение и дождаться healthcheck:
+
+```powershell
+docker compose up -d --wait
+```
+
+Проверить контейнеры:
+
+```powershell
+docker compose ps
+```
+
+Посмотреть логи конкретного сервиса:
+
+```powershell
+docker compose logs -f front-ui
+docker compose logs -f bank-gateway
+docker compose logs -f accounts-service
+```
+
+Остановить контейнеры без удаления образов:
+
+```powershell
+docker compose down
+```
+
+Сбросить локальные данные PostgreSQL и Keycloak:
+
+```powershell
+docker compose down --volumes
+```
+
+## Запуск из IDE
+
+Для запуска из IDE сначала подними платформенные сервисы:
+
+```powershell
+docker compose up -d postgres keycloak config-server discovery-server
+```
+
+После этого можно запускать приложения обычными Spring Boot run configurations. Удобный порядок:
+
+1. `ConfigServerApplication`
+2. `DiscoveryServerApplication`
+3. `AccountsServiceApplication`
+4. `NotificationsServiceApplication`
+5. `CashServiceApplication`
+6. `TransferServiceApplication`
+7. `BankGatewayApplication`
+8. `FrontUiApplication`
+
+Если сервис запускается из IDE, оставь его порт свободным и не поднимай такой же сервис в Docker Compose.
+
+## Запуск через Gradle
+
+Тесты всех модулей:
+
+```powershell
+.\gradlew.bat --no-daemon --console=plain test
+```
+
+Сборка JAR всех приложений:
+
+```powershell
+.\gradlew.bat --no-daemon --console=plain bootJar
+```
+
+Запуск одного приложения:
+
+```powershell
+.\gradlew.bat --no-daemon --console=plain :front-ui:bootRun
+.\gradlew.bat --no-daemon --console=plain :bank-gateway:bootRun
+```
+
+## Ручная проверка
+
+Перед проверкой приложение должно быть поднято командой:
+
+```powershell
+docker compose up -d --wait
+```
+
+Сценарий:
+
+1. Открыть `http://localhost:8085`.
+2. Войти пользователем `ivan` / `ivan`.
+3. Проверить баланс `1000.00 RUB`.
+4. Пополнить счёт на `250.00`, ожидать баланс `1250.00`.
+5. Снять `100.00`, ожидать баланс `1150.00`.
+6. Перевести `150.00` пользователю `petr`, ожидать баланс `1000.00`.
+7. Попробовать снять `999999.00`, ожидать ошибку недостатка средств.
+8. Проверить, что в логах `notifications-service` появились уведомления по успешным операциям.
 
 ## Ограничения спринта
 
-В рамках этого спринта не реализуются без отдельного решения ревьюера или наставника:
+В рамках текущего спринта осознанно не реализуются без отдельного решения ревьюера или наставника:
 
 - полноценный Circuit Breaker;
 - Transactional Outbox;
