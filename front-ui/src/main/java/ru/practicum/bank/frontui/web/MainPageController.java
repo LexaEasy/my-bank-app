@@ -19,23 +19,23 @@ import java.math.BigDecimal;
 import java.security.Principal;
 
 @Controller
-public class TransferPageController {
+public class MainPageController {
 
     private final GatewayClient gatewayClient;
     private final OAuth2AuthorizedClientService authorizedClientService;
 
-    public TransferPageController(GatewayClient gatewayClient, OAuth2AuthorizedClientService authorizedClientService) {
+    public MainPageController(GatewayClient gatewayClient, OAuth2AuthorizedClientService authorizedClientService) {
         this.gatewayClient = gatewayClient;
         this.authorizedClientService = authorizedClientService;
     }
 
     @GetMapping("/")
-    public String showTransferForm(Model model, Principal principal) {
+    public String showMainPage(Model model, Principal principal) {
         addCommonModel(model, principal);
         if (!model.containsAttribute("transferForm")) {
             model.addAttribute("transferForm", new TransferForm("", new BigDecimal("100.00"), "RUB"));
         }
-        return "transfers";
+        return "main";
     }
 
     @PostMapping("/transfers")
@@ -49,7 +49,7 @@ public class TransferPageController {
         addCommonModel(model, principal);
         if (bindingResult.hasErrors()) {
             model.addAttribute("errorMessage", "Заполните получателя, сумму и валюту");
-            return "transfers";
+            return "main";
         }
 
         try {
@@ -67,11 +67,15 @@ public class TransferPageController {
             model.addAttribute("errorMessage", exception.getMessage());
         }
 
-        return "transfers";
+        return "main";
     }
 
     private void addCommonModel(Model model, Principal principal) {
         model.addAttribute("username", getUsername(principal));
+        model.addAttribute("accountName", "");
+        model.addAttribute("birthdate", "");
+        model.addAttribute("balance", "");
+        model.addAttribute("currency", "RUB");
     }
 
     private String getUsername(Principal principal) {

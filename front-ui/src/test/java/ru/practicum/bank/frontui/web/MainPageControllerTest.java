@@ -19,16 +19,16 @@ import java.time.Instant;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
-@WebMvcTest(TransferPageController.class)
-class TransferPageControllerTest {
+@WebMvcTest(MainPageController.class)
+class MainPageControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -38,6 +38,16 @@ class TransferPageControllerTest {
 
     @MockitoBean
     private OAuth2AuthorizedClientService authorizedClientService;
+
+    @Test
+    void shouldRenderMainPage() throws Exception {
+        mockMvc.perform(get("/")
+                        .with(user("ivan")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attributeExists("transferForm"))
+                .andExpect(model().attribute("username", "ivan"));
+    }
 
     @Test
     void shouldTransferMoney() throws Exception {
@@ -63,7 +73,7 @@ class TransferPageControllerTest {
                         .param("amount", "100.00")
                         .param("currency", "RUB"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("transfers"))
+                .andExpect(view().name("main"))
                 .andExpect(model().attribute("successMessage", "Перевод выполнен"))
                 .andExpect(model().attributeExists("transferResponse"));
     }
