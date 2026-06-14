@@ -152,6 +152,12 @@ input:disabled {
     color: #9f1c1c;
 }
 
+.inline-error {
+    margin: 0;
+    color: #9f1c1c;
+    font-size: 14px;
+}
+
 .result {
     display: grid;
     grid-template-columns: 140px 1fr;

@@ -11,10 +11,13 @@ import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.bank.frontui.client.GatewayClient;
+import ru.practicum.bank.frontui.dto.AccountForm;
+import ru.practicum.bank.frontui.dto.AccountResponse;
 import ru.practicum.bank.frontui.dto.TransferForm;
 import ru.practicum.bank.frontui.dto.TransferResponse;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.Instant;
 
 import static org.hamcrest.Matchers.allOf;
@@ -45,10 +48,21 @@ class MainPageControllerTest {
 
     @Test
     void shouldRenderMainPage() throws Exception {
+        var authorizedClient = authorizedClient("user-token");
+        when(authorizedClientService.loadAuthorizedClient(eq("front-ui"), eq("ivan")))
+                .thenReturn(authorizedClient);
+        when(gatewayClient.getAccount("user-token"))
+                .thenReturn(account("ivan", "Иванов Иван", LocalDate.parse("1990-01-15"), "1000.00"));
+
         mockMvc.perform(get("/")
                         .with(user("ivan")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("main"))
+                .andExpect(model().attribute("accountForm", new AccountForm(
+                        "Иванов Иван",
+                        LocalDate.parse("1990-01-15")
+                )))
+                .andExpect(model().attribute("balance", new BigDecimal("1000.00")))
                 .andExpect(model().attributeExists("transferForm"))
                 .andExpect(model().attribute("username", "ivan"))
                 .andExpect(content().string(allOf(
@@ -60,6 +74,12 @@ class MainPageControllerTest {
 
     @Test
     void shouldUsePreferredUsernameFromOidcUser() throws Exception {
+        var authorizedClient = authorizedClient("user-token");
+        when(authorizedClientService.loadAuthorizedClient(eq("front-ui"), eq("user")))
+                .thenReturn(authorizedClient);
+        when(gatewayClient.getAccount("user-token"))
+                .thenReturn(account("ivan", "Иванов Иван", LocalDate.parse("1990-01-15"), "1000.00"));
+
         mockMvc.perform(get("/")
                         .with(oidcLogin().idToken(token -> token.claim("preferred_username", "ivan"))))
                 .andExpect(status().isOk())
@@ -72,6 +92,8 @@ class MainPageControllerTest {
         var authorizedClient = authorizedClient("user-token");
         when(authorizedClientService.loadAuthorizedClient(eq("front-ui"), eq("ivan")))
                 .thenReturn(authorizedClient);
+        when(gatewayClient.getAccount("user-token"))
+                .thenReturn(account("ivan", "Иванов Иван", LocalDate.parse("1990-01-15"), "1000.00"));
         when(gatewayClient.transfer(eq("user-token"), eq(new TransferForm(
                 "petr",
                 new BigDecimal("100.00"),
@@ -96,6 +118,30 @@ class MainPageControllerTest {
                 .andExpect(model().attributeExists("transferResponse"));
     }
 
+    @Test
+    void shouldUpdateAccount() throws Exception {
+        var authorizedClient = authorizedClient("user-token");
+        when(authorizedClientService.loadAuthorizedClient(eq("front-ui"), eq("ivan")))
+                .thenReturn(authorizedClient);
+        when(gatewayClient.updateAccount(eq("user-token"), eq(new AccountForm(
+                "Иван Петров",
+                LocalDate.parse("1990-01-15")
+        )))).thenReturn(account("ivan", "Иван Петров", LocalDate.parse("1990-01-15"), "1000.00"));
+
+        mockMvc.perform(post("/account")
+                        .with(user("ivan"))
+                        .with(csrf())
+                        .param("name", "Иван Петров")
+                        .param("birthdate", "1990-01-15"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attribute("successMessage", "Данные аккаунта сохранены"))
+                .andExpect(model().attribute("accountForm", new AccountForm(
+                        "Иван Петров",
+                        LocalDate.parse("1990-01-15")
+                )));
+    }
+
     private OAuth2AuthorizedClient authorizedClient(String tokenValue) {
         var clientRegistration = ClientRegistration.withRegistrationId("front-ui")
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
@@ -113,5 +159,15 @@ class MainPageControllerTest {
         );
 
         return new OAuth2AuthorizedClient(clientRegistration, "ivan", accessToken);
+    }
+
+    private AccountResponse account(String login, String name, LocalDate birthdate, String balance) {
+        return new AccountResponse(
+                login,
+                name,
+                birthdate,
+                new BigDecimal(balance),
+                "RUB"
+        );
     }
 }

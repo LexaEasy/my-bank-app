@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import ru.practicum.bank.frontui.client.GatewayClient;
 import ru.practicum.bank.frontui.client.GatewayClientException;
+import ru.practicum.bank.frontui.dto.AccountForm;
+import ru.practicum.bank.frontui.dto.AccountResponse;
 import ru.practicum.bank.frontui.dto.TransferForm;
 
 import java.math.BigDecimal;
@@ -30,8 +32,37 @@ public class MainPageController {
     }
 
     @GetMapping("/")
-    public String showMainPage(Model model, Principal principal) {
-        addCommonModel(model, principal);
+    public String showMainPage(Model model, Principal principal, Authentication authentication) {
+        addCommonModel(model, principal, authentication);
+        if (!model.containsAttribute("transferForm")) {
+            model.addAttribute("transferForm", new TransferForm("", new BigDecimal("100.00"), "RUB"));
+        }
+        return "main";
+    }
+
+    @PostMapping("/account")
+    public String updateAccount(
+            @Valid @ModelAttribute AccountForm accountForm,
+            BindingResult bindingResult,
+            Model model,
+            Principal principal,
+            Authentication authentication
+    ) {
+        if (bindingResult.hasErrors()) {
+            addCommonModel(model, principal, authentication);
+            model.addAttribute("errorMessage", "Заполните имя и дату рождения");
+            return "main";
+        }
+
+        try {
+            AccountResponse account = gatewayClient.updateAccount(getAccessToken(authentication), accountForm);
+            addAccountModel(model, account);
+            model.addAttribute("successMessage", "Данные аккаунта сохранены");
+        } catch (GatewayClientException exception) {
+            addCommonModel(model, principal, authentication);
+            model.addAttribute("errorMessage", exception.getMessage());
+        }
+
         if (!model.containsAttribute("transferForm")) {
             model.addAttribute("transferForm", new TransferForm("", new BigDecimal("100.00"), "RUB"));
         }
@@ -46,19 +77,15 @@ public class MainPageController {
             Principal principal,
             Authentication authentication
     ) {
-        addCommonModel(model, principal);
+        addCommonModel(model, principal, authentication);
         if (bindingResult.hasErrors()) {
             model.addAttribute("errorMessage", "Заполните получателя, сумму и валюту");
             return "main";
         }
 
         try {
-            OAuth2AuthorizedClient authorizedClient = authorizedClientService.loadAuthorizedClient(
-                    "front-ui",
-                    authentication.getName()
-            );
             var response = gatewayClient.transfer(
-                    authorizedClient.getAccessToken().getTokenValue(),
+                    getAccessToken(authentication),
                     transferForm
             );
             model.addAttribute("successMessage", "Перевод выполнен");
@@ -70,12 +97,40 @@ public class MainPageController {
         return "main";
     }
 
-    private void addCommonModel(Model model, Principal principal) {
+    private void addCommonModel(Model model, Principal principal, Authentication authentication) {
         model.addAttribute("username", getUsername(principal));
-        model.addAttribute("accountName", "");
-        model.addAttribute("birthdate", "");
+        try {
+            AccountResponse account = gatewayClient.getAccount(getAccessToken(authentication));
+            addAccountModel(model, account);
+        } catch (GatewayClientException exception) {
+            addEmptyAccountModel(model);
+            model.addAttribute("accountLoadError", exception.getMessage());
+        }
+    }
+
+    private void addAccountModel(Model model, AccountResponse account) {
+        model.addAttribute("accountForm", new AccountForm(account.name(), account.birthdate()));
+        model.addAttribute("balance", account.balance());
+        model.addAttribute("currency", account.currency());
+    }
+
+    private void addEmptyAccountModel(Model model) {
+        if (!model.containsAttribute("accountForm")) {
+            model.addAttribute("accountForm", new AccountForm("", null));
+        }
         model.addAttribute("balance", "");
         model.addAttribute("currency", "RUB");
+    }
+
+    private String getAccessToken(Authentication authentication) {
+        OAuth2AuthorizedClient authorizedClient = authorizedClientService.loadAuthorizedClient(
+                "front-ui",
+                authentication.getName()
+        );
+        if (authorizedClient == null) {
+            throw new GatewayClientException("OAuth2 client is not authorized");
+        }
+        return authorizedClient.getAccessToken().getTokenValue();
     }
 
     private String getUsername(Principal principal) {

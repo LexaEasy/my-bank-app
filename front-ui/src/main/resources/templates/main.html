@@ -27,15 +27,15 @@
     <section class="layout">
         <article class="panel">
             <h2>Обо мне</h2>
-            <form class="account-form" method="post" th:action="@{/account}">
+            <form class="account-form" method="post" th:action="@{/account}" th:object="${accountForm}">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                 <label>
                     Фамилия и имя
-                    <input type="text" name="name" th:value="${accountName}" autocomplete="name" disabled>
+                    <input type="text" th:field="*{name}" autocomplete="name" minlength="2" maxlength="120">
                 </label>
                 <label>
                     Дата рождения
-                    <input type="date" name="birthdate" th:value="${birthdate}" disabled>
+                    <input type="date" th:field="*{birthdate}">
                 </label>
                 <div class="balance">
                     <span>Баланс</span>
@@ -44,7 +44,8 @@
                         <span th:text="${currency}">RUB</span>
                     </strong>
                 </div>
-                <button type="submit" disabled>Сохранить</button>
+                <p class="inline-error" th:if="${accountLoadError}" th:text="${accountLoadError}"></p>
+                <button type="submit">Сохранить</button>
             </form>
         </article>
 
