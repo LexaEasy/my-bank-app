@@ -4,6 +4,23 @@ server:
 spring:
   application:
     name: transfer-service
+  security:
+    oauth2:
+      client:
+        registration:
+          transfer-service:
+            provider: keycloak
+            authorization-grant-type: client_credentials
+            client-id: transfer-service
+            client-secret: ${TRANSFER_SERVICE_CLIENT_SECRET:}
+        provider:
+          keycloak:
+            token-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/token
+
+bank:
+  services:
+    accounts:
+      base-url: http://localhost:8081
 
 management:
   endpoints:

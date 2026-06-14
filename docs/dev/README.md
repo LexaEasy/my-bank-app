@@ -7,3 +7,4 @@
 Используемые переменные:
 
 - `CASH_SERVICE_CLIENT_SECRET` - client secret Keycloak-клиента `cash-service` для Client Credentials Flow.
+- `TRANSFER_SERVICE_CLIENT_SECRET` - client secret Keycloak-клиента `transfer-service` для Client Credentials Flow.

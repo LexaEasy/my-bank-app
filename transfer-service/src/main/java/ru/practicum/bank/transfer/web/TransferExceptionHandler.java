@@ -5,12 +5,12 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import ru.practicum.bank.transfer.client.AccountsClientException;
 import ru.practicum.bank.transfer.dto.ApiErrorResponse;
 import ru.practicum.bank.transfer.exception.InvalidAmountException;
 import ru.practicum.bank.transfer.exception.InvalidAmountScaleException;
 import ru.practicum.bank.transfer.exception.MissingPreferredUsernameException;
 import ru.practicum.bank.transfer.exception.SelfTransferForbiddenException;
-import ru.practicum.bank.transfer.exception.TransferExecutionException;
 
 @RestControllerAdvice
 public class TransferExceptionHandler {
@@ -45,9 +45,9 @@ public class TransferExceptionHandler {
         return new ApiErrorResponse("UNAUTHORIZED", exception.getMessage());
     }
 
-    @ExceptionHandler(TransferExecutionException.class)
+    @ExceptionHandler(AccountsClientException.class)
     @ResponseStatus(HttpStatus.BAD_GATEWAY)
-    public ApiErrorResponse handleTransferExecution(TransferExecutionException exception) {
-        return new ApiErrorResponse("TRANSFER_EXECUTION_UNAVAILABLE", exception.getMessage());
+    public ApiErrorResponse handleAccountsClient(AccountsClientException exception) {
+        return new ApiErrorResponse("ACCOUNTS_SERVICE_UNAVAILABLE", exception.getMessage());
     }
 }
