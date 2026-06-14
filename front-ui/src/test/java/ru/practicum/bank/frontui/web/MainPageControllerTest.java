@@ -13,6 +13,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.bank.frontui.client.GatewayClient;
 import ru.practicum.bank.frontui.dto.AccountForm;
 import ru.practicum.bank.frontui.dto.AccountResponse;
+import ru.practicum.bank.frontui.dto.CashForm;
+import ru.practicum.bank.frontui.dto.CashOperationResponse;
 import ru.practicum.bank.frontui.dto.TransferForm;
 import ru.practicum.bank.frontui.dto.TransferResponse;
 
@@ -140,6 +142,62 @@ class MainPageControllerTest {
                         "Иван Петров",
                         LocalDate.parse("1990-01-15")
                 )));
+    }
+
+    @Test
+    void shouldDepositCash() throws Exception {
+        var authorizedClient = authorizedClient("user-token");
+        when(authorizedClientService.loadAuthorizedClient(eq("front-ui"), eq("ivan")))
+                .thenReturn(authorizedClient);
+        when(gatewayClient.getAccount("user-token"))
+                .thenReturn(account("ivan", "Иванов Иван", LocalDate.parse("1990-01-15"), "1000.00"));
+        when(gatewayClient.deposit(eq("user-token"), eq(new CashForm(
+                new BigDecimal("250.00"),
+                "RUB"
+        )))).thenReturn(new CashOperationResponse(
+                new BigDecimal("1250.00"),
+                "RUB",
+                "Cash deposited"
+        ));
+
+        mockMvc.perform(post("/cash")
+                        .with(user("ivan"))
+                        .with(csrf())
+                        .param("amount", "250.00")
+                        .param("currency", "RUB")
+                        .param("action", "deposit"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attribute("successMessage", "Cash deposited"))
+                .andExpect(model().attribute("balance", new BigDecimal("1250.00")));
+    }
+
+    @Test
+    void shouldWithdrawCash() throws Exception {
+        var authorizedClient = authorizedClient("user-token");
+        when(authorizedClientService.loadAuthorizedClient(eq("front-ui"), eq("ivan")))
+                .thenReturn(authorizedClient);
+        when(gatewayClient.getAccount("user-token"))
+                .thenReturn(account("ivan", "Иванов Иван", LocalDate.parse("1990-01-15"), "1000.00"));
+        when(gatewayClient.withdraw(eq("user-token"), eq(new CashForm(
+                new BigDecimal("100.00"),
+                "RUB"
+        )))).thenReturn(new CashOperationResponse(
+                new BigDecimal("900.00"),
+                "RUB",
+                "Cash withdrawn"
+        ));
+
+        mockMvc.perform(post("/cash")
+                        .with(user("ivan"))
+                        .with(csrf())
+                        .param("amount", "100.00")
+                        .param("currency", "RUB")
+                        .param("action", "withdraw"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attribute("successMessage", "Cash withdrawn"))
+                .andExpect(model().attribute("balance", new BigDecimal("900.00")));
     }
 
     private OAuth2AuthorizedClient authorizedClient(String tokenValue) {

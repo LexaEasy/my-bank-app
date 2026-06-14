@@ -51,15 +51,16 @@
 
         <article class="panel">
             <h2>Операции с наличными</h2>
-            <form class="cash-form" method="post" th:action="@{/cash}">
+            <form class="cash-form" method="post" th:action="@{/cash}" th:object="${cashForm}">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                 <label>
                     Сумма
-                    <input type="number" name="amount" min="0.01" step="0.01" disabled>
+                    <input type="number" th:field="*{amount}" min="0.01" step="0.01">
                 </label>
+                <input type="hidden" th:field="*{currency}">
                 <div class="actions">
-                    <button type="submit" name="action" value="deposit" disabled>Положить</button>
-                    <button type="submit" name="action" value="withdraw" disabled>Снять</button>
+                    <button type="submit" name="action" value="deposit">Положить</button>
+                    <button type="submit" name="action" value="withdraw">Снять</button>
                 </div>
             </form>
         </article>

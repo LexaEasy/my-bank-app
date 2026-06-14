@@ -11,10 +11,13 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import ru.practicum.bank.frontui.client.GatewayClient;
 import ru.practicum.bank.frontui.client.GatewayClientException;
 import ru.practicum.bank.frontui.dto.AccountForm;
 import ru.practicum.bank.frontui.dto.AccountResponse;
+import ru.practicum.bank.frontui.dto.CashForm;
+import ru.practicum.bank.frontui.dto.CashOperationResponse;
 import ru.practicum.bank.frontui.dto.TransferForm;
 
 import java.math.BigDecimal;
@@ -37,6 +40,7 @@ public class MainPageController {
         if (!model.containsAttribute("transferForm")) {
             model.addAttribute("transferForm", new TransferForm("", new BigDecimal("100.00"), "RUB"));
         }
+        addDefaultCashForm(model);
         return "main";
     }
 
@@ -60,6 +64,41 @@ public class MainPageController {
             model.addAttribute("successMessage", "Данные аккаунта сохранены");
         } catch (GatewayClientException exception) {
             addCommonModel(model, principal, authentication);
+            model.addAttribute("errorMessage", exception.getMessage());
+        }
+
+        if (!model.containsAttribute("transferForm")) {
+            model.addAttribute("transferForm", new TransferForm("", new BigDecimal("100.00"), "RUB"));
+        }
+        addDefaultCashForm(model);
+        return "main";
+    }
+
+    @PostMapping("/cash")
+    public String cashOperation(
+            @Valid @ModelAttribute CashForm cashForm,
+            BindingResult bindingResult,
+            @RequestParam String action,
+            Model model,
+            Principal principal,
+            Authentication authentication
+    ) {
+        addCommonModel(model, principal, authentication);
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("errorMessage", "Заполните положительную сумму");
+            return "main";
+        }
+
+        try {
+            CashOperationResponse response = switch (action) {
+                case "deposit" -> gatewayClient.deposit(getAccessToken(authentication), cashForm);
+                case "withdraw" -> gatewayClient.withdraw(getAccessToken(authentication), cashForm);
+                default -> throw new GatewayClientException("Unknown cash action: " + action);
+            };
+            model.addAttribute("balance", response.balance());
+            model.addAttribute("currency", response.currency());
+            model.addAttribute("successMessage", response.message());
+        } catch (GatewayClientException exception) {
             model.addAttribute("errorMessage", exception.getMessage());
         }
 
@@ -106,6 +145,7 @@ public class MainPageController {
             addEmptyAccountModel(model);
             model.addAttribute("accountLoadError", exception.getMessage());
         }
+        addDefaultCashForm(model);
     }
 
     private void addAccountModel(Model model, AccountResponse account) {
@@ -118,8 +158,15 @@ public class MainPageController {
         if (!model.containsAttribute("accountForm")) {
             model.addAttribute("accountForm", new AccountForm("", null));
         }
+        addDefaultCashForm(model);
         model.addAttribute("balance", "");
         model.addAttribute("currency", "RUB");
+    }
+
+    private void addDefaultCashForm(Model model) {
+        if (!model.containsAttribute("cashForm")) {
+            model.addAttribute("cashForm", new CashForm(new BigDecimal("100.00"), "RUB"));
+        }
     }
 
     private String getAccessToken(Authentication authentication) {

@@ -7,6 +7,9 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import ru.practicum.bank.frontui.dto.AccountForm;
 import ru.practicum.bank.frontui.dto.AccountResponse;
+import ru.practicum.bank.frontui.dto.CashForm;
+import ru.practicum.bank.frontui.dto.CashOperationRequest;
+import ru.practicum.bank.frontui.dto.CashOperationResponse;
 import ru.practicum.bank.frontui.dto.TransferForm;
 import ru.practicum.bank.frontui.dto.TransferRequest;
 import ru.practicum.bank.frontui.dto.TransferResponse;
@@ -68,6 +71,30 @@ public class GatewayClient {
                         throw new GatewayClientException("Gateway request failed: " + response.getStatusCode());
                     })
                     .body(AccountResponse.class);
+        } catch (RestClientException exception) {
+            throw new GatewayClientException("Gateway request failed", exception);
+        }
+    }
+
+    public CashOperationResponse deposit(String accessToken, CashForm form) {
+        return cashOperation(accessToken, "/api/cash/deposit", form);
+    }
+
+    public CashOperationResponse withdraw(String accessToken, CashForm form) {
+        return cashOperation(accessToken, "/api/cash/withdraw", form);
+    }
+
+    private CashOperationResponse cashOperation(String accessToken, String uri, CashForm form) {
+        try {
+            return restClient.post()
+                    .uri(uri)
+                    .headers(headers -> headers.setBearerAuth(accessToken))
+                    .body(new CashOperationRequest(form.amount(), form.currency()))
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, (request, response) -> {
+                        throw new GatewayClientException("Gateway request failed: " + response.getStatusCode());
+                    })
+                    .body(CashOperationResponse.class);
         } catch (RestClientException exception) {
             throw new GatewayClientException("Gateway request failed", exception);
         }
