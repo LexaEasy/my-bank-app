@@ -17,12 +17,15 @@ import ru.practicum.bank.frontui.dto.TransferResponse;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -46,7 +49,12 @@ class MainPageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("main"))
                 .andExpect(model().attributeExists("transferForm"))
-                .andExpect(model().attribute("username", "ivan"));
+                .andExpect(model().attribute("username", "ivan"))
+                .andExpect(content().string(allOf(
+                        containsString("Обо мне"),
+                        containsString("Операции с наличными"),
+                        containsString("Переводы")
+                )));
     }
 
     @Test
