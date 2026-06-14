@@ -22,6 +22,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -55,6 +56,15 @@ class MainPageControllerTest {
                         containsString("Операции с наличными"),
                         containsString("Переводы")
                 )));
+    }
+
+    @Test
+    void shouldUsePreferredUsernameFromOidcUser() throws Exception {
+        mockMvc.perform(get("/")
+                        .with(oidcLogin().idToken(token -> token.claim("preferred_username", "ivan"))))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attribute("username", "ivan"));
     }
 
     @Test

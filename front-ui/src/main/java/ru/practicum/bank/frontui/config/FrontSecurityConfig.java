@@ -18,7 +18,12 @@ public class FrontSecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2.defaultSuccessUrl("/", true))
-                .logout(logout -> logout.logoutSuccessUrl("/"))
+                .logout(logout -> logout
+                        .logoutUrl("/logout")
+                        .logoutSuccessUrl("/")
+                        .invalidateHttpSession(true)
+                        .clearAuthentication(true)
+                )
                 .build();
     }
 }

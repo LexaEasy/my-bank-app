@@ -82,6 +82,9 @@ public class MainPageController {
         if (principal instanceof OidcUser oidcUser) {
             return oidcUser.getPreferredUsername();
         }
+        if (principal instanceof Authentication authentication && authentication.getPrincipal() instanceof OidcUser oidcUser) {
+            return oidcUser.getPreferredUsername();
+        }
         return principal == null ? "" : principal.getName();
     }
 }
