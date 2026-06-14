@@ -1,6 +1,40 @@
 spring:
   application:
     name: bank-gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: block-accounts-internal-api
+              uri: no://op
+              predicates:
+                - Path=/api/accounts/internal/**
+              filters:
+                - SetStatus=404
+            - id: accounts-service
+              uri: lb://accounts-service
+              predicates:
+                - Path=/api/accounts/**
+              filters:
+                - JwtTokenRelay
+            - id: cash-service
+              uri: lb://cash-service
+              predicates:
+                - Path=/api/cash/**
+              filters:
+                - JwtTokenRelay
+            - id: transfer-service
+              uri: lb://transfer-service
+              predicates:
+                - Path=/api/transfers,/api/transfers/**
+              filters:
+                - JwtTokenRelay
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/bank-realm
 
 server:
   port: 8080
