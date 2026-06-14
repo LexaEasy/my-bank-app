@@ -2,6 +2,9 @@ package ru.practicum.bank.transfer.service;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import ru.practicum.bank.transfer.client.AccountsClientException;
+import ru.practicum.bank.transfer.client.NotificationRequest;
+import ru.practicum.bank.transfer.client.NotificationsClient;
 import ru.practicum.bank.transfer.dto.TransferRequest;
 import ru.practicum.bank.transfer.exception.InvalidAmountException;
 import ru.practicum.bank.transfer.exception.InvalidAmountScaleException;
@@ -21,7 +24,8 @@ import static org.mockito.Mockito.when;
 class TransferServiceTest {
 
     private final TransferExecutor transferExecutor = mock(TransferExecutor.class);
-    private final TransferService transferService = new TransferService(transferExecutor);
+    private final NotificationsClient notificationsClient = mock(NotificationsClient.class);
+    private final TransferService transferService = new TransferService(transferExecutor, notificationsClient);
 
     @Test
     void shouldTransferMoney() {
@@ -47,6 +51,22 @@ class TransferServiceTest {
         assertThat(captor.getValue().amount()).isEqualByComparingTo(new BigDecimal("200.00"));
         assertThat(captor.getValue().currency()).isEqualTo(Currency.RUB);
         assertThat(captor.getValue().operationId()).isNotBlank();
+
+        var notificationCaptor = ArgumentCaptor.forClass(NotificationRequest.class);
+        verify(notificationsClient).notify(notificationCaptor.capture());
+        assertThat(notificationCaptor.getValue().recipientLogin()).isEqualTo("ivan");
+        assertThat(notificationCaptor.getValue().type()).isEqualTo("TRANSFER_COMPLETED");
+        assertThat(notificationCaptor.getValue().message()).isEqualTo("Transfer completed to olga: 200.00 RUB");
+        assertThat(notificationCaptor.getValue().operationId()).isEqualTo(captor.getValue().operationId());
+    }
+
+    @Test
+    void shouldNotNotifyWhenAccountsTransferFails() {
+        when(transferExecutor.execute(any())).thenThrow(new AccountsClientException("Accounts service request failed"));
+
+        assertThatThrownBy(() -> transferService.transfer("ivan", request("olga", "200.00")))
+                .isInstanceOf(AccountsClientException.class);
+        verify(notificationsClient, never()).notify(any());
     }
 
     @Test
@@ -54,6 +74,7 @@ class TransferServiceTest {
         assertThatThrownBy(() -> transferService.transfer("ivan", request("ivan", "200.00")))
                 .isInstanceOf(SelfTransferForbiddenException.class);
         verify(transferExecutor, never()).execute(any());
+        verify(notificationsClient, never()).notify(any());
     }
 
     @Test
@@ -61,6 +82,7 @@ class TransferServiceTest {
         assertThatThrownBy(() -> transferService.transfer("ivan", request("olga", "0.00")))
                 .isInstanceOf(InvalidAmountException.class);
         verify(transferExecutor, never()).execute(any());
+        verify(notificationsClient, never()).notify(any());
     }
 
     @Test
@@ -68,6 +90,7 @@ class TransferServiceTest {
         assertThatThrownBy(() -> transferService.transfer("ivan", request("olga", "100.001")))
                 .isInstanceOf(InvalidAmountScaleException.class);
         verify(transferExecutor, never()).execute(any());
+        verify(notificationsClient, never()).notify(any());
     }
 
     private TransferRequest request(String recipientLogin, String amount) {

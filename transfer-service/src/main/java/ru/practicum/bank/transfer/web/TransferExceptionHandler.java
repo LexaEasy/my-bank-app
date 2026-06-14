@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.practicum.bank.transfer.client.AccountsClientException;
+import ru.practicum.bank.transfer.client.NotificationsClientException;
 import ru.practicum.bank.transfer.dto.ApiErrorResponse;
 import ru.practicum.bank.transfer.exception.InvalidAmountException;
 import ru.practicum.bank.transfer.exception.InvalidAmountScaleException;
@@ -49,5 +50,11 @@ public class TransferExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_GATEWAY)
     public ApiErrorResponse handleAccountsClient(AccountsClientException exception) {
         return new ApiErrorResponse("ACCOUNTS_SERVICE_UNAVAILABLE", exception.getMessage());
+    }
+
+    @ExceptionHandler(NotificationsClientException.class)
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    public ApiErrorResponse handleNotificationsClient(NotificationsClientException exception) {
+        return new ApiErrorResponse("NOTIFICATIONS_SERVICE_UNAVAILABLE", exception.getMessage());
     }
 }

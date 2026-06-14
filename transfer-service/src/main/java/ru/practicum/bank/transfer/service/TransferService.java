@@ -1,6 +1,8 @@
 package ru.practicum.bank.transfer.service;
 
 import org.springframework.stereotype.Service;
+import ru.practicum.bank.transfer.client.NotificationRequest;
+import ru.practicum.bank.transfer.client.NotificationsClient;
 import ru.practicum.bank.transfer.dto.TransferRequest;
 import ru.practicum.bank.transfer.dto.TransferResponse;
 import ru.practicum.bank.transfer.exception.InvalidAmountException;
@@ -14,9 +16,11 @@ import java.util.UUID;
 public class TransferService {
 
     private final TransferExecutor transferExecutor;
+    private final NotificationsClient notificationsClient;
 
-    public TransferService(TransferExecutor transferExecutor) {
+    public TransferService(TransferExecutor transferExecutor, NotificationsClient notificationsClient) {
         this.transferExecutor = transferExecutor;
+        this.notificationsClient = notificationsClient;
     }
 
     public TransferResponse transfer(String senderLogin, TransferRequest request) {
@@ -25,12 +29,19 @@ public class TransferService {
             throw new SelfTransferForbiddenException();
         }
 
+        var operationId = UUID.randomUUID().toString();
         var result = transferExecutor.execute(new TransferOperation(
                 senderLogin,
                 request.recipientLogin(),
                 request.amount(),
                 request.currency(),
-                UUID.randomUUID().toString()
+                operationId
+        ));
+        notificationsClient.notify(new NotificationRequest(
+                senderLogin,
+                "TRANSFER_COMPLETED",
+                "Transfer completed to " + request.recipientLogin() + ": " + request.amount() + " " + request.currency(),
+                operationId
         ));
 
         return new TransferResponse(

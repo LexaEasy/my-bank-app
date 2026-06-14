@@ -13,11 +13,16 @@ spring:
         provider:
           keycloak:
             token-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/token
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/bank-realm
 
 bank:
   services:
     accounts:
       base-url: http://localhost:8081
+    notifications:
+      base-url: http://localhost:8084
 
 server:
   port: 8083
