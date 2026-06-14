@@ -10,10 +10,14 @@ import ru.practicum.bank.frontui.dto.AccountResponse;
 import ru.practicum.bank.frontui.dto.CashForm;
 import ru.practicum.bank.frontui.dto.CashOperationRequest;
 import ru.practicum.bank.frontui.dto.CashOperationResponse;
+import ru.practicum.bank.frontui.dto.RecipientResponse;
 import ru.practicum.bank.frontui.dto.TransferForm;
 import ru.practicum.bank.frontui.dto.TransferRequest;
 import ru.practicum.bank.frontui.dto.TransferResponse;
 import ru.practicum.bank.frontui.dto.UpdateAccountRequest;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Component
 public class GatewayClient {
@@ -71,6 +75,22 @@ public class GatewayClient {
                         throw new GatewayClientException("Gateway request failed: " + response.getStatusCode());
                     })
                     .body(AccountResponse.class);
+        } catch (RestClientException exception) {
+            throw new GatewayClientException("Gateway request failed", exception);
+        }
+    }
+
+    public List<RecipientResponse> getRecipients(String accessToken) {
+        try {
+            RecipientResponse[] recipients = restClient.get()
+                    .uri("/api/accounts/recipients")
+                    .headers(headers -> headers.setBearerAuth(accessToken))
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, (request, response) -> {
+                        throw new GatewayClientException("Gateway request failed: " + response.getStatusCode());
+                    })
+                    .body(RecipientResponse[].class);
+            return recipients == null ? List.of() : Arrays.asList(recipients);
         } catch (RestClientException exception) {
             throw new GatewayClientException("Gateway request failed", exception);
         }

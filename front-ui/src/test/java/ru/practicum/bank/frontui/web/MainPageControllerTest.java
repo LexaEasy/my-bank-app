@@ -11,16 +11,19 @@ import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.bank.frontui.client.GatewayClient;
+import ru.practicum.bank.frontui.client.GatewayClientException;
 import ru.practicum.bank.frontui.dto.AccountForm;
 import ru.practicum.bank.frontui.dto.AccountResponse;
 import ru.practicum.bank.frontui.dto.CashForm;
 import ru.practicum.bank.frontui.dto.CashOperationResponse;
+import ru.practicum.bank.frontui.dto.RecipientResponse;
 import ru.practicum.bank.frontui.dto.TransferForm;
 import ru.practicum.bank.frontui.dto.TransferResponse;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
@@ -55,6 +58,8 @@ class MainPageControllerTest {
                 .thenReturn(authorizedClient);
         when(gatewayClient.getAccount("user-token"))
                 .thenReturn(account("ivan", "Иванов Иван", LocalDate.parse("1990-01-15"), "1000.00"));
+        when(gatewayClient.getRecipients("user-token"))
+                .thenReturn(recipients());
 
         mockMvc.perform(get("/")
                         .with(user("ivan")))
@@ -66,11 +71,13 @@ class MainPageControllerTest {
                 )))
                 .andExpect(model().attribute("balance", new BigDecimal("1000.00")))
                 .andExpect(model().attributeExists("transferForm"))
+                .andExpect(model().attribute("recipients", recipients()))
                 .andExpect(model().attribute("username", "ivan"))
                 .andExpect(content().string(allOf(
                         containsString("Обо мне"),
                         containsString("Операции с наличными"),
-                        containsString("Переводы")
+                        containsString("Переводы"),
+                        containsString("Петров Петр (petr)")
                 )));
     }
 
@@ -81,6 +88,8 @@ class MainPageControllerTest {
                 .thenReturn(authorizedClient);
         when(gatewayClient.getAccount("user-token"))
                 .thenReturn(account("ivan", "Иванов Иван", LocalDate.parse("1990-01-15"), "1000.00"));
+        when(gatewayClient.getRecipients("user-token"))
+                .thenReturn(recipients());
 
         mockMvc.perform(get("/")
                         .with(oidcLogin().idToken(token -> token.claim("preferred_username", "ivan"))))
@@ -96,6 +105,8 @@ class MainPageControllerTest {
                 .thenReturn(authorizedClient);
         when(gatewayClient.getAccount("user-token"))
                 .thenReturn(account("ivan", "Иванов Иван", LocalDate.parse("1990-01-15"), "1000.00"));
+        when(gatewayClient.getRecipients("user-token"))
+                .thenReturn(recipients());
         when(gatewayClient.transfer(eq("user-token"), eq(new TransferForm(
                 "petr",
                 new BigDecimal("100.00"),
@@ -121,6 +132,33 @@ class MainPageControllerTest {
     }
 
     @Test
+    void shouldShowTransferError() throws Exception {
+        var authorizedClient = authorizedClient("user-token");
+        when(authorizedClientService.loadAuthorizedClient(eq("front-ui"), eq("ivan")))
+                .thenReturn(authorizedClient);
+        when(gatewayClient.getAccount("user-token"))
+                .thenReturn(account("ivan", "Иванов Иван", LocalDate.parse("1990-01-15"), "1000.00"));
+        when(gatewayClient.getRecipients("user-token"))
+                .thenReturn(recipients());
+        when(gatewayClient.transfer(eq("user-token"), eq(new TransferForm(
+                "petr",
+                new BigDecimal("1500.00"),
+                "RUB"
+        )))).thenThrow(new GatewayClientException("Недостаточно средств"));
+
+        mockMvc.perform(post("/transfers")
+                        .with(user("ivan"))
+                        .with(csrf())
+                        .param("recipientLogin", "petr")
+                        .param("amount", "1500.00")
+                        .param("currency", "RUB"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attribute("errorMessage", "Недостаточно средств"))
+                .andExpect(model().attribute("recipients", recipients()));
+    }
+
+    @Test
     void shouldUpdateAccount() throws Exception {
         var authorizedClient = authorizedClient("user-token");
         when(authorizedClientService.loadAuthorizedClient(eq("front-ui"), eq("ivan")))
@@ -129,6 +167,8 @@ class MainPageControllerTest {
                 "Иван Петров",
                 LocalDate.parse("1990-01-15")
         )))).thenReturn(account("ivan", "Иван Петров", LocalDate.parse("1990-01-15"), "1000.00"));
+        when(gatewayClient.getRecipients("user-token"))
+                .thenReturn(recipients());
 
         mockMvc.perform(post("/account")
                         .with(user("ivan"))
@@ -151,6 +191,8 @@ class MainPageControllerTest {
                 .thenReturn(authorizedClient);
         when(gatewayClient.getAccount("user-token"))
                 .thenReturn(account("ivan", "Иванов Иван", LocalDate.parse("1990-01-15"), "1000.00"));
+        when(gatewayClient.getRecipients("user-token"))
+                .thenReturn(recipients());
         when(gatewayClient.deposit(eq("user-token"), eq(new CashForm(
                 new BigDecimal("250.00"),
                 "RUB"
@@ -179,6 +221,8 @@ class MainPageControllerTest {
                 .thenReturn(authorizedClient);
         when(gatewayClient.getAccount("user-token"))
                 .thenReturn(account("ivan", "Иванов Иван", LocalDate.parse("1990-01-15"), "1000.00"));
+        when(gatewayClient.getRecipients("user-token"))
+                .thenReturn(recipients());
         when(gatewayClient.withdraw(eq("user-token"), eq(new CashForm(
                 new BigDecimal("100.00"),
                 "RUB"
@@ -226,6 +270,13 @@ class MainPageControllerTest {
                 birthdate,
                 new BigDecimal(balance),
                 "RUB"
+        );
+    }
+
+    private List<RecipientResponse> recipients() {
+        return List.of(
+                new RecipientResponse("petr", "Петров Петр"),
+                new RecipientResponse("anna", "Анна Смирнова")
         );
     }
 }

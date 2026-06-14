@@ -18,10 +18,12 @@ import ru.practicum.bank.frontui.dto.AccountForm;
 import ru.practicum.bank.frontui.dto.AccountResponse;
 import ru.practicum.bank.frontui.dto.CashForm;
 import ru.practicum.bank.frontui.dto.CashOperationResponse;
+import ru.practicum.bank.frontui.dto.RecipientResponse;
 import ru.practicum.bank.frontui.dto.TransferForm;
 
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.util.List;
 
 @Controller
 public class MainPageController {
@@ -37,9 +39,8 @@ public class MainPageController {
     @GetMapping("/")
     public String showMainPage(Model model, Principal principal, Authentication authentication) {
         addCommonModel(model, principal, authentication);
-        if (!model.containsAttribute("transferForm")) {
-            model.addAttribute("transferForm", new TransferForm("", new BigDecimal("100.00"), "RUB"));
-        }
+        addDefaultTransferForm(model);
+        addRecipients(model, authentication);
         addDefaultCashForm(model);
         return "main";
     }
@@ -54,6 +55,8 @@ public class MainPageController {
     ) {
         if (bindingResult.hasErrors()) {
             addCommonModel(model, principal, authentication);
+            addDefaultTransferForm(model);
+            addRecipients(model, authentication);
             model.addAttribute("errorMessage", "Заполните имя и дату рождения");
             return "main";
         }
@@ -67,9 +70,8 @@ public class MainPageController {
             model.addAttribute("errorMessage", exception.getMessage());
         }
 
-        if (!model.containsAttribute("transferForm")) {
-            model.addAttribute("transferForm", new TransferForm("", new BigDecimal("100.00"), "RUB"));
-        }
+        addDefaultTransferForm(model);
+        addRecipients(model, authentication);
         addDefaultCashForm(model);
         return "main";
     }
@@ -85,6 +87,8 @@ public class MainPageController {
     ) {
         addCommonModel(model, principal, authentication);
         if (bindingResult.hasErrors()) {
+            addDefaultTransferForm(model);
+            addRecipients(model, authentication);
             model.addAttribute("errorMessage", "Заполните положительную сумму");
             return "main";
         }
@@ -102,9 +106,8 @@ public class MainPageController {
             model.addAttribute("errorMessage", exception.getMessage());
         }
 
-        if (!model.containsAttribute("transferForm")) {
-            model.addAttribute("transferForm", new TransferForm("", new BigDecimal("100.00"), "RUB"));
-        }
+        addDefaultTransferForm(model);
+        addRecipients(model, authentication);
         return "main";
     }
 
@@ -118,6 +121,7 @@ public class MainPageController {
     ) {
         addCommonModel(model, principal, authentication);
         if (bindingResult.hasErrors()) {
+            addRecipients(model, authentication);
             model.addAttribute("errorMessage", "Заполните получателя, сумму и валюту");
             return "main";
         }
@@ -133,6 +137,7 @@ public class MainPageController {
             model.addAttribute("errorMessage", exception.getMessage());
         }
 
+        addRecipients(model, authentication);
         return "main";
     }
 
@@ -163,9 +168,25 @@ public class MainPageController {
         model.addAttribute("currency", "RUB");
     }
 
+    private void addRecipients(Model model, Authentication authentication) {
+        try {
+            List<RecipientResponse> recipients = gatewayClient.getRecipients(getAccessToken(authentication));
+            model.addAttribute("recipients", recipients);
+        } catch (GatewayClientException exception) {
+            model.addAttribute("recipients", List.of());
+            model.addAttribute("recipientsLoadError", exception.getMessage());
+        }
+    }
+
     private void addDefaultCashForm(Model model) {
         if (!model.containsAttribute("cashForm")) {
             model.addAttribute("cashForm", new CashForm(new BigDecimal("100.00"), "RUB"));
+        }
+    }
+
+    private void addDefaultTransferForm(Model model) {
+        if (!model.containsAttribute("transferForm")) {
+            model.addAttribute("transferForm", new TransferForm("", new BigDecimal("100.00"), "RUB"));
         }
     }
 
