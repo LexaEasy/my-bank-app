@@ -77,6 +77,7 @@ class MainPageControllerTest {
                         containsString("Обо мне"),
                         containsString("Операции с наличными"),
                         containsString("Переводы"),
+                        containsString("value=\"1990-01-15\""),
                         containsString("Петров Петр (petr)")
                 )));
     }
