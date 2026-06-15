@@ -1,10 +1,13 @@
 package ru.practicum.bank.frontui.client;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import ru.practicum.bank.frontui.dto.ApiErrorResponse;
 import ru.practicum.bank.frontui.dto.AccountForm;
 import ru.practicum.bank.frontui.dto.AccountResponse;
 import ru.practicum.bank.frontui.dto.CashForm;
@@ -16,11 +19,14 @@ import ru.practicum.bank.frontui.dto.TransferRequest;
 import ru.practicum.bank.frontui.dto.TransferResponse;
 import ru.practicum.bank.frontui.dto.UpdateAccountRequest;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
 @Component
 public class GatewayClient {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final RestClient restClient;
 
@@ -40,9 +46,7 @@ public class GatewayClient {
                     .headers(headers -> headers.setBearerAuth(accessToken))
                     .body(new TransferRequest(form.recipientLogin(), form.amount(), form.currency()))
                     .retrieve()
-                    .onStatus(HttpStatusCode::isError, (request, response) -> {
-                        throw new GatewayClientException("Gateway request failed: " + response.getStatusCode());
-                    })
+                    .onStatus(HttpStatusCode::isError, (request, response) -> handleError(response))
                     .body(TransferResponse.class);
         } catch (RestClientException exception) {
             throw new GatewayClientException("Gateway request failed", exception);
@@ -55,9 +59,7 @@ public class GatewayClient {
                     .uri("/api/accounts/me")
                     .headers(headers -> headers.setBearerAuth(accessToken))
                     .retrieve()
-                    .onStatus(HttpStatusCode::isError, (request, response) -> {
-                        throw new GatewayClientException("Gateway request failed: " + response.getStatusCode());
-                    })
+                    .onStatus(HttpStatusCode::isError, (request, response) -> handleError(response))
                     .body(AccountResponse.class);
         } catch (RestClientException exception) {
             throw new GatewayClientException("Gateway request failed", exception);
@@ -71,9 +73,7 @@ public class GatewayClient {
                     .headers(headers -> headers.setBearerAuth(accessToken))
                     .body(new UpdateAccountRequest(form.name(), form.birthdate()))
                     .retrieve()
-                    .onStatus(HttpStatusCode::isError, (request, response) -> {
-                        throw new GatewayClientException("Gateway request failed: " + response.getStatusCode());
-                    })
+                    .onStatus(HttpStatusCode::isError, (request, response) -> handleError(response))
                     .body(AccountResponse.class);
         } catch (RestClientException exception) {
             throw new GatewayClientException("Gateway request failed", exception);
@@ -86,9 +86,7 @@ public class GatewayClient {
                     .uri("/api/accounts/recipients")
                     .headers(headers -> headers.setBearerAuth(accessToken))
                     .retrieve()
-                    .onStatus(HttpStatusCode::isError, (request, response) -> {
-                        throw new GatewayClientException("Gateway request failed: " + response.getStatusCode());
-                    })
+                    .onStatus(HttpStatusCode::isError, (request, response) -> handleError(response))
                     .body(RecipientResponse[].class);
             return recipients == null ? List.of() : Arrays.asList(recipients);
         } catch (RestClientException exception) {
@@ -111,12 +109,34 @@ public class GatewayClient {
                     .headers(headers -> headers.setBearerAuth(accessToken))
                     .body(new CashOperationRequest(form.amount(), form.currency()))
                     .retrieve()
-                    .onStatus(HttpStatusCode::isError, (request, response) -> {
-                        throw new GatewayClientException("Gateway request failed: " + response.getStatusCode());
-                    })
+                    .onStatus(HttpStatusCode::isError, (request, response) -> handleError(response))
                     .body(CashOperationResponse.class);
         } catch (RestClientException exception) {
             throw new GatewayClientException("Gateway request failed", exception);
         }
+    }
+
+    private void handleError(ClientHttpResponse response) throws IOException {
+        byte[] body = response.getBody().readAllBytes();
+        String message = extractMessage(body);
+        if (message != null) {
+            throw new GatewayClientException(message);
+        }
+        throw new GatewayClientException("Gateway request failed: " + response.getStatusCode());
+    }
+
+    private String extractMessage(byte[] body) {
+        if (body.length == 0) {
+            return null;
+        }
+        try {
+            ApiErrorResponse error = OBJECT_MAPPER.readValue(body, ApiErrorResponse.class);
+            if (error.message() != null && !error.message().isBlank()) {
+                return error.message();
+            }
+        } catch (IOException ignored) {
+            // Fall back to the HTTP status when Gateway does not return the expected error body.
+        }
+        return null;
     }
 }
