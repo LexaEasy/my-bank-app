@@ -3,6 +3,7 @@ import io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension
 plugins {
     java
     alias(libs.plugins.spring.boot) apply false
+    alias(libs.plugins.spring.cloud.contract) apply false
     alias(libs.plugins.spring.dependency.management) apply false
 }
 
