@@ -35,7 +35,9 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
@@ -126,10 +128,10 @@ class MainPageControllerTest {
                         .param("recipientLogin", "petr")
                         .param("amount", "100.00")
                         .param("currency", "RUB"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("main"))
-                .andExpect(model().attribute("successMessage", "Перевод выполнен"))
-                .andExpect(model().attributeExists("transferResponse"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attribute("successMessage", "Перевод выполнен"))
+                .andExpect(flash().attributeExists("transferResponse"));
     }
 
     @Test
@@ -153,10 +155,9 @@ class MainPageControllerTest {
                         .param("recipientLogin", "petr")
                         .param("amount", "1500.00")
                         .param("currency", "RUB"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("main"))
-                .andExpect(model().attribute("errorMessage", "Недостаточно средств"))
-                .andExpect(model().attribute("recipients", recipients()));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attribute("errorMessage", "Недостаточно средств"));
     }
 
     @Test
@@ -176,13 +177,9 @@ class MainPageControllerTest {
                         .with(csrf())
                         .param("name", "Иван Петров")
                         .param("birthdate", "1990-01-15"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("main"))
-                .andExpect(model().attribute("successMessage", "Данные аккаунта сохранены"))
-                .andExpect(model().attribute("accountForm", new AccountForm(
-                        "Иван Петров",
-                        LocalDate.parse("1990-01-15")
-                )));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attribute("successMessage", "Данные аккаунта сохранены"));
     }
 
     @Test
@@ -209,10 +206,9 @@ class MainPageControllerTest {
                         .param("amount", "250.00")
                         .param("currency", "RUB")
                         .param("action", "deposit"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("main"))
-                .andExpect(model().attribute("successMessage", "Cash deposited"))
-                .andExpect(model().attribute("balance", new BigDecimal("1250.00")));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attribute("successMessage", "Cash deposited"));
     }
 
     @Test
@@ -239,10 +235,9 @@ class MainPageControllerTest {
                         .param("amount", "100.00")
                         .param("currency", "RUB")
                         .param("action", "withdraw"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("main"))
-                .andExpect(model().attribute("successMessage", "Cash withdrawn"))
-                .andExpect(model().attribute("balance", new BigDecimal("900.00")));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attribute("successMessage", "Cash withdrawn"));
     }
 
     private OAuth2AuthorizedClient authorizedClient(String tokenValue) {

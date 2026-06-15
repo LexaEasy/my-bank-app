@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ru.practicum.bank.frontui.client.GatewayClient;
 import ru.practicum.bank.frontui.client.GatewayClientException;
 import ru.practicum.bank.frontui.dto.AccountForm;
@@ -51,7 +52,8 @@ public class MainPageController {
             BindingResult bindingResult,
             Model model,
             Principal principal,
-            Authentication authentication
+            Authentication authentication,
+            RedirectAttributes redirectAttributes
     ) {
         if (bindingResult.hasErrors()) {
             addCommonModel(model, principal, authentication);
@@ -62,18 +64,13 @@ public class MainPageController {
         }
 
         try {
-            AccountResponse account = gatewayClient.updateAccount(getAccessToken(authentication), accountForm);
-            addAccountModel(model, account);
-            model.addAttribute("successMessage", "Данные аккаунта сохранены");
+            gatewayClient.updateAccount(getAccessToken(authentication), accountForm);
+            redirectAttributes.addFlashAttribute("successMessage", "Данные аккаунта сохранены");
         } catch (GatewayClientException exception) {
-            addCommonModel(model, principal, authentication);
-            model.addAttribute("errorMessage", exception.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
         }
 
-        addDefaultTransferForm(model);
-        addRecipients(model, authentication);
-        addDefaultCashForm(model);
-        return "main";
+        return "redirect:/";
     }
 
     @PostMapping("/cash")
@@ -83,10 +80,11 @@ public class MainPageController {
             @RequestParam String action,
             Model model,
             Principal principal,
-            Authentication authentication
+            Authentication authentication,
+            RedirectAttributes redirectAttributes
     ) {
-        addCommonModel(model, principal, authentication);
         if (bindingResult.hasErrors()) {
+            addCommonModel(model, principal, authentication);
             addDefaultTransferForm(model);
             addRecipients(model, authentication);
             model.addAttribute("errorMessage", "Заполните положительную сумму");
@@ -99,16 +97,12 @@ public class MainPageController {
                 case "withdraw" -> gatewayClient.withdraw(getAccessToken(authentication), cashForm);
                 default -> throw new GatewayClientException("Unknown cash action: " + action);
             };
-            model.addAttribute("balance", response.balance());
-            model.addAttribute("currency", response.currency());
-            model.addAttribute("successMessage", response.message());
+            redirectAttributes.addFlashAttribute("successMessage", response.message());
         } catch (GatewayClientException exception) {
-            model.addAttribute("errorMessage", exception.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
         }
 
-        addDefaultTransferForm(model);
-        addRecipients(model, authentication);
-        return "main";
+        return "redirect:/";
     }
 
     @PostMapping("/transfers")
@@ -117,10 +111,11 @@ public class MainPageController {
             BindingResult bindingResult,
             Model model,
             Principal principal,
-            Authentication authentication
+            Authentication authentication,
+            RedirectAttributes redirectAttributes
     ) {
-        addCommonModel(model, principal, authentication);
         if (bindingResult.hasErrors()) {
+            addCommonModel(model, principal, authentication);
             addRecipients(model, authentication);
             model.addAttribute("errorMessage", "Заполните получателя, сумму и валюту");
             return "main";
@@ -131,14 +126,13 @@ public class MainPageController {
                     getAccessToken(authentication),
                     transferForm
             );
-            model.addAttribute("successMessage", "Перевод выполнен");
-            model.addAttribute("transferResponse", response);
+            redirectAttributes.addFlashAttribute("successMessage", "Перевод выполнен");
+            redirectAttributes.addFlashAttribute("transferResponse", response);
         } catch (GatewayClientException exception) {
-            model.addAttribute("errorMessage", exception.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
         }
 
-        addRecipients(model, authentication);
-        return "main";
+        return "redirect:/";
     }
 
     private void addCommonModel(Model model, Principal principal, Authentication authentication) {
