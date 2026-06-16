@@ -1,6 +1,7 @@
 package ru.practicum.bank.frontui.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.ClientHttpResponse;
@@ -29,17 +30,32 @@ public class GatewayClient {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final RestClient restClient;
+    private final SimpleCircuitBreaker circuitBreaker;
 
+    @Autowired
     public GatewayClient(
             RestClient.Builder restClientBuilder,
             @Value("${bank.gateway.base-url}") String gatewayBaseUrl
     ) {
+        this(restClientBuilder, gatewayBaseUrl, SimpleCircuitBreaker.withDefaults("bankGateway"));
+    }
+
+    GatewayClient(
+            RestClient.Builder restClientBuilder,
+            String gatewayBaseUrl,
+            SimpleCircuitBreaker circuitBreaker
+    ) {
+        this.circuitBreaker = circuitBreaker;
         this.restClient = restClientBuilder
                 .baseUrl(gatewayBaseUrl)
                 .build();
     }
 
     public TransferResponse transfer(String accessToken, TransferForm form) {
+        return runWithCircuitBreaker(() -> transferWithoutCircuitBreaker(accessToken, form));
+    }
+
+    private TransferResponse transferWithoutCircuitBreaker(String accessToken, TransferForm form) {
         try {
             return restClient.post()
                     .uri("/api/transfers")
@@ -54,6 +70,10 @@ public class GatewayClient {
     }
 
     public AccountResponse getAccount(String accessToken) {
+        return runWithCircuitBreaker(() -> getAccountWithoutCircuitBreaker(accessToken));
+    }
+
+    private AccountResponse getAccountWithoutCircuitBreaker(String accessToken) {
         try {
             return restClient.get()
                     .uri("/api/accounts/me")
@@ -67,6 +87,10 @@ public class GatewayClient {
     }
 
     public AccountResponse updateAccount(String accessToken, AccountForm form) {
+        return runWithCircuitBreaker(() -> updateAccountWithoutCircuitBreaker(accessToken, form));
+    }
+
+    private AccountResponse updateAccountWithoutCircuitBreaker(String accessToken, AccountForm form) {
         try {
             return restClient.put()
                     .uri("/api/accounts/me")
@@ -81,6 +105,10 @@ public class GatewayClient {
     }
 
     public List<RecipientResponse> getRecipients(String accessToken) {
+        return runWithCircuitBreaker(() -> getRecipientsWithoutCircuitBreaker(accessToken));
+    }
+
+    private List<RecipientResponse> getRecipientsWithoutCircuitBreaker(String accessToken) {
         try {
             RecipientResponse[] recipients = restClient.get()
                     .uri("/api/accounts/recipients")
@@ -103,6 +131,10 @@ public class GatewayClient {
     }
 
     private CashOperationResponse cashOperation(String accessToken, String uri, CashForm form) {
+        return runWithCircuitBreaker(() -> cashOperationWithoutCircuitBreaker(accessToken, uri, form));
+    }
+
+    private CashOperationResponse cashOperationWithoutCircuitBreaker(String accessToken, String uri, CashForm form) {
         try {
             return restClient.post()
                     .uri(uri)
@@ -114,6 +146,17 @@ public class GatewayClient {
         } catch (RestClientException exception) {
             throw new GatewayClientException("Gateway request failed", exception);
         }
+    }
+
+    private <T> T runWithCircuitBreaker(ClientCall<T> call) {
+        return circuitBreaker.execute(call::execute, this::gatewayFallback);
+    }
+
+    private <T> T gatewayFallback(Throwable exception) {
+        if (exception instanceof GatewayClientException gatewayClientException) {
+            throw gatewayClientException;
+        }
+        throw new GatewayClientException("Банковские сервисы временно недоступны", exception);
     }
 
     private void handleError(ClientHttpResponse response) throws IOException {
@@ -138,5 +181,10 @@ public class GatewayClient {
             // Fall back to the HTTP status when Gateway does not return the expected error body.
         }
         return null;
+    }
+
+    @FunctionalInterface
+    private interface ClientCall<T> {
+        T execute();
     }
 }
