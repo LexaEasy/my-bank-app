@@ -29,7 +29,11 @@ class HttpAccountsClientTest {
     void shouldSendServiceTokenToAccountsService() {
         var restClientBuilder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(restClientBuilder).build();
-        var client = new HttpAccountsClient(restClientBuilder, "http://accounts-service", serviceTokenProvider);
+        var client = new HttpAccountsClient(
+                restClientBuilder,
+                "http://accounts-service",
+                serviceTokenProvider
+        );
         when(serviceTokenProvider.getAccessToken()).thenReturn("service-token");
 
         server.expect(once(), requestTo("http://accounts-service/api/accounts/internal/balance/transfer"))
@@ -62,7 +66,11 @@ class HttpAccountsClientTest {
     void shouldPreserveAccountsServiceErrorMessage() {
         var restClientBuilder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(restClientBuilder).build();
-        var client = new HttpAccountsClient(restClientBuilder, "http://accounts-service", serviceTokenProvider);
+        var client = new HttpAccountsClient(
+                restClientBuilder,
+                "http://accounts-service",
+                serviceTokenProvider
+        );
         when(serviceTokenProvider.getAccessToken()).thenReturn("service-token");
 
         server.expect(once(), requestTo("http://accounts-service/api/accounts/internal/balance/transfer"))
@@ -87,5 +95,26 @@ class HttpAccountsClientTest {
                 .hasMessage("Недостаточно средств");
 
         server.verify();
+    }
+
+    @Test
+    void shouldReturnCircuitBreakerFallbackMessage() {
+        var restClientBuilder = RestClient.builder();
+        var client = new HttpAccountsClient(
+                restClientBuilder,
+                "http://accounts-service",
+                serviceTokenProvider,
+                SimpleCircuitBreaker.opened("accountsService")
+        );
+
+        assertThatThrownBy(() -> client.execute(new TransferOperation(
+                "ivan",
+                "olga",
+                new BigDecimal("200.00"),
+                Currency.RUB,
+                "operation-1"
+        )))
+                .isInstanceOf(AccountsClientException.class)
+                .hasMessage("Сервис счетов временно недоступен");
     }
 }

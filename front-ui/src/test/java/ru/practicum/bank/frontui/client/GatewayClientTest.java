@@ -41,4 +41,18 @@ class GatewayClientTest {
 
         server.verify();
     }
+
+    @Test
+    void shouldReturnCircuitBreakerFallbackMessage() {
+        var restClientBuilder = RestClient.builder();
+        var client = new GatewayClient(
+                restClientBuilder,
+                "http://bank-gateway",
+                SimpleCircuitBreaker.opened("bankGateway")
+        );
+
+        assertThatThrownBy(() -> client.withdraw("user-token", new CashForm(new BigDecimal("100.00"), "RUB")))
+                .isInstanceOf(GatewayClientException.class)
+                .hasMessage("Банковские сервисы временно недоступны");
+    }
 }

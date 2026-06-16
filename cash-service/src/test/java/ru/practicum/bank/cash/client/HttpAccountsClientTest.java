@@ -10,8 +10,8 @@ import ru.practicum.bank.cash.model.Currency;
 
 import java.math.BigDecimal;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.ExpectedCount.once;
@@ -28,7 +28,11 @@ class HttpAccountsClientTest {
     void shouldSendServiceTokenToAccountsService() {
         var restClientBuilder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(restClientBuilder).build();
-        var client = new HttpAccountsClient(restClientBuilder, "http://accounts-service", serviceTokenProvider);
+        var client = new HttpAccountsClient(
+                restClientBuilder,
+                "http://accounts-service",
+                serviceTokenProvider
+        );
         when(serviceTokenProvider.getAccessToken()).thenReturn("service-token");
 
         server.expect(once(), requestTo("http://accounts-service/api/accounts/internal/balance/deposit"))
@@ -58,7 +62,11 @@ class HttpAccountsClientTest {
     void shouldPreserveAccountsServiceErrorMessage() {
         var restClientBuilder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(restClientBuilder).build();
-        var client = new HttpAccountsClient(restClientBuilder, "http://accounts-service", serviceTokenProvider);
+        var client = new HttpAccountsClient(
+                restClientBuilder,
+                "http://accounts-service",
+                serviceTokenProvider
+        );
         when(serviceTokenProvider.getAccessToken()).thenReturn("service-token");
 
         server.expect(once(), requestTo("http://accounts-service/api/accounts/internal/balance/withdraw"))
@@ -82,5 +90,25 @@ class HttpAccountsClientTest {
                 .hasMessage("Недостаточно средств");
 
         server.verify();
+    }
+
+    @Test
+    void shouldReturnCircuitBreakerFallbackMessage() {
+        var restClientBuilder = RestClient.builder();
+        var client = new HttpAccountsClient(
+                restClientBuilder,
+                "http://accounts-service",
+                serviceTokenProvider,
+                SimpleCircuitBreaker.opened("accountsService")
+        );
+
+        assertThatThrownBy(() -> client.deposit(new AccountsBalanceOperationRequest(
+                "ivan",
+                new BigDecimal("250.00"),
+                Currency.RUB,
+                "operation-1"
+        )))
+                .isInstanceOf(AccountsClientException.class)
+                .hasMessage("Сервис счетов временно недоступен");
     }
 }

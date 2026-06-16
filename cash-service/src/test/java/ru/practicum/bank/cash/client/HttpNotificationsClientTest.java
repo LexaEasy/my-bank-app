@@ -21,7 +21,11 @@ class HttpNotificationsClientTest {
     void shouldSendServiceTokenToNotificationsService() {
         var restClientBuilder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(restClientBuilder).build();
-        var client = new HttpNotificationsClient(restClientBuilder, "http://notifications-service", serviceTokenProvider);
+        var client = new HttpNotificationsClient(
+                restClientBuilder,
+                "http://notifications-service",
+                serviceTokenProvider
+        );
         when(serviceTokenProvider.getAccessToken()).thenReturn("service-token");
 
         server.expect(once(), requestTo("http://notifications-service/api/notifications"))
@@ -40,5 +44,23 @@ class HttpNotificationsClientTest {
         ));
 
         server.verify();
+    }
+
+    @Test
+    void shouldIgnoreNotificationFailureWhenCircuitBreakerFallbackRuns() {
+        var restClientBuilder = RestClient.builder();
+        var client = new HttpNotificationsClient(
+                restClientBuilder,
+                "http://notifications-service",
+                serviceTokenProvider,
+                SimpleCircuitBreaker.opened("notificationsService")
+        );
+
+        client.notify(new NotificationRequest(
+                "ivan",
+                "CASH_DEPOSIT",
+                "Счёт пополнен на 250.00 RUB",
+                "operation-1"
+        ));
     }
 }
