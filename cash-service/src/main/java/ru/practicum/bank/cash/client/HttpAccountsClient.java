@@ -2,6 +2,7 @@ package ru.practicum.bank.cash.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -16,13 +17,25 @@ public class HttpAccountsClient implements AccountsClient {
 
     private final RestClient restClient;
     private final ServiceTokenProvider serviceTokenProvider;
+    private final SimpleCircuitBreaker circuitBreaker;
 
+    @Autowired
     public HttpAccountsClient(
             RestClient.Builder restClientBuilder,
             @Value("${bank.services.accounts.base-url}") String accountsBaseUrl,
             ServiceTokenProvider serviceTokenProvider
     ) {
+        this(restClientBuilder, accountsBaseUrl, serviceTokenProvider, SimpleCircuitBreaker.withDefaults("accountsService"));
+    }
+
+    HttpAccountsClient(
+            RestClient.Builder restClientBuilder,
+            String accountsBaseUrl,
+            ServiceTokenProvider serviceTokenProvider,
+            SimpleCircuitBreaker circuitBreaker
+    ) {
         this.serviceTokenProvider = serviceTokenProvider;
+        this.circuitBreaker = circuitBreaker;
         this.restClient = restClientBuilder
                 .baseUrl(accountsBaseUrl)
                 .build();
@@ -39,6 +52,13 @@ public class HttpAccountsClient implements AccountsClient {
     }
 
     private AccountsBalanceResponse post(String uri, AccountsBalanceOperationRequest request) {
+        return circuitBreaker.execute(
+                () -> postWithoutCircuitBreaker(uri, request),
+                this::accountsFallback
+        );
+    }
+
+    private AccountsBalanceResponse postWithoutCircuitBreaker(String uri, AccountsBalanceOperationRequest request) {
         try {
             return restClient.post()
                     .uri(uri)
@@ -51,6 +71,13 @@ public class HttpAccountsClient implements AccountsClient {
         } catch (RestClientException exception) {
             throw new AccountsClientException("Accounts service request failed", exception);
         }
+    }
+
+    private AccountsBalanceResponse accountsFallback(Throwable exception) {
+        if (exception instanceof AccountsClientException accountsClientException) {
+            throw accountsClientException;
+        }
+        throw new AccountsClientException("Сервис счетов временно недоступен", exception);
     }
 
     private String extractMessage(RestClientResponseException exception) {

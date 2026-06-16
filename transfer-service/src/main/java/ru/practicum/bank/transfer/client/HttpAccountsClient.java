@@ -2,6 +2,7 @@ package ru.practicum.bank.transfer.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -19,13 +20,25 @@ public class HttpAccountsClient implements TransferExecutor {
 
     private final RestClient restClient;
     private final ServiceTokenProvider serviceTokenProvider;
+    private final SimpleCircuitBreaker circuitBreaker;
 
+    @Autowired
     public HttpAccountsClient(
             RestClient.Builder restClientBuilder,
             @Value("${bank.services.accounts.base-url}") String accountsBaseUrl,
             ServiceTokenProvider serviceTokenProvider
     ) {
+        this(restClientBuilder, accountsBaseUrl, serviceTokenProvider, SimpleCircuitBreaker.withDefaults("accountsService"));
+    }
+
+    HttpAccountsClient(
+            RestClient.Builder restClientBuilder,
+            String accountsBaseUrl,
+            ServiceTokenProvider serviceTokenProvider,
+            SimpleCircuitBreaker circuitBreaker
+    ) {
         this.serviceTokenProvider = serviceTokenProvider;
+        this.circuitBreaker = circuitBreaker;
         this.restClient = restClientBuilder
                 .baseUrl(accountsBaseUrl)
                 .build();
@@ -33,6 +46,13 @@ public class HttpAccountsClient implements TransferExecutor {
 
     @Override
     public TransferResult execute(TransferOperation operation) {
+        return circuitBreaker.execute(
+                () -> executeWithoutCircuitBreaker(operation),
+                this::accountsFallback
+        );
+    }
+
+    private TransferResult executeWithoutCircuitBreaker(TransferOperation operation) {
         try {
             var response = restClient.post()
                     .uri("/api/accounts/internal/balance/transfer")
@@ -52,6 +72,13 @@ public class HttpAccountsClient implements TransferExecutor {
         } catch (RestClientException exception) {
             throw new AccountsClientException("Accounts service request failed", exception);
         }
+    }
+
+    private TransferResult accountsFallback(Throwable exception) {
+        if (exception instanceof AccountsClientException accountsClientException) {
+            throw accountsClientException;
+        }
+        throw new AccountsClientException("Сервис счетов временно недоступен", exception);
     }
 
     private String extractMessage(RestClientResponseException exception) {
