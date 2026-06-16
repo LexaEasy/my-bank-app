@@ -26,6 +26,9 @@ spring:
 bank:
   gateway:
     base-url: http://localhost:8080
+  security:
+    logout:
+      end-session-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/logout
 
 management:
   endpoints:

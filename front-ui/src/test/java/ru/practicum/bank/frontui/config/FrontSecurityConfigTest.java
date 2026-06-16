@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.bank.frontui.client.GatewayClient;
@@ -21,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(MainPageController.class)
 @Import(FrontSecurityConfig.class)
+@TestPropertySource(properties = "bank.security.logout.end-session-uri=http://localhost:8180/realms/bank-realm/protocol/openid-connect/logout")
 class FrontSecurityConfigTest {
 
     @Autowired
@@ -42,9 +44,14 @@ class FrontSecurityConfigTest {
     @Test
     void shouldLogoutAuthenticatedUser() throws Exception {
         mockMvc.perform(post("/logout")
-                        .with(oidcLogin())
+                        .with(oidcLogin().idToken(token -> token.tokenValue("id-token")))
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/"));
+                .andExpect(header().string(
+                        "Location",
+                        containsString("http://localhost:8180/realms/bank-realm/protocol/openid-connect/logout")
+                ))
+                .andExpect(header().string("Location", containsString("post_logout_redirect_uri=http://localhost/")))
+                .andExpect(header().string("Location", containsString("id_token_hint=id-token")));
     }
 }
