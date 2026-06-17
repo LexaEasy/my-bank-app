@@ -23,5 +23,6 @@ include(
     "transfer-service",
     "notifications-service",
     "front-ui",
+    "shared",
 )
 

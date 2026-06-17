@@ -5,6 +5,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import ru.practicum.bank.common.client.SimpleCircuitBreaker;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;

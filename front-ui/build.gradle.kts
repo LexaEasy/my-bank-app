@@ -1,4 +1,5 @@
 dependencies {
+    implementation(project(":shared"))
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.spring.boot.starter.oauth2.client)
     implementation(libs.spring.boot.starter.thymeleaf)

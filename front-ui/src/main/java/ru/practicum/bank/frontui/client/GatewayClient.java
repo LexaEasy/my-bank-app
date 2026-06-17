@@ -8,6 +8,7 @@ import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import ru.practicum.bank.common.client.SimpleCircuitBreaker;
 import ru.practicum.bank.frontui.dto.ApiErrorResponse;
 import ru.practicum.bank.frontui.dto.AccountForm;
 import ru.practicum.bank.frontui.dto.AccountResponse;

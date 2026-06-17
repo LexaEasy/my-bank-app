@@ -1,4 +1,4 @@
-package ru.practicum.bank.cash.client;
+package ru.practicum.bank.common.client;
 
 import org.junit.jupiter.api.Test;
 

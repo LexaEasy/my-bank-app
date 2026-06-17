@@ -1,4 +1,4 @@
-package ru.practicum.bank.cash.client;
+package ru.practicum.bank.common.client;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -6,7 +6,7 @@ import java.time.Instant;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-class SimpleCircuitBreaker {
+public class SimpleCircuitBreaker {
 
     private static final int DEFAULT_FAILURE_THRESHOLD = 3;
     private static final Duration DEFAULT_OPEN_DURATION = Duration.ofSeconds(5);
@@ -27,17 +27,17 @@ class SimpleCircuitBreaker {
         this.clock = clock;
     }
 
-    static SimpleCircuitBreaker withDefaults(String name) {
+    public static SimpleCircuitBreaker withDefaults(String name) {
         return new SimpleCircuitBreaker(name, DEFAULT_FAILURE_THRESHOLD, DEFAULT_OPEN_DURATION, Clock.systemUTC());
     }
 
-    static SimpleCircuitBreaker opened(String name) {
+    public static SimpleCircuitBreaker opened(String name) {
         var circuitBreaker = withDefaults(name);
         circuitBreaker.open();
         return circuitBreaker;
     }
 
-    synchronized <T> T execute(Supplier<T> action, Function<Throwable, T> fallback) {
+    public synchronized <T> T execute(Supplier<T> action, Function<Throwable, T> fallback) {
         if (state == State.OPEN && !isReadyForRetry()) {
             return fallback.apply(new IllegalStateException("Circuit breaker is open: " + name));
         }

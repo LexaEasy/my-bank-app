@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import ru.practicum.bank.common.client.SimpleCircuitBreaker;
 
 @Component
 public class HttpNotificationsClient implements NotificationsClient {

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import ru.practicum.bank.common.client.SimpleCircuitBreaker;
 import ru.practicum.bank.cash.dto.ApiErrorResponse;
 
 @Component
