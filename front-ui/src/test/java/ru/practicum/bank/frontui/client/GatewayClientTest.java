@@ -1,5 +1,6 @@
 package ru.practicum.bank.frontui.client;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -18,11 +19,13 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 class GatewayClientTest {
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     @Test
     void shouldShowGatewayErrorMessage() {
         var restClientBuilder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(restClientBuilder).build();
-        var client = new GatewayClient(restClientBuilder, "http://bank-gateway");
+        var client = new GatewayClient(restClientBuilder, "http://bank-gateway", objectMapper);
 
         server.expect(once(), requestTo("http://bank-gateway/api/cash/withdraw"))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
@@ -48,7 +51,8 @@ class GatewayClientTest {
         var client = new GatewayClient(
                 restClientBuilder,
                 "http://bank-gateway",
-                SimpleCircuitBreaker.opened("bankGateway")
+                SimpleCircuitBreaker.opened("bankGateway"),
+                objectMapper
         );
 
         assertThatThrownBy(() -> client.withdraw("user-token", new CashForm(new BigDecimal("100.00"), "RUB")))

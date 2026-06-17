@@ -13,29 +13,37 @@ import ru.practicum.bank.cash.dto.ApiErrorResponse;
 @Component
 public class HttpAccountsClient implements AccountsClient {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
     private final RestClient restClient;
     private final ServiceTokenProvider serviceTokenProvider;
     private final SimpleCircuitBreaker circuitBreaker;
+    private final ObjectMapper objectMapper;
 
     @Autowired
     public HttpAccountsClient(
             RestClient.Builder restClientBuilder,
             @Value("${bank.services.accounts.base-url}") String accountsBaseUrl,
-            ServiceTokenProvider serviceTokenProvider
+            ServiceTokenProvider serviceTokenProvider,
+            ObjectMapper objectMapper
     ) {
-        this(restClientBuilder, accountsBaseUrl, serviceTokenProvider, SimpleCircuitBreaker.withDefaults("accountsService"));
+        this(
+                restClientBuilder,
+                accountsBaseUrl,
+                serviceTokenProvider,
+                SimpleCircuitBreaker.withDefaults("accountsService"),
+                objectMapper
+        );
     }
 
     HttpAccountsClient(
             RestClient.Builder restClientBuilder,
             String accountsBaseUrl,
             ServiceTokenProvider serviceTokenProvider,
-            SimpleCircuitBreaker circuitBreaker
+            SimpleCircuitBreaker circuitBreaker,
+            ObjectMapper objectMapper
     ) {
         this.serviceTokenProvider = serviceTokenProvider;
         this.circuitBreaker = circuitBreaker;
+        this.objectMapper = objectMapper;
         this.restClient = restClientBuilder
                 .baseUrl(accountsBaseUrl)
                 .build();
@@ -82,7 +90,7 @@ public class HttpAccountsClient implements AccountsClient {
 
     private String extractMessage(RestClientResponseException exception) {
         try {
-            var error = OBJECT_MAPPER.readValue(exception.getResponseBodyAsString(), ApiErrorResponse.class);
+            var error = objectMapper.readValue(exception.getResponseBodyAsString(), ApiErrorResponse.class);
             if (error.message() != null && !error.message().isBlank()) {
                 return error.message();
             }

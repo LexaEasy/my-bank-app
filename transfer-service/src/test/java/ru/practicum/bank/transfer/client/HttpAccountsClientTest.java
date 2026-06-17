@@ -1,5 +1,6 @@
 package ru.practicum.bank.transfer.client;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 class HttpAccountsClientTest {
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private final ServiceTokenProvider serviceTokenProvider = mock(ServiceTokenProvider.class);
 
     @Test
@@ -32,7 +34,8 @@ class HttpAccountsClientTest {
         var client = new HttpAccountsClient(
                 restClientBuilder,
                 "http://accounts-service",
-                serviceTokenProvider
+                serviceTokenProvider,
+                objectMapper
         );
         when(serviceTokenProvider.getAccessToken()).thenReturn("service-token");
 
@@ -69,7 +72,8 @@ class HttpAccountsClientTest {
         var client = new HttpAccountsClient(
                 restClientBuilder,
                 "http://accounts-service",
-                serviceTokenProvider
+                serviceTokenProvider,
+                objectMapper
         );
         when(serviceTokenProvider.getAccessToken()).thenReturn("service-token");
 
@@ -104,7 +108,8 @@ class HttpAccountsClientTest {
                 restClientBuilder,
                 "http://accounts-service",
                 serviceTokenProvider,
-                SimpleCircuitBreaker.opened("accountsService")
+                SimpleCircuitBreaker.opened("accountsService"),
+                objectMapper
         );
 
         assertThatThrownBy(() -> client.execute(new TransferOperation(

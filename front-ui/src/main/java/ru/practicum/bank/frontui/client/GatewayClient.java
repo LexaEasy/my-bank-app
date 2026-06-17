@@ -27,25 +27,27 @@ import java.util.List;
 @Component
 public class GatewayClient {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
     private final RestClient restClient;
     private final SimpleCircuitBreaker circuitBreaker;
+    private final ObjectMapper objectMapper;
 
     @Autowired
     public GatewayClient(
             RestClient.Builder restClientBuilder,
-            @Value("${bank.gateway.base-url}") String gatewayBaseUrl
+            @Value("${bank.gateway.base-url}") String gatewayBaseUrl,
+            ObjectMapper objectMapper
     ) {
-        this(restClientBuilder, gatewayBaseUrl, SimpleCircuitBreaker.withDefaults("bankGateway"));
+        this(restClientBuilder, gatewayBaseUrl, SimpleCircuitBreaker.withDefaults("bankGateway"), objectMapper);
     }
 
     GatewayClient(
             RestClient.Builder restClientBuilder,
             String gatewayBaseUrl,
-            SimpleCircuitBreaker circuitBreaker
+            SimpleCircuitBreaker circuitBreaker,
+            ObjectMapper objectMapper
     ) {
         this.circuitBreaker = circuitBreaker;
+        this.objectMapper = objectMapper;
         this.restClient = restClientBuilder
                 .baseUrl(gatewayBaseUrl)
                 .build();
@@ -173,7 +175,7 @@ public class GatewayClient {
             return null;
         }
         try {
-            ApiErrorResponse error = OBJECT_MAPPER.readValue(body, ApiErrorResponse.class);
+            ApiErrorResponse error = objectMapper.readValue(body, ApiErrorResponse.class);
             if (error.message() != null && !error.message().isBlank()) {
                 return error.message();
             }
