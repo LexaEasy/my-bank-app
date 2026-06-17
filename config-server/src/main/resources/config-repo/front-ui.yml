@@ -14,15 +14,18 @@ spring:
             scope: openid,profile,email
         provider:
           keycloak:
-            authorization-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/auth
-            token-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/token
-            jwk-set-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs
-            user-info-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/userinfo
+            authorization-uri: ${BANK_KEYCLOAK_AUTHORIZATION_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/auth}
+            token-uri: ${BANK_KEYCLOAK_TOKEN_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/token}
+            jwk-set-uri: ${BANK_KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs}
+            user-info-uri: ${BANK_KEYCLOAK_USER_INFO_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/userinfo}
             user-name-attribute: preferred_username
 
 bank:
   gateway:
-    base-url: http://localhost:8080
+    base-url: ${BANK_GATEWAY_URL:http://localhost:8080}
+  security:
+    logout:
+      end-session-uri: ${BANK_KEYCLOAK_END_SESSION_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/logout}
 
 server:
   port: 8085

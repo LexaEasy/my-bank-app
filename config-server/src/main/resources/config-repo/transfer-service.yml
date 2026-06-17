@@ -12,17 +12,18 @@ spring:
             client-secret: ${TRANSFER_SERVICE_CLIENT_SECRET:}
         provider:
           keycloak:
-            token-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/token
+            token-uri: ${BANK_KEYCLOAK_TOKEN_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/token}
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8180/realms/bank-realm
+          issuer-uri: ${BANK_KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/bank-realm}
+          jwk-set-uri: ${BANK_KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs}
 
 bank:
   services:
     accounts:
-      base-url: http://localhost:8081
+      base-url: ${BANK_ACCOUNTS_BASE_URL:http://localhost:8081}
     notifications:
-      base-url: http://localhost:8084
+      base-url: ${BANK_NOTIFICATIONS_BASE_URL:http://localhost:8084}
 
 server:
   port: 8083

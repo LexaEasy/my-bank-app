@@ -1,28 +1,5 @@
-server:
-  port: 8081
-
 spring:
   application:
     name: accounts-service
-  datasource:
-    url: jdbc:postgresql://localhost:5432/bank
-    username: postgres
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:8180/realms/bank-realm
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-  endpoint:
-    health:
-      probes:
-        enabled: true
+  config:
+    import: configserver:http://localhost:8888

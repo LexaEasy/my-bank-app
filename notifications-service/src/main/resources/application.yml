@@ -1,21 +1,5 @@
-server:
-  port: 8084
-
 spring:
   application:
     name: notifications-service
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:8180/realms/bank-realm
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-  endpoint:
-    health:
-      probes:
-        enabled: true
+  config:
+    import: configserver:http://localhost:8888

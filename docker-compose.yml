@@ -10,14 +10,13 @@ x-platform-health: &platform-health
   retries: 12
   start_period: 20s
 
-x-eureka-env: &eureka-env
-  EUREKA_CLIENT_SERVICE_URL_DEFAULT_ZONE: http://discovery-server:8761/eureka/
-  EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
-  JAVA_TOOL_OPTIONS: -Deureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka/
+x-config-client-env: &config-client-env
+  SPRING_CONFIG_IMPORT: configserver:http://config-server:8888
+  BANK_EUREKA_DEFAULT_ZONE: http://discovery-server:8761/eureka/
 
 x-resource-server-env: &resource-server-env
-  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/bank-realm
-  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
+  BANK_KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/bank-realm
+  BANK_KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
 
 services:
   postgres:
@@ -69,6 +68,8 @@ services:
     build:
       context: ./discovery-server
     image: my-bank-discovery-server:local
+    environment:
+      <<: *config-client-env
     ports:
       - "8761:8761"
     depends_on:
@@ -84,9 +85,9 @@ services:
       context: ./accounts-service
     image: my-bank-accounts-service:local
     environment:
-      <<: [*eureka-env, *resource-server-env]
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bank
-      SPRING_DATASOURCE_USERNAME: postgres
+      <<: [*config-client-env, *resource-server-env]
+      BANK_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bank
+      BANK_DATASOURCE_USERNAME: postgres
     depends_on:
       postgres:
         condition: service_healthy
@@ -104,7 +105,7 @@ services:
       context: ./notifications-service
     image: my-bank-notifications-service:local
     environment:
-      <<: [*eureka-env, *resource-server-env]
+      <<: [*config-client-env, *resource-server-env]
     depends_on:
       keycloak:
         condition: service_healthy
@@ -120,11 +121,11 @@ services:
       context: ./cash-service
     image: my-bank-cash-service:local
     environment:
-      <<: [*eureka-env, *resource-server-env]
+      <<: [*config-client-env, *resource-server-env]
       CASH_SERVICE_CLIENT_SECRET: ${CASH_SERVICE_CLIENT_SECRET:-__CASH_SERVICE_CLIENT_SECRET__}
-      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
-      BANK_SERVICES_ACCOUNTS_BASE_URL: http://accounts-service:8081
-      BANK_SERVICES_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
+      BANK_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
+      BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
+      BANK_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
     depends_on:
       accounts-service:
         condition: service_healthy
@@ -140,11 +141,11 @@ services:
       context: ./transfer-service
     image: my-bank-transfer-service:local
     environment:
-      <<: [*eureka-env, *resource-server-env]
+      <<: [*config-client-env, *resource-server-env]
       TRANSFER_SERVICE_CLIENT_SECRET: ${TRANSFER_SERVICE_CLIENT_SECRET:-__TRANSFER_SERVICE_CLIENT_SECRET__}
-      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
-      BANK_SERVICES_ACCOUNTS_BASE_URL: http://accounts-service:8081
-      BANK_SERVICES_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
+      BANK_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
+      BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
+      BANK_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
     depends_on:
       accounts-service:
         condition: service_healthy
@@ -160,7 +161,7 @@ services:
       context: ./bank-gateway
     image: my-bank-gateway:local
     environment:
-      <<: [*eureka-env, *resource-server-env]
+      <<: [*config-client-env, *resource-server-env]
     ports:
       - "8080:8080"
     depends_on:
@@ -180,13 +181,14 @@ services:
       context: ./front-ui
     image: my-bank-front-ui:local
     environment:
-      <<: *eureka-env
+      <<: *config-client-env
       FRONT_UI_CLIENT_SECRET: ${FRONT_UI_CLIENT_SECRET:-__FRONT_UI_CLIENT_SECRET__}
-      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI: http://localhost:8180/realms/bank-realm/protocol/openid-connect/auth
-      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
-      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
-      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER_INFO_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo
-      BANK_GATEWAY_BASE_URL: http://bank-gateway:8080
+      BANK_KEYCLOAK_AUTHORIZATION_URI: http://localhost:8180/realms/bank-realm/protocol/openid-connect/auth
+      BANK_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
+      BANK_KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
+      BANK_KEYCLOAK_USER_INFO_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo
+      BANK_KEYCLOAK_END_SESSION_URI: http://localhost:8180/realms/bank-realm/protocol/openid-connect/logout
+      BANK_GATEWAY_URL: http://bank-gateway:8080
     ports:
       - "8085:8085"
     depends_on:

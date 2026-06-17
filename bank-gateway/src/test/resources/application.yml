@@ -1,7 +1,7 @@
 spring:
-  application:
-    name: bank-gateway
   cloud:
+    config:
+      enabled: false
     gateway:
       server:
         webflux:
@@ -34,8 +34,9 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${BANK_KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/bank-realm}
-          jwk-set-uri: ${BANK_KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs}
+          issuer-uri: http://localhost:8180/realms/bank-realm
+          jwk-set-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs
 
-server:
-  port: 8080
+eureka:
+  client:
+    enabled: false
