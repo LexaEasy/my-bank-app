@@ -7,11 +7,14 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.practicum.bank.accounts.dto.ApiErrorResponse;
 import ru.practicum.bank.accounts.exception.AccountNotFoundException;
+import ru.practicum.bank.accounts.exception.IdempotencyConflictException;
 import ru.practicum.bank.accounts.exception.InsufficientFundsException;
 import ru.practicum.bank.accounts.exception.InvalidAmountException;
 import ru.practicum.bank.accounts.exception.InvalidAmountScaleException;
 import ru.practicum.bank.accounts.exception.InvalidBirthdateException;
 import ru.practicum.bank.accounts.exception.MissingPreferredUsernameException;
+import ru.practicum.bank.accounts.exception.OperationAlreadyFailedException;
+import ru.practicum.bank.accounts.exception.OperationInProgressException;
 import ru.practicum.bank.accounts.exception.RecipientNotFoundException;
 import ru.practicum.bank.accounts.exception.SelfTransferForbiddenException;
 
@@ -52,6 +55,24 @@ public class AccountExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     public ApiErrorResponse handleInsufficientFunds(InsufficientFundsException exception) {
         return new ApiErrorResponse("INSUFFICIENT_FUNDS", exception.getMessage());
+    }
+
+    @ExceptionHandler(IdempotencyConflictException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiErrorResponse handleIdempotencyConflict(IdempotencyConflictException exception) {
+        return new ApiErrorResponse("IDEMPOTENCY_CONFLICT", exception.getMessage());
+    }
+
+    @ExceptionHandler(OperationInProgressException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiErrorResponse handleOperationInProgress(OperationInProgressException exception) {
+        return new ApiErrorResponse("OPERATION_IN_PROGRESS", exception.getMessage());
+    }
+
+    @ExceptionHandler(OperationAlreadyFailedException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiErrorResponse handleOperationAlreadyFailed(OperationAlreadyFailedException exception) {
+        return new ApiErrorResponse("OPERATION_ALREADY_FAILED", exception.getMessage());
     }
 
     @ExceptionHandler({InvalidBirthdateException.class, MethodArgumentNotValidException.class})

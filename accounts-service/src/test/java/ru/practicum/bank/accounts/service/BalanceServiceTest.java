@@ -16,6 +16,7 @@ import ru.practicum.bank.accounts.repository.AccountRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,12 +29,17 @@ import static org.mockito.Mockito.when;
 class BalanceServiceTest {
 
     private final AccountRepository accountRepository = mock(AccountRepository.class);
+    private final IdempotencyService idempotencyService = mock(IdempotencyService.class);
 
     private BalanceService balanceService;
 
     @BeforeEach
     void setUp() {
-        balanceService = new BalanceService(accountRepository);
+        when(idempotencyService.execute(any(), any(), any(), any(), any())).thenAnswer(invocation -> {
+            Supplier<?> operation = invocation.getArgument(4);
+            return operation.get();
+        });
+        balanceService = new BalanceService(accountRepository, idempotencyService);
     }
 
     @Test

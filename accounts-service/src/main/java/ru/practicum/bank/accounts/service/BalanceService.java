@@ -1,7 +1,6 @@
 package ru.practicum.bank.accounts.service;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.bank.accounts.dto.BalanceOperationRequest;
 import ru.practicum.bank.accounts.dto.BalanceResponse;
 import ru.practicum.bank.accounts.dto.TransferBalanceRequest;
@@ -22,13 +21,44 @@ import java.math.BigDecimal;
 public class BalanceService {
 
     private final AccountRepository accountRepository;
+    private final IdempotencyService idempotencyService;
 
-    public BalanceService(AccountRepository accountRepository) {
+    public BalanceService(AccountRepository accountRepository, IdempotencyService idempotencyService) {
         this.accountRepository = accountRepository;
+        this.idempotencyService = idempotencyService;
     }
 
-    @Transactional
     public BalanceResponse deposit(BalanceOperationRequest request) {
+        return idempotencyService.execute(
+                request.operationId(),
+                "DEPOSIT",
+                request,
+                BalanceResponse.class,
+                () -> doDeposit(request)
+        );
+    }
+
+    public BalanceResponse withdraw(BalanceOperationRequest request) {
+        return idempotencyService.execute(
+                request.operationId(),
+                "WITHDRAW",
+                request,
+                BalanceResponse.class,
+                () -> doWithdraw(request)
+        );
+    }
+
+    public TransferBalanceResponse transfer(TransferBalanceRequest request) {
+        return idempotencyService.execute(
+                request.operationId(),
+                "TRANSFER",
+                request,
+                TransferBalanceResponse.class,
+                () -> doTransfer(request)
+        );
+    }
+
+    private BalanceResponse doDeposit(BalanceOperationRequest request) {
         validateAmount(request.amount());
         Account account = findAccount(request.login());
 
@@ -37,8 +67,7 @@ public class BalanceService {
         return toBalanceResponse(accountRepository.save(account));
     }
 
-    @Transactional
-    public BalanceResponse withdraw(BalanceOperationRequest request) {
+    private BalanceResponse doWithdraw(BalanceOperationRequest request) {
         validateAmount(request.amount());
         Account account = findAccount(request.login());
 
@@ -47,8 +76,7 @@ public class BalanceService {
         return toBalanceResponse(accountRepository.save(account));
     }
 
-    @Transactional
-    public TransferBalanceResponse transfer(TransferBalanceRequest request) {
+    private TransferBalanceResponse doTransfer(TransferBalanceRequest request) {
         if (request.senderLogin().equals(request.recipientLogin())) {
             throw new SelfTransferForbiddenException();
         }

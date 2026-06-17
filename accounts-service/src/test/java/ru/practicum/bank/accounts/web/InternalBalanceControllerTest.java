@@ -9,7 +9,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.bank.accounts.dto.BalanceResponse;
 import ru.practicum.bank.accounts.dto.TransferBalanceResponse;
+import ru.practicum.bank.accounts.exception.IdempotencyConflictException;
 import ru.practicum.bank.accounts.exception.InvalidAmountScaleException;
+import ru.practicum.bank.accounts.exception.OperationInProgressException;
 import ru.practicum.bank.accounts.service.BalanceService;
 
 import java.math.BigDecimal;
@@ -98,6 +100,28 @@ class InternalBalanceControllerTest {
                         .content(operationRequest()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_AMOUNT_SCALE"));
+    }
+
+    @Test
+    void shouldReturnIdempotencyConflictError() throws Exception {
+        when(balanceService.deposit(any())).thenThrow(new IdempotencyConflictException("operation-1"));
+
+        mockMvc.perform(post("/api/accounts/internal/balance/deposit")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(operationRequest()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("IDEMPOTENCY_CONFLICT"));
+    }
+
+    @Test
+    void shouldReturnOperationInProgressError() throws Exception {
+        when(balanceService.deposit(any())).thenThrow(new OperationInProgressException("operation-1"));
+
+        mockMvc.perform(post("/api/accounts/internal/balance/deposit")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(operationRequest()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("OPERATION_IN_PROGRESS"));
     }
 
     private String operationRequest() {
