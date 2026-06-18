@@ -22,9 +22,9 @@ spring:
 bank:
   services:
     accounts:
-      base-url: http://localhost:8081
+      base-url: http://accounts-service
     notifications:
-      base-url: http://localhost:8084
+      base-url: http://notifications-service
 
 eureka:
   client:

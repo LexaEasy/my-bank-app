@@ -124,8 +124,6 @@ services:
       <<: [*config-client-env, *resource-server-env]
       CASH_SERVICE_CLIENT_SECRET: ${CASH_SERVICE_CLIENT_SECRET:-__CASH_SERVICE_CLIENT_SECRET__}
       BANK_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
-      BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
-      BANK_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
     depends_on:
       accounts-service:
         condition: service_healthy
@@ -144,8 +142,6 @@ services:
       <<: [*config-client-env, *resource-server-env]
       TRANSFER_SERVICE_CLIENT_SECRET: ${TRANSFER_SERVICE_CLIENT_SECRET:-__TRANSFER_SERVICE_CLIENT_SECRET__}
       BANK_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
-      BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
-      BANK_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
     depends_on:
       accounts-service:
         condition: service_healthy

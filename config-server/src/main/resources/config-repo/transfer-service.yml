@@ -21,9 +21,9 @@ spring:
 bank:
   services:
     accounts:
-      base-url: ${BANK_ACCOUNTS_BASE_URL:http://localhost:8081}
+      base-url: ${BANK_ACCOUNTS_BASE_URL:http://accounts-service}
     notifications:
-      base-url: ${BANK_NOTIFICATIONS_BASE_URL:http://localhost:8084}
+      base-url: ${BANK_NOTIFICATIONS_BASE_URL:http://notifications-service}
 
 server:
   port: 8083
