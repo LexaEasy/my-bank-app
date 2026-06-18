@@ -27,7 +27,7 @@ spring:
             - id: transfer-service
               uri: lb://transfer-service
               predicates:
-                - Path=/api/transfers,/api/transfers/**
+                - Path=/api/transfers
               filters:
                 - JwtTokenRelay
   security:

@@ -26,7 +26,7 @@ class GatewayRouteConfigTest {
                     assertThat(route.getPredicates())
                             .anySatisfy(predicate -> assertThat(predicate.getArgs())
                                     .containsValue("/api/transfers")
-                                    .containsValue("/api/transfers/**"));
+                                    .doesNotContainValue("/api/transfers/**"));
                     assertThat(route.getFilters())
                             .anySatisfy(filter -> assertThat(filter.getName()).isEqualTo("JwtTokenRelay"));
                 });
