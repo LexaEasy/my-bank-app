@@ -2,4 +2,4 @@ spring:
   application:
     name: accounts-service
   config:
-    import: configserver:http://localhost:8888
+    import: ${BANK_CONFIG_IMPORT:configserver:http://localhost:8888}

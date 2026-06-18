@@ -11,7 +11,7 @@ x-platform-health: &platform-health
   start_period: 20s
 
 x-config-client-env: &config-client-env
-  SPRING_CONFIG_IMPORT: configserver:http://config-server:8888
+  BANK_CONFIG_IMPORT: configserver:http://config-server:8888
   BANK_EUREKA_DEFAULT_ZONE: http://discovery-server:8761/eureka/
 
 x-resource-server-env: &resource-server-env
