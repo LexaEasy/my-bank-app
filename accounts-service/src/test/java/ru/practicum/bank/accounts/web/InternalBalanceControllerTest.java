@@ -5,13 +5,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.bank.accounts.dto.BalanceResponse;
 import ru.practicum.bank.accounts.dto.TransferBalanceResponse;
 import ru.practicum.bank.accounts.exception.IdempotencyConflictException;
+import ru.practicum.bank.accounts.exception.InsufficientFundsException;
 import ru.practicum.bank.accounts.exception.InvalidAmountScaleException;
 import ru.practicum.bank.accounts.exception.OperationInProgressException;
+import ru.practicum.bank.accounts.exception.SelfTransferForbiddenException;
+import ru.practicum.bank.accounts.model.Account;
 import ru.practicum.bank.accounts.service.BalanceService;
 
 import java.math.BigDecimal;
@@ -122,6 +126,48 @@ class InternalBalanceControllerTest {
                         .content(operationRequest()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("OPERATION_IN_PROGRESS"));
+    }
+
+    @Test
+    void shouldReturnUnprocessableEntityWhenFundsAreInsufficient() throws Exception {
+        when(balanceService.withdraw(any())).thenThrow(new InsufficientFundsException());
+
+        mockMvc.perform(post("/api/accounts/internal/balance/withdraw")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(operationRequest()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("INSUFFICIENT_FUNDS"));
+    }
+
+    @Test
+    void shouldReturnUnprocessableEntityForSelfTransfer() throws Exception {
+        when(balanceService.transfer(any())).thenThrow(new SelfTransferForbiddenException());
+
+        mockMvc.perform(post("/api/accounts/internal/balance/transfer")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "senderLogin": "ivan",
+                                  "recipientLogin": "ivan",
+                                  "amount": "150.00",
+                                  "currency": "RUB",
+                                  "operationId": "operation-1"
+                                }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("SELF_TRANSFER_FORBIDDEN"));
+    }
+
+    @Test
+    void shouldReturnConflictForConcurrentUpdate() throws Exception {
+        when(balanceService.withdraw(any()))
+                .thenThrow(new ObjectOptimisticLockingFailureException(Account.class, 1L));
+
+        mockMvc.perform(post("/api/accounts/internal/balance/withdraw")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(operationRequest()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONCURRENT_UPDATE"));
     }
 
     private String operationRequest() {

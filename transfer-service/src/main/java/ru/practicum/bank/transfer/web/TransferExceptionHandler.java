@@ -29,7 +29,7 @@ public class TransferExceptionHandler {
     }
 
     @ExceptionHandler(SelfTransferForbiddenException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     public ApiErrorResponse handleSelfTransfer(SelfTransferForbiddenException exception) {
         return new ApiErrorResponse("SELF_TRANSFER_FORBIDDEN", exception.getMessage());
     }

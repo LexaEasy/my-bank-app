@@ -1,6 +1,8 @@
 package ru.practicum.bank.accounts.web;
 
+import jakarta.persistence.OptimisticLockException;
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -46,15 +48,21 @@ public class AccountExceptionHandler {
     }
 
     @ExceptionHandler(SelfTransferForbiddenException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     public ApiErrorResponse handleSelfTransfer(SelfTransferForbiddenException exception) {
         return new ApiErrorResponse("SELF_TRANSFER_FORBIDDEN", exception.getMessage());
     }
 
     @ExceptionHandler(InsufficientFundsException.class)
-    @ResponseStatus(HttpStatus.CONFLICT)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     public ApiErrorResponse handleInsufficientFunds(InsufficientFundsException exception) {
         return new ApiErrorResponse("INSUFFICIENT_FUNDS", exception.getMessage());
+    }
+
+    @ExceptionHandler({ObjectOptimisticLockingFailureException.class, OptimisticLockException.class})
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiErrorResponse handleConcurrentUpdate(RuntimeException exception) {
+        return new ApiErrorResponse("CONCURRENT_UPDATE", "Данные были изменены другим запросом");
     }
 
     @ExceptionHandler(IdempotencyConflictException.class)

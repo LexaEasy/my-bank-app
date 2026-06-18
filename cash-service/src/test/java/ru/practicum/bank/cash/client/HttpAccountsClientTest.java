@@ -76,7 +76,7 @@ class HttpAccountsClientTest {
 
         server.expect(once(), requestTo("http://accounts-service/api/accounts/internal/balance/withdraw"))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer service-token"))
-                .andRespond(withStatus(HttpStatus.CONFLICT)
+                .andRespond(withStatus(HttpStatus.UNPROCESSABLE_ENTITY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("""
                                 {

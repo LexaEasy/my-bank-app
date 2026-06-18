@@ -11,6 +11,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.bank.transfer.dto.TransferRequest;
 import ru.practicum.bank.transfer.dto.TransferResponse;
+import ru.practicum.bank.transfer.exception.SelfTransferForbiddenException;
 import ru.practicum.bank.transfer.model.Currency;
 import ru.practicum.bank.transfer.service.TransferService;
 
@@ -76,6 +77,25 @@ class TransferControllerTest {
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void shouldReturnUnprocessableEntityForSelfTransfer() throws Exception {
+        when(transferService.transfer("ivan", request("ivan", "200.00")))
+                .thenThrow(new SelfTransferForbiddenException());
+
+        mockMvc.perform(post("/api/transfers")
+                        .principal(jwtAuthentication("ivan"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "recipientLogin": "ivan",
+                                  "amount": "200.00",
+                                  "currency": "RUB"
+                                }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("SELF_TRANSFER_FORBIDDEN"));
     }
 
     private JwtAuthenticationToken jwtAuthentication(String login) {
