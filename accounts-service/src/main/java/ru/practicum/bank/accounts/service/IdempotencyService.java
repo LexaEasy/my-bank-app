@@ -30,7 +30,6 @@ public class IdempotencyService {
 
     private final ProcessedOperationRepository operationRepository;
     private final TransactionTemplate operationTransaction;
-    private final TransactionTemplate businessTransaction;
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
@@ -43,7 +42,6 @@ public class IdempotencyService {
         this.operationRepository = operationRepository;
         this.operationTransaction = new TransactionTemplate(transactionManager);
         this.operationTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        this.businessTransaction = new TransactionTemplate(transactionManager);
         this.objectMapper = objectMapper.copy()
                 .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
                 .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
@@ -63,7 +61,7 @@ public class IdempotencyService {
         }
 
         try {
-            T response = businessTransaction.execute(status -> businessOperation.get());
+            T response = businessOperation.get();
             completeOperation(operationId, response);
             return response;
         } catch (RuntimeException exception) {
