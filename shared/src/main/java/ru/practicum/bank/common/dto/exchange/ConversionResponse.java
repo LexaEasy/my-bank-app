@@ -1,4 +1,4 @@
-package ru.practicum.bank.exchange.dto;
+package ru.practicum.bank.common.dto.exchange;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import ru.practicum.bank.common.model.Currency;
