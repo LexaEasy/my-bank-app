@@ -18,3 +18,10 @@ spring:
 eureka:
   client:
     enabled: false
+
+bank:
+  services:
+    exchange:
+      base-url: http://exchange-service
+  exchange-generator:
+    fixed-delay-ms: 1000
