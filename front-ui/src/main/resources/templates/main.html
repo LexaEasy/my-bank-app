@@ -66,6 +66,26 @@
         </article>
 
         <article class="panel wide">
+            <h2>Курсы валют</h2>
+            <p class="inline-error" th:if="${exchangeRatesLoadError}" th:text="${exchangeRatesLoadError}"></p>
+            <div class="empty-state" th:if="${#lists.isEmpty(exchangeRates) and exchangeRatesLoadError == null}">
+                Курсы валют пока не загружены
+            </div>
+            <div class="rates-table" th:if="${!#lists.isEmpty(exchangeRates)}">
+                <div class="rates-row rates-head">
+                    <span>Валюта</span>
+                    <span>Покупка</span>
+                    <span>Продажа</span>
+                </div>
+                <div class="rates-row" th:each="rate : ${exchangeRates}">
+                    <strong th:text="${rate.currency()}">USD</strong>
+                    <span th:text="${rate.buyRate()}">90.0000</span>
+                    <span th:text="${rate.sellRate()}">92.0000</span>
+                </div>
+            </div>
+        </article>
+
+        <article class="panel wide">
             <h2>Переводы</h2>
             <form class="transfer-form" th:action="@{/transfers}" th:object="${transferForm}" method="post">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">

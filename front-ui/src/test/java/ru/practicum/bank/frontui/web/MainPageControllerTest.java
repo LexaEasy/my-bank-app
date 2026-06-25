@@ -1,5 +1,6 @@
 package ru.practicum.bank.frontui.web;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -10,6 +11,8 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import ru.practicum.bank.common.dto.exchange.ExchangeRateResponse;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.frontui.client.GatewayClient;
 import ru.practicum.bank.frontui.client.GatewayClientException;
 import ru.practicum.bank.frontui.dto.AccountForm;
@@ -25,6 +28,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -53,6 +57,11 @@ class MainPageControllerTest {
     @MockitoBean
     private OAuth2AuthorizedClientService authorizedClientService;
 
+    @BeforeEach
+    void setUp() {
+        when(gatewayClient.getExchangeRates(anyString())).thenReturn(exchangeRates());
+    }
+
     @Test
     void shouldRenderMainPage() throws Exception {
         var authorizedClient = authorizedClient("user-token");
@@ -79,9 +88,33 @@ class MainPageControllerTest {
                         containsString("Обо мне"),
                         containsString("Операции с наличными"),
                         containsString("Переводы"),
+                        containsString("Курсы валют"),
+                        containsString("USD"),
+                        containsString("90.0000"),
                         containsString("value=\"1990-01-15\""),
                         containsString("Петров Петр (petr)")
                 )));
+    }
+
+    @Test
+    void shouldRenderMainPageWhenExchangeRatesAreUnavailable() throws Exception {
+        var authorizedClient = authorizedClient("user-token");
+        when(authorizedClientService.loadAuthorizedClient(eq("front-ui"), eq("ivan")))
+                .thenReturn(authorizedClient);
+        when(gatewayClient.getAccount("user-token"))
+                .thenReturn(account("ivan", "Иванов Иван", LocalDate.parse("1990-01-15"), "1000.00"));
+        when(gatewayClient.getRecipients("user-token"))
+                .thenReturn(recipients());
+        when(gatewayClient.getExchangeRates("user-token"))
+                .thenThrow(new GatewayClientException("Exchange service request failed"));
+
+        mockMvc.perform(get("/")
+                        .with(user("ivan")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("main"))
+                .andExpect(model().attribute("exchangeRates", List.of()))
+                .andExpect(model().attribute("exchangeRatesLoadError", "Exchange service request failed"))
+                .andExpect(content().string(containsString("Exchange service request failed")));
     }
 
     @Test
@@ -273,6 +306,23 @@ class MainPageControllerTest {
         return List.of(
                 new RecipientResponse("petr", "Петров Петр"),
                 new RecipientResponse("anna", "Анна Смирнова")
+        );
+    }
+
+    private List<ExchangeRateResponse> exchangeRates() {
+        return List.of(
+                new ExchangeRateResponse(
+                        Currency.RUB,
+                        new BigDecimal("1.0000"),
+                        new BigDecimal("1.0000"),
+                        Instant.parse("2026-06-25T10:00:00Z")
+                ),
+                new ExchangeRateResponse(
+                        Currency.USD,
+                        new BigDecimal("90.0000"),
+                        new BigDecimal("92.0000"),
+                        Instant.parse("2026-06-25T10:00:00Z")
+                )
         );
     }
 }

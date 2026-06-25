@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import ru.practicum.bank.common.dto.exchange.ExchangeRateResponse;
 import ru.practicum.bank.frontui.client.GatewayClient;
 import ru.practicum.bank.frontui.client.GatewayClientException;
 import ru.practicum.bank.frontui.dto.AccountForm;
@@ -145,6 +146,7 @@ public class MainPageController {
             model.addAttribute("accountLoadError", exception.getMessage());
         }
         addDefaultCashForm(model);
+        addExchangeRates(model, authentication);
     }
 
     private void addAccountModel(Model model, AccountResponse account) {
@@ -169,6 +171,16 @@ public class MainPageController {
         } catch (GatewayClientException exception) {
             model.addAttribute("recipients", List.of());
             model.addAttribute("recipientsLoadError", exception.getMessage());
+        }
+    }
+
+    private void addExchangeRates(Model model, Authentication authentication) {
+        try {
+            List<ExchangeRateResponse> rates = gatewayClient.getExchangeRates(getAccessToken(authentication));
+            model.addAttribute("exchangeRates", rates);
+        } catch (GatewayClientException exception) {
+            model.addAttribute("exchangeRates", List.of());
+            model.addAttribute("exchangeRatesLoadError", exception.getMessage());
         }
     }
 
