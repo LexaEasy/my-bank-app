@@ -121,6 +121,33 @@ class InternalBalanceControllerTest {
     }
 
     @Test
+    void shouldAcceptConvertedTransferAmounts() throws Exception {
+        when(balanceService.transfer(any())).thenReturn(new TransferBalanceResponse(
+                "ivan",
+                "petr",
+                new BigDecimal("900.00"),
+                "USD"
+        ));
+
+        mockMvc.perform(post("/api/accounts/internal/balance/transfer")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "senderLogin": "ivan",
+                                  "recipientLogin": "petr",
+                                  "amount": "100.00",
+                                  "currency": "USD",
+                                  "recipientAmount": "741.94",
+                                  "recipientCurrency": "CNY",
+                                  "operationId": "operation-1"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.senderBalance").value("900.00"))
+                .andExpect(jsonPath("$.currency").value("USD"));
+    }
+
+    @Test
     void shouldReturnInvalidAmountScaleError() throws Exception {
         when(balanceService.deposit(any())).thenThrow(new InvalidAmountScaleException());
 

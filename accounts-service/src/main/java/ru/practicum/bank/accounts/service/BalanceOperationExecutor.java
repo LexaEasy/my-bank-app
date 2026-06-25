@@ -64,13 +64,14 @@ public class BalanceOperationExecutor {
             throw new SelfTransferForbiddenException();
         }
         validateAmount(request.amount());
+        validateAmount(request.resolvedRecipientAmount());
 
         Account sender = findAccount(request.senderLogin());
         Account recipient = accountRepository.findByLogin(request.recipientLogin())
                 .orElseThrow(() -> new RecipientNotFoundException(request.recipientLogin()));
 
         withdraw(sender, request.amount());
-        recipient.setBalance(recipient.getBalance().add(request.amount()));
+        recipient.setBalance(recipient.getBalance().add(request.resolvedRecipientAmount()));
 
         saveInDeterministicOrder(sender, recipient);
 
