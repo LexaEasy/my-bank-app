@@ -25,6 +25,10 @@ bank:
       base-url: http://accounts-service
     notifications:
       base-url: http://notifications-service
+    blocker:
+      base-url: http://blocker-service
+    exchange:
+      base-url: http://exchange-service
 
 eureka:
   client:
