@@ -8,8 +8,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.bank.common.dto.exchange.ConversionResponse;
+import ru.practicum.bank.common.dto.exchange.ExchangeRateResponse;
 import ru.practicum.bank.common.model.Currency;
-import ru.practicum.bank.exchange.dto.ExchangeRateResponse;
 import ru.practicum.bank.exchange.exception.InvalidRateException;
 import ru.practicum.bank.exchange.service.ExchangeService;
 

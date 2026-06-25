@@ -2,10 +2,10 @@ package ru.practicum.bank.exchange.service;
 
 import org.springframework.stereotype.Service;
 import ru.practicum.bank.common.dto.exchange.ConversionResponse;
+import ru.practicum.bank.common.dto.exchange.ExchangeRateResponse;
 import ru.practicum.bank.common.dto.exchange.ExchangeRateUpdateRequest;
 import ru.practicum.bank.common.dto.exchange.ExchangeRatesUpdateRequest;
 import ru.practicum.bank.common.model.Currency;
-import ru.practicum.bank.exchange.dto.ExchangeRateResponse;
 import ru.practicum.bank.exchange.exception.InvalidAmountException;
 import ru.practicum.bank.exchange.exception.InvalidRateException;
 
