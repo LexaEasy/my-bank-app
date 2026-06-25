@@ -2,7 +2,7 @@ package ru.practicum.bank.accounts.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import ru.practicum.bank.accounts.model.Currency;
+import ru.practicum.bank.common.model.Currency;
 
 import java.math.BigDecimal;
 

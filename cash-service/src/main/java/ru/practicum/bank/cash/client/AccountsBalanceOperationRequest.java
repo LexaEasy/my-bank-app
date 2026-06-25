@@ -1,6 +1,6 @@
 package ru.practicum.bank.cash.client;
 
-import ru.practicum.bank.cash.model.Currency;
+import ru.practicum.bank.common.model.Currency;
 
 import java.math.BigDecimal;
 

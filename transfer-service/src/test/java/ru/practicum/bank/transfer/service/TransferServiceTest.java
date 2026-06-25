@@ -9,7 +9,7 @@ import ru.practicum.bank.transfer.dto.TransferRequest;
 import ru.practicum.bank.transfer.exception.InvalidAmountException;
 import ru.practicum.bank.transfer.exception.InvalidAmountScaleException;
 import ru.practicum.bank.transfer.exception.SelfTransferForbiddenException;
-import ru.practicum.bank.transfer.model.Currency;
+import ru.practicum.bank.common.model.Currency;
 
 import java.math.BigDecimal;
 

@@ -12,7 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.bank.transfer.dto.TransferRequest;
 import ru.practicum.bank.transfer.dto.TransferResponse;
 import ru.practicum.bank.transfer.exception.SelfTransferForbiddenException;
-import ru.practicum.bank.transfer.model.Currency;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.transfer.service.TransferService;
 
 import java.math.BigDecimal;
@@ -65,6 +65,32 @@ class TransferControllerTest {
     }
 
     @Test
+    void shouldAcceptCnyTransferRequest() throws Exception {
+        when(transferService.transfer("ivan", request("olga", "200.00", Currency.CNY))).thenReturn(new TransferResponse(
+                "ivan",
+                "olga",
+                new BigDecimal("800.00"),
+                "CNY",
+                "Transfer completed"
+        ));
+
+        mockMvc.perform(post("/api/transfers")
+                        .principal(jwtAuthentication("ivan"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "recipientLogin": "olga",
+                                  "amount": "200.00",
+                                  "currency": "CNY"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currency").value("CNY"));
+
+        verify(transferService).transfer("ivan", request("olga", "200.00", Currency.CNY));
+    }
+
+    @Test
     void shouldReturnValidationError() throws Exception {
         mockMvc.perform(post("/api/transfers")
                         .principal(jwtAuthentication("ivan"))
@@ -109,6 +135,10 @@ class TransferControllerTest {
     }
 
     private TransferRequest request(String recipientLogin, String amount) {
-        return new TransferRequest(recipientLogin, new BigDecimal(amount), Currency.RUB);
+        return request(recipientLogin, amount, Currency.RUB);
+    }
+
+    private TransferRequest request(String recipientLogin, String amount, Currency currency) {
+        return new TransferRequest(recipientLogin, new BigDecimal(amount), currency);
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import ru.practicum.bank.accounts.dto.BalanceOperationRequest;
 import ru.practicum.bank.accounts.dto.BalanceResponse;
 import ru.practicum.bank.accounts.dto.TransferBalanceResponse;
 import ru.practicum.bank.accounts.exception.IdempotencyConflictException;
@@ -16,11 +17,13 @@ import ru.practicum.bank.accounts.exception.InvalidAmountScaleException;
 import ru.practicum.bank.accounts.exception.OperationInProgressException;
 import ru.practicum.bank.accounts.exception.SelfTransferForbiddenException;
 import ru.practicum.bank.accounts.model.Account;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.accounts.service.BalanceService;
 
 import java.math.BigDecimal;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -51,6 +54,28 @@ class InternalBalanceControllerTest {
                 .andExpect(jsonPath("$.login").value("ivan"))
                 .andExpect(jsonPath("$.balance").value("1250.00"))
                 .andExpect(jsonPath("$.currency").value("RUB"));
+    }
+
+    @Test
+    void shouldAcceptUsdBalanceOperationRequest() throws Exception {
+        when(balanceService.deposit(any())).thenReturn(new BalanceResponse(
+                "ivan",
+                new BigDecimal("1250.00"),
+                "USD"
+        ));
+
+        mockMvc.perform(post("/api/accounts/internal/balance/deposit")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(operationRequest("USD")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currency").value("USD"));
+
+        verify(balanceService).deposit(new BalanceOperationRequest(
+                "ivan",
+                new BigDecimal("250.00"),
+                Currency.USD,
+                "operation-1"
+        ));
     }
 
     @Test
@@ -171,13 +196,17 @@ class InternalBalanceControllerTest {
     }
 
     private String operationRequest() {
+        return operationRequest("RUB");
+    }
+
+    private String operationRequest(String currency) {
         return """
                 {
                   "login": "ivan",
                   "amount": "250.00",
-                  "currency": "RUB",
+                  "currency": "%s",
                   "operationId": "operation-1"
                 }
-                """;
+                """.formatted(currency);
     }
 }

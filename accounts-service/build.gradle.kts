@@ -7,6 +7,7 @@ contracts {
 }
 
 dependencies {
+    implementation(project(":shared"))
     implementation(libs.flyway.core)
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.spring.boot.starter.aop)

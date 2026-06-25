@@ -11,7 +11,7 @@ import ru.practicum.bank.accounts.exception.InvalidAmountScaleException;
 import ru.practicum.bank.accounts.exception.RecipientNotFoundException;
 import ru.practicum.bank.accounts.exception.SelfTransferForbiddenException;
 import ru.practicum.bank.accounts.model.Account;
-import ru.practicum.bank.accounts.model.Currency;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.accounts.repository.AccountRepository;
 
 import java.math.BigDecimal;

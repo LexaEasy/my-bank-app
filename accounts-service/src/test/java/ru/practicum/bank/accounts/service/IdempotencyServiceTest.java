@@ -11,7 +11,7 @@ import ru.practicum.bank.accounts.dto.BalanceOperationRequest;
 import ru.practicum.bank.accounts.dto.BalanceResponse;
 import ru.practicum.bank.accounts.exception.IdempotencyConflictException;
 import ru.practicum.bank.accounts.exception.OperationInProgressException;
-import ru.practicum.bank.accounts.model.Currency;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.accounts.model.ProcessedOperation;
 import ru.practicum.bank.accounts.model.ProcessedOperationStatus;
 import ru.practicum.bank.accounts.repository.ProcessedOperationRepository;

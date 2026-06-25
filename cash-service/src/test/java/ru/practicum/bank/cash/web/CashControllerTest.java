@@ -11,7 +11,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.bank.cash.dto.CashOperationRequest;
 import ru.practicum.bank.cash.dto.CashOperationResponse;
-import ru.practicum.bank.cash.model.Currency;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.cash.service.CashService;
 
 import java.math.BigDecimal;
@@ -56,6 +56,29 @@ class CashControllerTest {
                 .andExpect(jsonPath("$.message").value("Счёт пополнен"));
 
         verify(cashService).deposit("ivan", request("250.00"));
+    }
+
+    @Test
+    void shouldAcceptUsdDepositRequest() throws Exception {
+        when(cashService.deposit("ivan", request("50.00", Currency.USD))).thenReturn(new CashOperationResponse(
+                new BigDecimal("1050.00"),
+                "USD",
+                "Счёт пополнен"
+        ));
+
+        mockMvc.perform(post("/api/cash/deposit")
+                        .principal(jwtAuthentication("ivan"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "amount": "50.00",
+                                  "currency": "USD"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currency").value("USD"));
+
+        verify(cashService).deposit("ivan", request("50.00", Currency.USD));
     }
 
     @Test
@@ -107,6 +130,10 @@ class CashControllerTest {
     }
 
     private CashOperationRequest request(String amount) {
-        return new CashOperationRequest(new BigDecimal(amount), Currency.RUB);
+        return request(amount, Currency.RUB);
+    }
+
+    private CashOperationRequest request(String amount, Currency currency) {
+        return new CashOperationRequest(new BigDecimal(amount), currency);
     }
 }

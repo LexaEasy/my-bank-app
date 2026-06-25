@@ -1,6 +1,6 @@
 package ru.practicum.bank.transfer.client;
 
-import ru.practicum.bank.transfer.model.Currency;
+import ru.practicum.bank.common.model.Currency;
 
 import java.math.BigDecimal;
 

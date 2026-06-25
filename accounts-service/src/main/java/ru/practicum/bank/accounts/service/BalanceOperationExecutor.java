@@ -18,7 +18,6 @@ import ru.practicum.bank.accounts.exception.InvalidAmountScaleException;
 import ru.practicum.bank.accounts.exception.RecipientNotFoundException;
 import ru.practicum.bank.accounts.exception.SelfTransferForbiddenException;
 import ru.practicum.bank.accounts.model.Account;
-import ru.practicum.bank.accounts.model.Currency;
 import ru.practicum.bank.accounts.repository.AccountRepository;
 
 import java.math.BigDecimal;
@@ -79,7 +78,7 @@ public class BalanceOperationExecutor {
                 sender.getLogin(),
                 recipient.getLogin(),
                 sender.getBalance(),
-                Currency.RUB.name()
+                request.currency().name()
         );
     }
 
