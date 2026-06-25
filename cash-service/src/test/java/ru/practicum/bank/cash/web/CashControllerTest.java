@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import ru.practicum.bank.cash.exception.OperationBlockedException;
 import ru.practicum.bank.cash.dto.CashOperationRequest;
 import ru.practicum.bank.cash.dto.CashOperationResponse;
 import ru.practicum.bank.common.model.Currency;
@@ -117,6 +118,25 @@ class CashControllerTest {
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void shouldReturnOperationBlockedError() throws Exception {
+        when(cashService.deposit("ivan", request("100000.01")))
+                .thenThrow(new OperationBlockedException("Operation amount exceeds blocker limit"));
+
+        mockMvc.perform(post("/api/cash/deposit")
+                        .principal(jwtAuthentication("ivan"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "amount": "100000.01",
+                                  "currency": "RUB"
+                                }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("OPERATION_BLOCKED"))
+                .andExpect(jsonPath("$.message").value("Operation amount exceeds blocker limit"));
     }
 
     private JwtAuthenticationToken jwtAuthentication(String login) {
