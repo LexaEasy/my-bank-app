@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: exchange-service
+  config:
+    import: ${BANK_CONFIG_IMPORT:configserver:http://localhost:8888}

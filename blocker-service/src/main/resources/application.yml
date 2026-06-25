@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: blocker-service
+  config:
+    import: ${BANK_CONFIG_IMPORT:configserver:http://localhost:8888}
