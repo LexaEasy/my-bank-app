@@ -12,8 +12,24 @@
 - `cash-service` - пользовательские операции пополнения и снятия.
 - `transfer-service` - пользовательские переводы между аккаунтами.
 - `notifications-service` - прием уведомлений и запись событий в лог.
+- `shared` - общие вспомогательные классы без бизнес-логики.
 - `discovery-server` - Eureka Server для service discovery.
 - `config-server` - Spring Cloud Config Server для локальных конфигураций.
+
+Схема модулей:
+
+```text
+my-bank-app/
+  front-ui/
+  bank-gateway/
+  accounts-service/
+  cash-service/
+  transfer-service/
+  notifications-service/
+  shared/
+  discovery-server/
+  config-server/
+```
 
 Поток пользовательского запроса:
 
@@ -26,6 +42,8 @@
 Конфигурации приложений находятся в `config-server/src/main/resources/config-repo`; локальные `application.yml` сервисов содержат только имя приложения и подключение к Config Server. `config-server` является source of truth для портов, Gateway routes, OAuth2-настроек и межсервисных base URL.
 
 Межсервисные вызовы из `cash-service` и `transfer-service` идут через Eureka и Spring Cloud LoadBalancer: клиенты используют логические адреса `http://accounts-service` и `http://notifications-service`, а не фиксированные host:port.
+
+Контрактные проверки лежат рядом с сервисами-поставщиками и потребителями в `src/contractTest`. Internal API `accounts-service` используется только межсервисно и не должен публиковаться через Gateway.
 
 ## Данные
 
