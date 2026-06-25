@@ -24,6 +24,8 @@ bank:
       base-url: ${BANK_ACCOUNTS_BASE_URL:http://accounts-service}
     notifications:
       base-url: ${BANK_NOTIFICATIONS_BASE_URL:http://notifications-service}
+    blocker:
+      base-url: ${BANK_BLOCKER_BASE_URL:http://blocker-service}
 
 server:
   port: 8082
