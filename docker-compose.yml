@@ -116,6 +116,58 @@ services:
       test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/8084'"]
     networks: [bank-network]
 
+  exchange-service:
+    build:
+      context: ./exchange-service
+    image: my-bank-exchange-service:local
+    environment:
+      <<: [*config-client-env, *resource-server-env]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    healthcheck:
+      <<: *app-health
+      test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/8086'"]
+    networks: [bank-network]
+
+  blocker-service:
+    build:
+      context: ./blocker-service
+    image: my-bank-blocker-service:local
+    environment:
+      <<: [*config-client-env, *resource-server-env]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    healthcheck:
+      <<: *app-health
+      test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/8088'"]
+    networks: [bank-network]
+
+  exchange-generator:
+    build:
+      context: ./exchange-generator
+    image: my-bank-exchange-generator:local
+    environment:
+      <<: *config-client-env
+      EXCHANGE_GENERATOR_CLIENT_SECRET: ${EXCHANGE_GENERATOR_CLIENT_SECRET:-__EXCHANGE_GENERATOR_CLIENT_SECRET__}
+      BANK_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
+    depends_on:
+      exchange-service:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    healthcheck:
+      <<: *app-health
+      test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/8087'"]
+    networks: [bank-network]
+
   cash-service:
     build:
       context: ./cash-service
@@ -126,6 +178,8 @@ services:
       BANK_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
     depends_on:
       accounts-service:
+        condition: service_healthy
+      blocker-service:
         condition: service_healthy
       notifications-service:
         condition: service_healthy
@@ -144,6 +198,10 @@ services:
       BANK_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
     depends_on:
       accounts-service:
+        condition: service_healthy
+      blocker-service:
+        condition: service_healthy
+      exchange-service:
         condition: service_healthy
       notifications-service:
         condition: service_healthy
@@ -164,6 +222,8 @@ services:
       accounts-service:
         condition: service_healthy
       cash-service:
+        condition: service_healthy
+      exchange-service:
         condition: service_healthy
       transfer-service:
         condition: service_healthy

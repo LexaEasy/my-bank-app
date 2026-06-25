@@ -81,6 +81,16 @@
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true
+    },
+    {
+      "clientId": "exchange-generator",
+      "name": "Exchange Generator",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "__EXCHANGE_GENERATOR_CLIENT_SECRET__",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
     }
   ],
   "users": [
@@ -140,6 +150,12 @@
       "enabled": true,
       "serviceAccountClientId": "notifications-service",
       "realmRoles": ["SERVICE", "NOTIFICATIONS_WRITE"]
+    },
+    {
+      "username": "service-account-exchange-generator",
+      "enabled": true,
+      "serviceAccountClientId": "exchange-generator",
+      "realmRoles": ["SERVICE"]
     }
   ]
 }
