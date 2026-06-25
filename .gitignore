@@ -1,0 +1,14 @@
+.gradle/
+build/
+out/
+
+**/build/
+
+.idea/
+*.iml
+
+.env
+.env.*
+!.env.example
+
+.gradle-cache/

@@ -1,0 +1,33 @@
+spring:
+  cloud:
+    config:
+      enabled: false
+  security:
+    oauth2:
+      client:
+        registration:
+          front-ui:
+            provider: keycloak
+            client-id: front-ui
+            client-secret: test-secret
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid,profile,email
+        provider:
+          keycloak:
+            authorization-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/auth
+            token-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/token
+            jwk-set-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs
+            user-info-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/userinfo
+            user-name-attribute: preferred_username
+
+bank:
+  gateway:
+    base-url: http://localhost:8080
+  security:
+    logout:
+      end-session-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/logout
+
+eureka:
+  client:
+    enabled: false
