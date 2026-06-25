@@ -9,6 +9,17 @@ public record AccountsTransferRequest(
         String recipientLogin,
         BigDecimal amount,
         Currency currency,
+        BigDecimal recipientAmount,
+        Currency recipientCurrency,
         String operationId
 ) {
+    public AccountsTransferRequest(
+            String senderLogin,
+            String recipientLogin,
+            BigDecimal amount,
+            Currency currency,
+            String operationId
+    ) {
+        this(senderLogin, recipientLogin, amount, currency, amount, currency, operationId);
+    }
 }

@@ -108,6 +108,8 @@ public class HttpAccountsClient implements TransferExecutor {
                 operation.recipientLogin(),
                 operation.amount(),
                 operation.currency(),
+                operation.recipientAmount(),
+                operation.recipientCurrency(),
                 operation.operationId()
         );
     }
