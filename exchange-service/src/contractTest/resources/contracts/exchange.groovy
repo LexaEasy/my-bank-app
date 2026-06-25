@@ -105,5 +105,34 @@ import org.springframework.cloud.contract.spec.Contract
                         updatedAt     : "2026-06-25T10:00:00Z"
                 )
             }
+        },
+        Contract.make {
+            name "reject_invalid_exchange_rate"
+            request {
+                method PUT()
+                url "/api/exchange/rates"
+                headers {
+                    contentType applicationJson()
+                }
+                body(
+                        rates: [
+                                [
+                                        currency: "USD",
+                                        buyRate : "0.0000",
+                                        sellRate: "93.0000"
+                                ]
+                        ]
+                )
+            }
+            response {
+                status BAD_REQUEST()
+                headers {
+                    contentType applicationJson()
+                }
+                body(
+                        code   : "INVALID_RATE",
+                        message: "Rates must be positive and have scale no more than 4"
+                )
+            }
         }
 ]

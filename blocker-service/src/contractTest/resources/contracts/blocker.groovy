@@ -55,5 +55,31 @@ import org.springframework.cloud.contract.spec.Contract
                         reason : "Operation amount exceeds blocker limit"
                 )
             }
+        },
+        Contract.make {
+            name "reject_cash_operation_without_login"
+            request {
+                method POST()
+                url "/api/blocker/check"
+                headers {
+                    contentType applicationJson()
+                }
+                body(
+                        operationId  : "op-3",
+                        operationType: "WITHDRAW",
+                        amount       : "1000.00",
+                        currency     : "RUB"
+                )
+            }
+            response {
+                status BAD_REQUEST()
+                headers {
+                    contentType applicationJson()
+                }
+                body(
+                        code   : "INVALID_OPERATION_REQUEST",
+                        message: "login is required for cash operation"
+                )
+            }
         }
 ]
