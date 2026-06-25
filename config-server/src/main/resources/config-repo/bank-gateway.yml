@@ -30,6 +30,12 @@ spring:
                 - Path=/api/transfers
               filters:
                 - JwtTokenRelay
+            - id: exchange-service
+              uri: lb://exchange-service
+              predicates:
+                - Path=/api/exchange/**
+              filters:
+                - JwtTokenRelay
   security:
     oauth2:
       resourceserver:

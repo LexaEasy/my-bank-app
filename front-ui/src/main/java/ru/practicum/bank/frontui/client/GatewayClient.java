@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import ru.practicum.bank.common.client.SimpleCircuitBreaker;
+import ru.practicum.bank.common.dto.exchange.ExchangeRateResponse;
 import ru.practicum.bank.frontui.dto.ApiErrorResponse;
 import ru.practicum.bank.frontui.dto.AccountForm;
 import ru.practicum.bank.frontui.dto.AccountResponse;
@@ -74,6 +75,24 @@ public class GatewayClient {
 
     public AccountResponse getAccount(String accessToken) {
         return runWithCircuitBreaker(() -> getAccountWithoutCircuitBreaker(accessToken));
+    }
+
+    public List<ExchangeRateResponse> getExchangeRates(String accessToken) {
+        return runWithCircuitBreaker(() -> getExchangeRatesWithoutCircuitBreaker(accessToken));
+    }
+
+    private List<ExchangeRateResponse> getExchangeRatesWithoutCircuitBreaker(String accessToken) {
+        try {
+            ExchangeRateResponse[] rates = restClient.get()
+                    .uri("/api/exchange/rates")
+                    .headers(headers -> headers.setBearerAuth(accessToken))
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, (request, response) -> handleError(response))
+                    .body(ExchangeRateResponse[].class);
+            return rates == null ? List.of() : Arrays.asList(rates);
+        } catch (RestClientException exception) {
+            throw new GatewayClientException("Gateway request failed", exception);
+        }
     }
 
     private AccountResponse getAccountWithoutCircuitBreaker(String accessToken) {
