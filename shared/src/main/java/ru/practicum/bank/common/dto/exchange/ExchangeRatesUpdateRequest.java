@@ -1,4 +1,4 @@
-package ru.practicum.bank.exchange.dto;
+package ru.practicum.bank.common.dto.exchange;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;

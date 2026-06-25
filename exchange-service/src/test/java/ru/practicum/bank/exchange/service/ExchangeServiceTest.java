@@ -1,9 +1,9 @@
 package ru.practicum.bank.exchange.service;
 
 import org.junit.jupiter.api.Test;
+import ru.practicum.bank.common.dto.exchange.ExchangeRateUpdateRequest;
+import ru.practicum.bank.common.dto.exchange.ExchangeRatesUpdateRequest;
 import ru.practicum.bank.common.model.Currency;
-import ru.practicum.bank.exchange.dto.ExchangeRateUpdateRequest;
-import ru.practicum.bank.exchange.dto.ExchangeRatesUpdateRequest;
 import ru.practicum.bank.exchange.exception.InvalidAmountException;
 import ru.practicum.bank.exchange.exception.InvalidRateException;
 

@@ -7,10 +7,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import ru.practicum.bank.common.dto.exchange.ExchangeRatesUpdateRequest;
 import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.exchange.dto.ConversionResponse;
 import ru.practicum.bank.exchange.dto.ExchangeRateResponse;
-import ru.practicum.bank.exchange.dto.ExchangeRatesUpdateRequest;
 import ru.practicum.bank.exchange.service.ExchangeService;
 
 import java.math.BigDecimal;
