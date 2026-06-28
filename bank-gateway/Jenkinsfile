@@ -1,0 +1,9 @@
+node {
+    checkout scm
+    load('ci/jenkins-service.groovy').runServicePipeline(
+        serviceName: 'bank-gateway',
+        gradleModule: ':bank-gateway',
+        chartPath: 'helm/charts/bank-gateway',
+        imageRepository: 'my-bank-gateway'
+    )
+}

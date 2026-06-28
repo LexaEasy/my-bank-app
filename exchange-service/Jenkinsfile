@@ -1,0 +1,9 @@
+node {
+    checkout scm
+    load('ci/jenkins-service.groovy').runServicePipeline(
+        serviceName: 'exchange-service',
+        gradleModule: ':exchange-service',
+        chartPath: 'helm/charts/exchange-service',
+        imageRepository: 'my-bank-exchange-service'
+    )
+}
