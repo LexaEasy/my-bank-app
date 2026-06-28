@@ -15,7 +15,6 @@ dependencyResolutionManagement {
 rootProject.name = "my-bank-app"
 
 include(
-    "config-server",
     "discovery-server",
     "bank-gateway",
     "accounts-service",
