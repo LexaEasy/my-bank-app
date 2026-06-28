@@ -29,9 +29,17 @@ class GatewayClientTest {
     void shouldLoadExchangeRatesFromGateway() {
         var restClientBuilder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(restClientBuilder).build();
-        var client = new GatewayClient(restClientBuilder, "http://bank-gateway", objectMapper);
+        var client = new GatewayClient(
+                restClientBuilder,
+                "http://accounts-service:8081",
+                "http://cash-service:8082",
+                "http://transfer-service:8083",
+                "http://exchange-service:8086",
+                SimpleCircuitBreaker.withDefaults("bankServices"),
+                objectMapper
+        );
 
-        server.expect(once(), requestTo("http://bank-gateway/api/exchange/rates"))
+        server.expect(once(), requestTo("http://exchange-service:8086/api/exchange/rates"))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
                 .andRespond(withSuccess("""
                         [
@@ -62,9 +70,17 @@ class GatewayClientTest {
     void shouldShowGatewayErrorMessage() {
         var restClientBuilder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(restClientBuilder).build();
-        var client = new GatewayClient(restClientBuilder, "http://bank-gateway", objectMapper);
+        var client = new GatewayClient(
+                restClientBuilder,
+                "http://accounts-service:8081",
+                "http://cash-service:8082",
+                "http://transfer-service:8083",
+                "http://exchange-service:8086",
+                SimpleCircuitBreaker.withDefaults("bankServices"),
+                objectMapper
+        );
 
-        server.expect(once(), requestTo("http://bank-gateway/api/cash/withdraw"))
+        server.expect(once(), requestTo("http://cash-service:8082/api/cash/withdraw"))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
                 .andRespond(withStatus(HttpStatus.BAD_GATEWAY)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -87,8 +103,11 @@ class GatewayClientTest {
         var restClientBuilder = RestClient.builder();
         var client = new GatewayClient(
                 restClientBuilder,
-                "http://bank-gateway",
-                SimpleCircuitBreaker.opened("bankGateway"),
+                "http://accounts-service:8081",
+                "http://cash-service:8082",
+                "http://transfer-service:8083",
+                "http://exchange-service:8086",
+                SimpleCircuitBreaker.opened("bankServices"),
                 objectMapper
         );
 

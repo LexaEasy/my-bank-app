@@ -19,8 +19,15 @@ spring:
             user-name-attribute: preferred_username
 
 bank:
-  gateway:
-    base-url: http://localhost:8080
+  services:
+    accounts:
+      base-url: http://accounts-service:8081
+    cash:
+      base-url: http://cash-service:8082
+    transfer:
+      base-url: http://transfer-service:8083
+    exchange:
+      base-url: http://exchange-service:8086
   security:
     logout:
       end-session-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/logout
