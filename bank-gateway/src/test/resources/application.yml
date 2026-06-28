@@ -1,7 +1,5 @@
 spring:
   cloud:
-    config:
-      enabled: false
     gateway:
       server:
         webflux:

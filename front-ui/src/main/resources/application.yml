@@ -1,8 +1,6 @@
 spring:
   application:
     name: front-ui
-  config:
-    import: ${BANK_CONFIG_IMPORT:configserver:http://localhost:8888}
   jackson:
     default-property-inclusion: non_null
   security:

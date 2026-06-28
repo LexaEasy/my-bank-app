@@ -9,9 +9,7 @@ global:
     database: bank
     username: postgres
   env:
-    BANK_CONFIG_IMPORT: optional:file:/etc/bank/
     EUREKA_CLIENT_ENABLED: "false"
-    SPRING_CLOUD_CONFIG_ENABLED: "false"
     SPRING_CLOUD_DISCOVERY_ENABLED: "false"
     SPRING_JACKSON_DEFAULTPROPERTYINCLUSION: non_null
     SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWKSETURI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
