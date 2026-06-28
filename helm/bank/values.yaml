@@ -2,7 +2,9 @@ global:
   namespace: bank
   imageRegistry: ""
   imageTag: local
-  keycloakUrl: http://keycloak:8080/realms/bank-realm
+  publicBaseUrl: http://localhost
+  keycloakInternalUrl: http://keycloak:8080/realms/bank-realm
+  keycloakPublicUrl: http://localhost/realms/bank-realm
   postgresql:
     host: postgresql
     port: 5432
@@ -31,9 +33,9 @@ front-ui:
     BANK_SERVICES_CASH_BASEURL: http://cash-service:8082
     BANK_SERVICES_EXCHANGE_BASEURL: http://exchange-service:8086
     BANK_SERVICES_TRANSFER_BASEURL: http://transfer-service:8083
-    BANK_SECURITY_LOGOUT_ENDSESSIONURI: http://localhost:8180/realms/bank-realm/protocol/openid-connect/logout
+    BANK_SECURITY_LOGOUT_ENDSESSIONURI: http://localhost/realms/bank-realm/protocol/openid-connect/logout
     SERVER_PORT: "8085"
-    SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATIONURI: http://localhost:8180/realms/bank-realm/protocol/openid-connect/auth
+    SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATIONURI: http://localhost/realms/bank-realm/protocol/openid-connect/auth
     SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USERINFOURI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo
     SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USERNAMEATTRIBUTE: preferred_username
     SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FRONTUI_AUTHORIZATIONGRANTTYPE: authorization_code
@@ -160,3 +162,5 @@ postgresql:
 keycloak:
   enabled: true
   fullnameOverride: keycloak
+  realmImport:
+    frontUiPublicUrl: http://localhost

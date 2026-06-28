@@ -63,6 +63,22 @@ spec:
         - name: exchange-service
           port: 8086
     - matches:
+        - method: GET
+          path:
+            type: PathPrefix
+            value: /realms
+        - method: POST
+          path:
+            type: PathPrefix
+            value: /realms
+        - method: GET
+          path:
+            type: PathPrefix
+            value: /resources
+      backendRefs:
+        - name: keycloak
+          port: 8080
+    - matches:
         - path:
             type: PathPrefix
             value: /

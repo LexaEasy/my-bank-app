@@ -19,5 +19,6 @@ realmImport:
   existingSecret: keycloak-realm
   key: bank-realm.json
   file: files/bank-realm.json
+  frontUiPublicUrl: http://localhost
 
 resources: {}

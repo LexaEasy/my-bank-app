@@ -33,11 +33,11 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
-      "redirectUris": ["http://localhost:8085/login/oauth2/code/*"],
-      "baseUrl": "http://localhost:8085",
-      "webOrigins": ["http://localhost:8085"],
+      "redirectUris": ["${BANK_FRONT_UI_PUBLIC_URL}/login/oauth2/code/*"],
+      "baseUrl": "${BANK_FRONT_UI_PUBLIC_URL}",
+      "webOrigins": ["${BANK_FRONT_UI_PUBLIC_URL}"],
       "attributes": {
-        "post.logout.redirect.uris": "http://localhost:8085/"
+        "post.logout.redirect.uris": "${BANK_FRONT_UI_PUBLIC_URL}/"
       },
       "defaultClientScopes": ["web-origins", "role_list", "profile", "email", "roles"],
       "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]

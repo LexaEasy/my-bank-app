@@ -36,6 +36,10 @@ spec:
                 secretKeyRef:
                   name: {{ required "admin.existingSecret is required" .Values.admin.existingSecret }}
                   key: {{ required "admin.passwordKey is required" .Values.admin.passwordKey }}
+            {{- if .Values.realmImport.enabled }}
+            - name: BANK_FRONT_UI_PUBLIC_URL
+              value: {{ required "realmImport.frontUiPublicUrl is required" .Values.realmImport.frontUiPublicUrl | quote }}
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
