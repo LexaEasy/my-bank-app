@@ -29,5 +29,8 @@ dependencies:
 - name: postgresql
   repository: file://../charts/postgresql
   version: 0.1.0
-digest: sha256:ef67f423aaf62b18274263c9164c701ce4dcf7f118eeeba601bb7227f5d8345d
-generated: "2026-06-28T08:23:29.0250395+03:00"
+- name: keycloak
+  repository: file://../charts/keycloak
+  version: 0.1.0
+digest: sha256:413bddc79019ea191786e14fe6d86100938458180c875452f4baa0c4c5372a1d
+generated: "2026-06-28T08:24:56.780428+03:00"

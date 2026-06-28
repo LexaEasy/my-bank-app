@@ -1,0 +1,6 @@
+apiVersion: v2
+name: keycloak
+description: Keycloak chart for the bank application
+type: application
+version: 0.1.0
+appVersion: "26.6.3"

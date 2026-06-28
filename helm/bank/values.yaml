@@ -38,3 +38,8 @@ bank-gateway:
 
 postgresql:
   enabled: true
+  fullnameOverride: postgresql
+
+keycloak:
+  enabled: true
+  fullnameOverride: keycloak

@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "keycloak.fullname" . }}
+  labels:
+    {{- include "keycloak.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "keycloak.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        {{- include "keycloak.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "keycloak.fullname" . }}
+      containers:
+        - name: keycloak
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - start-dev
+            {{- if .Values.realmImport.enabled }}
+            - --import-realm
+            {{- end }}
+          env:
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "admin.existingSecret is required" .Values.admin.existingSecret }}
+                  key: {{ required "admin.usernameKey is required" .Values.admin.usernameKey }}
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "admin.existingSecret is required" .Values.admin.existingSecret }}
+                  key: {{ required "admin.passwordKey is required" .Values.admin.passwordKey }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          {{- if .Values.realmImport.enabled }}
+          volumeMounts:
+            - name: realm
+              mountPath: /opt/keycloak/data/import
+              readOnly: true
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- if .Values.realmImport.enabled }}
+      volumes:
+        - name: realm
+          secret:
+            secretName: {{ required "realmImport.existingSecret is required" .Values.realmImport.existingSecret }}
+            items:
+              - key: {{ required "realmImport.key is required" .Values.realmImport.key }}
+                path: bank-realm.json
+      {{- end }}
