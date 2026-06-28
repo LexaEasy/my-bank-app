@@ -9,8 +9,6 @@ global:
     database: bank
     username: postgres
   env:
-    EUREKA_CLIENT_ENABLED: "false"
-    SPRING_CLOUD_DISCOVERY_ENABLED: "false"
     SPRING_JACKSON_DEFAULTPROPERTYINCLUSION: non_null
     SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWKSETURI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
     SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKENURI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
