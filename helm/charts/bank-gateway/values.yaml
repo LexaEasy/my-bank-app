@@ -1,0 +1,12 @@
+replicaCount: 1
+
+image:
+  repository: my-bank-gateway
+  tag: local
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8080
+
+env: {}
+resources: {}

@@ -1,0 +1,12 @@
+replicaCount: 1
+
+image:
+  repository: my-bank-notifications-service
+  tag: local
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8084
+
+env: {}
+resources: {}

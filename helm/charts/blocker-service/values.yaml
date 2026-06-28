@@ -1,0 +1,12 @@
+replicaCount: 1
+
+image:
+  repository: my-bank-blocker-service
+  tag: local
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8088
+
+env: {}
+resources: {}

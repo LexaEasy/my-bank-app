@@ -1,0 +1,12 @@
+replicaCount: 1
+
+image:
+  repository: my-bank-accounts-service
+  tag: local
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8081
+
+env: {}
+resources: {}

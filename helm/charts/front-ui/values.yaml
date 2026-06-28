@@ -1,0 +1,12 @@
+replicaCount: 1
+
+image:
+  repository: my-bank-front-ui
+  tag: local
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8085
+
+env: {}
+resources: {}
