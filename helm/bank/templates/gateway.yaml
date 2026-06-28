@@ -1,0 +1,20 @@
+{{- if .Values.gatewayApi.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ include "bank.fullname" . }}-gateway
+  labels:
+    {{- include "bank.labels" . | nindent 4 }}
+spec:
+  gatewayClassName: {{ required "gatewayApi.gatewayClassName is required" .Values.gatewayApi.gatewayClassName }}
+  listeners:
+    - name: {{ .Values.gatewayApi.listener.name }}
+      protocol: HTTP
+      port: {{ .Values.gatewayApi.listener.port }}
+      {{- with .Values.gatewayApi.listener.hostname }}
+      hostname: {{ . | quote }}
+      {{- end }}
+      allowedRoutes:
+        namespaces:
+          from: Same
+{{- end }}
