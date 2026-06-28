@@ -5,7 +5,3 @@ spring:
         jwt:
           issuer-uri: http://localhost:8180/realms/bank-realm
           jwk-set-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs
-
-eureka:
-  client:
-    enabled: false

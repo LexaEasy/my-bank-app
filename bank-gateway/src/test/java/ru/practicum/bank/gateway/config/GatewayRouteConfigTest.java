@@ -22,7 +22,7 @@ class GatewayRouteConfigTest {
                 .filteredOn(route -> "transfer-service".equals(route.getId()))
                 .singleElement()
                 .satisfies(route -> {
-                    assertThat(route.getUri().toString()).isEqualTo("lb://transfer-service");
+                    assertThat(route.getUri().toString()).isEqualTo("http://transfer-service:8083");
                     assertThat(route.getPredicates())
                             .anySatisfy(predicate -> assertThat(predicate.getArgs())
                                     .containsValue("/api/transfers")

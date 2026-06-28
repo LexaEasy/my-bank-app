@@ -12,13 +12,9 @@ spring:
           keycloak:
             token-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/token
 
-eureka:
-  client:
-    enabled: false
-
 bank:
   services:
     exchange:
-      base-url: http://exchange-service
+      base-url: http://exchange-service:8086
   exchange-generator:
     fixed-delay-ms: 1000

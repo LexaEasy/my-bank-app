@@ -23,18 +23,11 @@ spring:
 bank:
   services:
     accounts:
-      base-url: ${BANK_ACCOUNTS_BASE_URL:http://accounts-service}
+      base-url: ${BANK_ACCOUNTS_BASE_URL:http://accounts-service:8081}
     notifications:
-      base-url: ${BANK_NOTIFICATIONS_BASE_URL:http://notifications-service}
+      base-url: ${BANK_NOTIFICATIONS_BASE_URL:http://notifications-service:8084}
     blocker:
-      base-url: ${BANK_BLOCKER_BASE_URL:http://blocker-service}
-
-eureka:
-  client:
-    service-url:
-      defaultZone: ${BANK_EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
-  instance:
-    prefer-ip-address: true
+      base-url: ${BANK_BLOCKER_BASE_URL:http://blocker-service:8088}
 
 management:
   endpoints:

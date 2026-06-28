@@ -13,25 +13,25 @@ spring:
               filters:
                 - SetStatus=404
             - id: accounts-service
-              uri: lb://accounts-service
+              uri: ${BANK_ACCOUNTS_BASE_URL:http://accounts-service:8081}
               predicates:
                 - Path=/api/accounts/**
               filters:
                 - JwtTokenRelay
             - id: cash-service
-              uri: lb://cash-service
+              uri: ${BANK_CASH_BASE_URL:http://cash-service:8082}
               predicates:
                 - Path=/api/cash/**
               filters:
                 - JwtTokenRelay
             - id: transfer-service
-              uri: lb://transfer-service
+              uri: ${BANK_TRANSFER_BASE_URL:http://transfer-service:8083}
               predicates:
                 - Path=/api/transfers
               filters:
                 - JwtTokenRelay
             - id: exchange-service
-              uri: lb://exchange-service
+              uri: ${BANK_EXCHANGE_BASE_URL:http://exchange-service:8086}
               predicates:
                 - Path=/api/exchange/**
               filters:
@@ -44,13 +44,6 @@ spring:
         jwt:
           issuer-uri: ${BANK_KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/bank-realm}
           jwk-set-uri: ${BANK_KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs}
-
-eureka:
-  client:
-    service-url:
-      defaultZone: ${BANK_EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
-  instance:
-    prefer-ip-address: true
 
 management:
   endpoints:

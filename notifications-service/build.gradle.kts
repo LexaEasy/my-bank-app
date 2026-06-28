@@ -11,7 +11,6 @@ dependencies {
     implementation(libs.spring.boot.starter.oauth2.resource.server)
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.web)
-    implementation(libs.spring.cloud.starter.netflix.eureka.client)
 
     "contractTestImplementation"(libs.spring.boot.starter.test)
     "contractTestImplementation"(libs.spring.cloud.starter.contract.verifier)

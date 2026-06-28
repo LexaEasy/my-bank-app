@@ -25,6 +25,3 @@ bank:
     logout:
       end-session-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/logout
 
-eureka:
-  client:
-    enabled: false

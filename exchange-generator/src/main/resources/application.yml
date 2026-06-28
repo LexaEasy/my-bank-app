@@ -19,16 +19,9 @@ spring:
 bank:
   services:
     exchange:
-      base-url: ${BANK_EXCHANGE_BASE_URL:http://exchange-service}
+      base-url: ${BANK_EXCHANGE_BASE_URL:http://exchange-service:8086}
   exchange-generator:
     fixed-delay-ms: ${BANK_EXCHANGE_GENERATOR_FIXED_DELAY_MS:1000}
-
-eureka:
-  client:
-    service-url:
-      defaultZone: ${BANK_EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
-  instance:
-    prefer-ip-address: true
 
 management:
   endpoints:
