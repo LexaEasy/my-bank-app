@@ -28,6 +28,12 @@
                 - Path=/api/transfers
               filters:
                 - JwtTokenRelay
+            - id: exchange-service
+              uri: http://exchange-service:8086
+              predicates:
+                - Path=/api/exchange/**
+              filters:
+                - JwtTokenRelay
   security:
     oauth2:
       resourceserver:
