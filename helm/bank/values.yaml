@@ -12,10 +12,9 @@ global:
     username: postgres
   env:
     SPRING_JACKSON_DEFAULTPROPERTYINCLUSION: non_null
-    SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWKSETURI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
-    SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKENURI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
-    SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUERURI: http://keycloak:8080/realms/bank-realm
-    SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
+    BANK_KEYCLOAK_ISSUER_URI: http://localhost/realms/bank-realm
+    BANK_KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
+    BANK_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
 
 gatewayApi:
   enabled: true
@@ -29,22 +28,17 @@ front-ui:
   enabled: true
   fullnameOverride: front-ui
   env:
-    BANK_SERVICES_ACCOUNTS_BASEURL: http://accounts-service:8081
-    BANK_SERVICES_CASH_BASEURL: http://cash-service:8082
-    BANK_SERVICES_EXCHANGE_BASEURL: http://exchange-service:8086
-    BANK_SERVICES_TRANSFER_BASEURL: http://transfer-service:8083
-    BANK_SECURITY_LOGOUT_ENDSESSIONURI: http://localhost/realms/bank-realm/protocol/openid-connect/logout
+    BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
+    BANK_CASH_BASE_URL: http://cash-service:8082
+    BANK_EXCHANGE_BASE_URL: http://exchange-service:8086
+    BANK_KEYCLOAK_AUTHORIZATION_URI: http://localhost/realms/bank-realm/protocol/openid-connect/auth
+    BANK_KEYCLOAK_END_SESSION_URI: http://localhost/realms/bank-realm/protocol/openid-connect/logout
+    BANK_KEYCLOAK_REDIRECT_URI: http://localhost/login/oauth2/code/{registrationId}
+    BANK_KEYCLOAK_USER_INFO_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo
+    BANK_TRANSFER_BASE_URL: http://transfer-service:8083
     SERVER_PORT: "8085"
-    SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATIONURI: http://localhost/realms/bank-realm/protocol/openid-connect/auth
-    SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USERINFOURI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo
-    SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USERNAMEATTRIBUTE: preferred_username
-    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FRONTUI_AUTHORIZATIONGRANTTYPE: authorization_code
-    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FRONTUI_CLIENTID: front-ui
-    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FRONTUI_PROVIDER: keycloak
-    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FRONTUI_REDIRECTURI: "{baseUrl}/login/oauth2/code/{registrationId}"
-    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FRONTUI_SCOPE: openid,profile,email
   secretEnv:
-    - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FRONTUI_CLIENTSECRET
+    - name: FRONT_UI_CLIENT_SECRET
       secretName: bank-service-credentials
       key: FRONT_UI_CLIENT_SECRET
 
@@ -66,15 +60,12 @@ cash-service:
   enabled: true
   fullnameOverride: cash-service
   env:
-    BANK_SERVICES_ACCOUNTS_BASEURL: http://accounts-service:8081
-    BANK_SERVICES_BLOCKER_BASEURL: http://blocker-service:8088
-    BANK_SERVICES_NOTIFICATIONS_BASEURL: http://notifications-service:8084
+    BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
+    BANK_BLOCKER_BASE_URL: http://blocker-service:8088
+    BANK_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
     SERVER_PORT: "8082"
-    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_CASHSERVICE_AUTHORIZATIONGRANTTYPE: client_credentials
-    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_CASHSERVICE_CLIENTID: cash-service
-    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_CASHSERVICE_PROVIDER: keycloak
   secretEnv:
-    - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_CASHSERVICE_CLIENTSECRET
+    - name: CASH_SERVICE_CLIENT_SECRET
       secretName: bank-service-credentials
       key: CASH_SERVICE_CLIENT_SECRET
 
@@ -82,16 +73,13 @@ transfer-service:
   enabled: true
   fullnameOverride: transfer-service
   env:
-    BANK_SERVICES_ACCOUNTS_BASEURL: http://accounts-service:8081
-    BANK_SERVICES_BLOCKER_BASEURL: http://blocker-service:8088
-    BANK_SERVICES_EXCHANGE_BASEURL: http://exchange-service:8086
-    BANK_SERVICES_NOTIFICATIONS_BASEURL: http://notifications-service:8084
+    BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
+    BANK_BLOCKER_BASE_URL: http://blocker-service:8088
+    BANK_EXCHANGE_BASE_URL: http://exchange-service:8086
+    BANK_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
     SERVER_PORT: "8083"
-    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_TRANSFERSERVICE_AUTHORIZATIONGRANTTYPE: client_credentials
-    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_TRANSFERSERVICE_CLIENTID: transfer-service
-    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_TRANSFERSERVICE_PROVIDER: keycloak
   secretEnv:
-    - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_TRANSFERSERVICE_CLIENTSECRET
+    - name: TRANSFER_SERVICE_CLIENT_SECRET
       secretName: bank-service-credentials
       key: TRANSFER_SERVICE_CLIENT_SECRET
 
@@ -105,14 +93,11 @@ exchange-generator:
   enabled: true
   fullnameOverride: exchange-generator
   env:
-    BANK_EXCHANGEGENERATOR_FIXEDDELAYMS: "1000"
-    BANK_SERVICES_EXCHANGE_BASEURL: http://exchange-service:8086
+    BANK_EXCHANGE_GENERATOR_FIXED_DELAY_MS: "1000"
+    BANK_EXCHANGE_BASE_URL: http://exchange-service:8086
     SERVER_PORT: "8087"
-    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_EXCHANGEGENERATOR_AUTHORIZATIONGRANTTYPE: client_credentials
-    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_EXCHANGEGENERATOR_CLIENTID: exchange-generator
-    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_EXCHANGEGENERATOR_PROVIDER: keycloak
   secretEnv:
-    - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_EXCHANGEGENERATOR_CLIENTSECRET
+    - name: EXCHANGE_GENERATOR_CLIENT_SECRET
       secretName: bank-service-credentials
       key: EXCHANGE_GENERATOR_CLIENT_SECRET
 
@@ -120,7 +105,7 @@ blocker-service:
   enabled: true
   fullnameOverride: blocker-service
   env:
-    BANK_BLOCKER_MAXAMOUNT: "100000.00"
+    BANK_BLOCKER_MAX_AMOUNT: "100000.00"
     SERVER_PORT: "8088"
 
 notifications-service:
@@ -162,5 +147,10 @@ postgresql:
 keycloak:
   enabled: true
   fullnameOverride: keycloak
+  extraEnv:
+    - name: KC_HOSTNAME
+      value: http://localhost
+    - name: KC_HOSTNAME_STRICT
+      value: "false"
   realmImport:
     frontUiPublicUrl: http://localhost

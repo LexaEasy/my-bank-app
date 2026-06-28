@@ -34,4 +34,6 @@ realmImport:
       secretName: bank-service-credentials
       key: EXCHANGE_GENERATOR_CLIENT_SECRET
 
+extraEnv: []
+
 resources: {}

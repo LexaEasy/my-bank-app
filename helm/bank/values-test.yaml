@@ -3,6 +3,8 @@ global:
   publicBaseUrl: https://bank-test.example.local
   imageTag: test
   keycloakPublicUrl: https://bank-test.example.local/realms/bank-realm
+  env:
+    BANK_KEYCLOAK_ISSUER_URI: https://bank-test.example.local/realms/bank-realm
 
 gatewayApi:
   listener:
@@ -10,9 +12,15 @@ gatewayApi:
 
 front-ui:
   env:
-    BANK_SECURITY_LOGOUT_ENDSESSIONURI: https://bank-test.example.local/realms/bank-realm/protocol/openid-connect/logout
-    SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATIONURI: https://bank-test.example.local/realms/bank-realm/protocol/openid-connect/auth
+    BANK_KEYCLOAK_AUTHORIZATION_URI: https://bank-test.example.local/realms/bank-realm/protocol/openid-connect/auth
+    BANK_KEYCLOAK_END_SESSION_URI: https://bank-test.example.local/realms/bank-realm/protocol/openid-connect/logout
+    BANK_KEYCLOAK_REDIRECT_URI: https://bank-test.example.local/login/oauth2/code/{registrationId}
 
 keycloak:
+  extraEnv:
+    - name: KC_HOSTNAME
+      value: https://bank-test.example.local
+    - name: KC_HOSTNAME_STRICT
+      value: "false"
   realmImport:
     frontUiPublicUrl: https://bank-test.example.local

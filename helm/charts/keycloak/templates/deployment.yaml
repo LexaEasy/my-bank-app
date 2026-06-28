@@ -47,6 +47,10 @@ spec:
                   key: {{ required "realmImport.secretEnv[].key is required" .key }}
             {{- end }}
             {{- end }}
+            {{- range .Values.extraEnv }}
+            - name: {{ required "extraEnv[].name is required" .name }}
+              value: {{ required "extraEnv[].value is required" .value | quote }}
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
