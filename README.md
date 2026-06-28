@@ -1,45 +1,49 @@
 # Банк
 
-Учебное микросервисное приложение для девятого спринта. Пользователь входит через HTML-интерфейс, редактирует профиль аккаунта, пополняет и снимает виртуальные деньги, переводит деньги другим пользователям.
+Учебное микросервисное приложение. Пользователь входит через HTML-интерфейс, редактирует профиль аккаунта, пополняет и снимает виртуальные деньги, переводит деньги другим пользователям и видит курсы валют.
 
 ## Архитектура
 
 Приложение собрано как Gradle multi-module проект на Java 21 и Spring Boot.
 
 - `front-ui` - HTML-интерфейс на Spring MVC и Thymeleaf.
-- `bank-gateway` - Spring Cloud Gateway, внешняя точка входа `/api`.
+- `bank-gateway` - Spring Cloud Gateway, сохранён как совместимый модуль, но не является обязательной runtime-точкой в Kubernetes.
 - `accounts-service` - аккаунты, профиль пользователя, баланс и internal API баланса.
 - `cash-service` - пользовательские операции пополнения и снятия.
 - `transfer-service` - пользовательские переводы между аккаунтами.
+- `exchange-service` - хранение и выдача курсов валют.
+- `exchange-generator` - периодическое обновление курсов валют.
+- `blocker-service` - проверка подозрительных денежных операций.
 - `notifications-service` - прием уведомлений и запись событий в лог.
 - `shared` - общие вспомогательные классы без бизнес-логики.
-- `discovery-server` - Eureka Server для service discovery.
 
 Схема модулей:
 
 ```text
 my-bank-app/
   front-ui/
-  bank-gateway/
   accounts-service/
   cash-service/
   transfer-service/
+  exchange-service/
+  exchange-generator/
+  blocker-service/
   notifications-service/
+  bank-gateway/
   shared/
-  discovery-server/
 ```
 
 Поток пользовательского запроса:
 
 1. Пользователь входит во `front-ui` через Keycloak.
-2. `front-ui` вызывает backend только через `bank-gateway`.
-3. `bank-gateway` проверяет JWT и пробрасывает его в пользовательские сервисы.
+2. `front-ui` вызывает backend-сервисы через Kubernetes Service/DNS или локальные service names.
+3. Gateway API публикует внешние пользовательские endpoints и не публикует internal API.
 4. `cash-service` и `transfer-service` для межсервисных вызовов получают service JWT через Client Credentials Flow.
-5. Сервисы регистрируются в Eureka.
+5. В Kubernetes service discovery выполняется через `Service` и DNS, без Eureka.
 
 Каждый сервис хранит собственную конфигурацию в `src/main/resources/application.yml`. Локальный запуск использует значения по умолчанию и переменные окружения, а Kubernetes переопределяет настройки через ConfigMap и Secret.
 
-Межсервисные вызовы из `cash-service` и `transfer-service` идут через Eureka и Spring Cloud LoadBalancer: клиенты используют логические адреса `http://accounts-service` и `http://notifications-service`, а не фиксированные host:port.
+Межсервисные вызовы используют явные base URL вида `http://accounts-service:8081`, которые в Kubernetes разрешаются через `Service` и DNS.
 
 Контрактные проверки лежат рядом с сервисами-поставщиками и потребителями в `src/contractTest`. Internal API `accounts-service` используется только межсервисно и не должен публиковаться через Gateway.
 
@@ -78,9 +82,8 @@ Realm Keycloak: `bank-realm`.
 ## Основные URL
 
 - Front UI: `http://localhost:8085`
-- Gateway API: `http://localhost:8080`
+- Gateway API: `http://localhost`
 - Keycloak: `http://localhost:8180`
-- Eureka: `http://localhost:8761`
 - PostgreSQL: `localhost:5432`, database `bank`, user `postgres`
 
 Пользовательские endpoints публикуются через Gateway:
@@ -91,6 +94,8 @@ Realm Keycloak: `bank-realm`.
 - `POST /api/cash/deposit`
 - `POST /api/cash/withdraw`
 - `POST /api/transfers`
+- `GET /api/exchange/rates`
+- `GET /api/exchange/conversion`
 
 Internal endpoints `accounts-service` вида `/api/accounts/internal/...` не публикуются через Gateway.
 
@@ -132,7 +137,6 @@ Dockerfile каждого приложения содержит встроенн
 
 ```powershell
 docker compose logs -f front-ui
-docker compose logs -f bank-gateway
 docker compose logs -f accounts-service
 ```
 
@@ -153,18 +157,19 @@ docker compose down --volumes
 Для запуска из IDE сначала подними платформенные сервисы:
 
 ```powershell
-docker compose up -d postgres keycloak discovery-server
+docker compose up -d postgres keycloak
 ```
 
 После этого можно запускать приложения обычными Spring Boot run configurations. Удобный порядок:
 
-1. `DiscoveryServerApplication`
-2. `AccountsServiceApplication`
-3. `NotificationsServiceApplication`
-4. `CashServiceApplication`
-5. `TransferServiceApplication`
-6. `BankGatewayApplication`
-7. `FrontUiApplication`
+1. `AccountsServiceApplication`
+2. `NotificationsServiceApplication`
+3. `ExchangeServiceApplication`
+4. `BlockerServiceApplication`
+5. `CashServiceApplication`
+6. `TransferServiceApplication`
+7. `ExchangeGeneratorApplication`
+8. `FrontUiApplication`
 
 Если сервис запускается из IDE, оставь его порт свободным и не поднимай такой же сервис в Docker Compose.
 
@@ -189,6 +194,35 @@ docker compose up -d postgres keycloak discovery-server
 .\gradlew.bat --no-daemon --console=plain :bank-gateway:bootRun
 ```
 
+## Запуск через Helm
+
+Для проверки Gateway API в локальном Docker Desktop-кластере заранее должны быть установлены Gateway API CRD и совместимый контроллер, создающий `GatewayClass nginx`.
+
+Команды, которые использовались для локальной проверки:
+
+```powershell
+kubectl apply --server-side=true -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
+helm upgrade --install ngf oci://ghcr.io/nginx/charts/nginx-gateway-fabric --version 2.6.6 --namespace nginx-gateway --create-namespace
+kubectl get gatewayclass nginx
+```
+
+Перед установкой chart в namespace должны существовать Kubernetes Secret:
+
+- `bank-service-credentials` с ключами `FRONT_UI_CLIENT_SECRET`, `CASH_SERVICE_CLIENT_SECRET`, `TRANSFER_SERVICE_CLIENT_SECRET`, `EXCHANGE_GENERATOR_CLIENT_SECRET`;
+- `postgresql-credentials` с ключом `password`;
+- `keycloak-credentials` с ключами `admin-username`, `admin-password`.
+
+Значения секретов не хранятся в git. Realm Keycloak создаётся Helm-чартом из `helm/charts/keycloak/files/bank-realm.json`; client secrets в realm подставляются из env-переменных Keycloak, которые берутся из `bank-service-credentials`.
+
+Проверка и установка:
+
+```powershell
+helm dependency build helm/bank
+helm lint helm/bank
+helm template bank helm/bank --namespace dev
+helm upgrade --install bank helm/bank --namespace dev --create-namespace
+```
+
 ## Ручная проверка
 
 Перед проверкой приложение должно быть поднято командой:
@@ -201,7 +235,7 @@ docker compose up -d --wait
 
 1. Открыть `http://localhost:8085`.
 2. Войти пользователем `ivan` / `ivan`.
-3. Проверить баланс `1000.00 RUB`.
+3. Проверить баланс `1000.00 RUB` и таблицу курсов валют.
 4. Пополнить счёт на `250.00`, ожидать баланс `1250.00`.
 5. Снять `100.00`, ожидать баланс `1150.00`.
 6. Перевести `150.00` пользователю `petr`, ожидать баланс `1000.00`.
@@ -214,7 +248,7 @@ docker compose up -d --wait
 
 - полноценный Circuit Breaker;
 - Transactional Outbox;
-- Kubernetes;
+- production-grade Kubernetes-эксплуатация;
 - Jenkins CI/CD;
 - Kafka, JMS или отдельная шина данных;
 - production-grade мониторинг, аудит и централизованная аналитика логов.
