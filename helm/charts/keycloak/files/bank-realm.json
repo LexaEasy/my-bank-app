@@ -28,7 +28,7 @@
       "name": "Front UI",
       "protocol": "openid-connect",
       "publicClient": false,
-      "secret": "__FRONT_UI_CLIENT_SECRET__",
+      "secret": "${FRONT_UI_CLIENT_SECRET}",
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
@@ -47,7 +47,7 @@
       "name": "Cash Service",
       "protocol": "openid-connect",
       "publicClient": false,
-      "secret": "__CASH_SERVICE_CLIENT_SECRET__",
+      "secret": "${CASH_SERVICE_CLIENT_SECRET}",
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true
@@ -57,7 +57,7 @@
       "name": "Transfer Service",
       "protocol": "openid-connect",
       "publicClient": false,
-      "secret": "__TRANSFER_SERVICE_CLIENT_SECRET__",
+      "secret": "${TRANSFER_SERVICE_CLIENT_SECRET}",
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true
@@ -87,7 +87,7 @@
       "name": "Exchange Generator",
       "protocol": "openid-connect",
       "publicClient": false,
-      "secret": "__EXCHANGE_GENERATOR_CLIENT_SECRET__",
+      "secret": "${EXCHANGE_GENERATOR_CLIENT_SECRET}",
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true

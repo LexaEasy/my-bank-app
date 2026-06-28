@@ -20,5 +20,18 @@ realmImport:
   key: bank-realm.json
   file: files/bank-realm.json
   frontUiPublicUrl: http://localhost
+  secretEnv:
+    - name: FRONT_UI_CLIENT_SECRET
+      secretName: bank-service-credentials
+      key: FRONT_UI_CLIENT_SECRET
+    - name: CASH_SERVICE_CLIENT_SECRET
+      secretName: bank-service-credentials
+      key: CASH_SERVICE_CLIENT_SECRET
+    - name: TRANSFER_SERVICE_CLIENT_SECRET
+      secretName: bank-service-credentials
+      key: TRANSFER_SERVICE_CLIENT_SECRET
+    - name: EXCHANGE_GENERATOR_CLIENT_SECRET
+      secretName: bank-service-credentials
+      key: EXCHANGE_GENERATOR_CLIENT_SECRET
 
 resources: {}

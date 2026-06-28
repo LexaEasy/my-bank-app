@@ -39,6 +39,13 @@ spec:
             {{- if .Values.realmImport.enabled }}
             - name: BANK_FRONT_UI_PUBLIC_URL
               value: {{ required "realmImport.frontUiPublicUrl is required" .Values.realmImport.frontUiPublicUrl | quote }}
+            {{- range .Values.realmImport.secretEnv }}
+            - name: {{ required "realmImport.secretEnv[].name is required" .name }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "realmImport.secretEnv[].secretName is required" .secretName }}
+                  key: {{ required "realmImport.secretEnv[].key is required" .key }}
+            {{- end }}
             {{- end }}
           ports:
             - name: http
