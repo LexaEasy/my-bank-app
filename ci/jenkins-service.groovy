@@ -15,9 +15,11 @@ def gradle(String args) {
 
 def deployService(Map service, String namespace, String imageRepository, String imageTag) {
     withCredentials([file(credentialsId: 'bank-kubeconfig', variable: 'KUBECONFIG')]) {
+        def command = "helm upgrade --install ${service.serviceName} ${service.chartPath} --namespace ${namespace} --create-namespace --rollback-on-failure --timeout 5m --set image.repository=${imageRepository} --set image.tag=${imageTag}"
         runCommand(
-            "helm upgrade --install ${service.serviceName} ${service.chartPath} --namespace ${namespace} --create-namespace --set image.repository=${imageRepository} --set image.tag=${imageTag}"
+            "${command} --dry-run=client"
         )
+        runCommand(command)
     }
 }
 

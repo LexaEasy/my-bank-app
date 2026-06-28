@@ -27,9 +27,11 @@ def gradle(String args) {
 
 def helmDeploy(String namespace, String valuesFile, String imageRegistry, String imageTag) {
     withCredentials([file(credentialsId: 'bank-kubeconfig', variable: 'KUBECONFIG')]) {
+        def command = "helm upgrade --install bank helm/bank --namespace ${namespace} --create-namespace --rollback-on-failure --timeout 5m -f ${valuesFile} --set global.imageRegistry=${imageRegistry} --set global.imageTag=${imageTag}"
         runCommand(
-            "helm upgrade --install bank helm/bank --namespace ${namespace} --create-namespace -f ${valuesFile} --set global.imageRegistry=${imageRegistry} --set global.imageTag=${imageTag}"
+            "${command} --dry-run=client"
         )
+        runCommand(command)
     }
 }
 
