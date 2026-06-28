@@ -30,6 +30,16 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ include (printf "%s.fullname" .Chart.Name) . }}
+          {{- with .Values.secretEnv }}
+          env:
+            {{- range . }}
+            - name: {{ .name }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .secretName }}
+                  key: {{ .key }}
+            {{- end }}
+          {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
