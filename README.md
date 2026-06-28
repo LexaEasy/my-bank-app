@@ -14,7 +14,6 @@
 - `notifications-service` - прием уведомлений и запись событий в лог.
 - `shared` - общие вспомогательные классы без бизнес-логики.
 - `discovery-server` - Eureka Server для service discovery.
-- `config-server` - Spring Cloud Config Server для локальных конфигураций.
 
 Схема модулей:
 
@@ -28,7 +27,6 @@ my-bank-app/
   notifications-service/
   shared/
   discovery-server/
-  config-server/
 ```
 
 Поток пользовательского запроса:
@@ -39,7 +37,7 @@ my-bank-app/
 4. `cash-service` и `transfer-service` для межсервисных вызовов получают service JWT через Client Credentials Flow.
 5. Сервисы регистрируются в Eureka.
 
-Конфигурации приложений находятся в `config-server/src/main/resources/config-repo`; локальные `application.yml` сервисов содержат только имя приложения и подключение к Config Server. `config-server` является source of truth для портов, Gateway routes, OAuth2-настроек и межсервисных base URL.
+Каждый сервис хранит собственную конфигурацию в `src/main/resources/application.yml`. Локальный запуск использует значения по умолчанию и переменные окружения, а Kubernetes переопределяет настройки через ConfigMap и Secret.
 
 Межсервисные вызовы из `cash-service` и `transfer-service` идут через Eureka и Spring Cloud LoadBalancer: клиенты используют логические адреса `http://accounts-service` и `http://notifications-service`, а не фиксированные host:port.
 
@@ -83,7 +81,6 @@ Realm Keycloak: `bank-realm`.
 - Gateway API: `http://localhost:8080`
 - Keycloak: `http://localhost:8180`
 - Eureka: `http://localhost:8761`
-- Config Server: `http://localhost:8888`
 - PostgreSQL: `localhost:5432`, database `bank`, user `postgres`
 
 Пользовательские endpoints публикуются через Gateway:
@@ -156,19 +153,18 @@ docker compose down --volumes
 Для запуска из IDE сначала подними платформенные сервисы:
 
 ```powershell
-docker compose up -d postgres keycloak config-server discovery-server
+docker compose up -d postgres keycloak discovery-server
 ```
 
 После этого можно запускать приложения обычными Spring Boot run configurations. Удобный порядок:
 
-1. `ConfigServerApplication`
-2. `DiscoveryServerApplication`
-3. `AccountsServiceApplication`
-4. `NotificationsServiceApplication`
-5. `CashServiceApplication`
-6. `TransferServiceApplication`
-7. `BankGatewayApplication`
-8. `FrontUiApplication`
+1. `DiscoveryServerApplication`
+2. `AccountsServiceApplication`
+3. `NotificationsServiceApplication`
+4. `CashServiceApplication`
+5. `TransferServiceApplication`
+6. `BankGatewayApplication`
+7. `FrontUiApplication`
 
 Если сервис запускается из IDE, оставь его порт свободным и не поднимай такой же сервис в Docker Compose.
 
