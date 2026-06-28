@@ -37,7 +37,7 @@ spec:
               }
 
               expect_status "http://{{ default "front-ui" $frontUi.fullnameOverride }}:{{ default 8085 $frontUi.service.port }}/" "302"
-              expect_status "http://{{ default "exchange-service" $exchangeService.fullnameOverride }}:{{ default 8086 $exchangeService.service.port }}/api/exchange/rates" "200"
+              expect_status "http://{{ default "exchange-service" $exchangeService.fullnameOverride }}:{{ default 8086 $exchangeService.service.port }}/api/exchange/rates" "401"
               expect_status "http://{{ default "accounts-service" $accountsService.fullnameOverride }}:{{ default 8081 $accountsService.service.port }}/api/accounts/me" "401"
               expect_status "http://{{ default "keycloak" $keycloak.fullnameOverride }}:{{ default 8080 $keycloak.service.port }}/realms/bank-realm/.well-known/openid-configuration" "200"
 {{- end }}
