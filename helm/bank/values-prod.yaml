@@ -1,3 +1,18 @@
 global:
   namespace: prod
+  publicBaseUrl: https://bank.example.local
   imageTag: stable
+  keycloakPublicUrl: https://bank.example.local/realms/bank-realm
+
+gatewayApi:
+  listener:
+    hostname: bank.example.local
+
+front-ui:
+  env:
+    BANK_SECURITY_LOGOUT_ENDSESSIONURI: https://bank.example.local/realms/bank-realm/protocol/openid-connect/logout
+    SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATIONURI: https://bank.example.local/realms/bank-realm/protocol/openid-connect/auth
+
+keycloak:
+  realmImport:
+    frontUiPublicUrl: https://bank.example.local
