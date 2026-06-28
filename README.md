@@ -101,6 +101,8 @@ Internal endpoints `accounts-service` вида `/api/accounts/internal/...` не
 
 ## Запуск через Docker Compose
 
+Docker Compose сохранён только как локальный dev-сценарий. Обязательный способ развёртывания Sprint 10 - Kubernetes через Helm.
+
 Сначала собрать executable JAR:
 
 ```powershell
@@ -181,6 +183,12 @@ docker compose up -d postgres keycloak
 .\gradlew.bat --no-daemon --console=plain test
 ```
 
+Контрактные тесты сервисов:
+
+```powershell
+.\gradlew.bat --no-daemon --console=plain :accounts-service:contractTest :cash-service:contractTest :transfer-service:contractTest :exchange-service:contractTest :blocker-service:contractTest :notifications-service:contractTest
+```
+
 Сборка JAR всех приложений:
 
 ```powershell
@@ -192,6 +200,27 @@ docker compose up -d postgres keycloak
 ```powershell
 .\gradlew.bat --no-daemon --console=plain :front-ui:bootRun
 .\gradlew.bat --no-daemon --console=plain :bank-gateway:bootRun
+```
+
+## Сборка Docker images
+
+Перед сборкой образов нужно собрать executable JAR:
+
+```powershell
+.\gradlew.bat --no-daemon --console=plain bootJar
+```
+
+Сборка всех образов через Docker Compose:
+
+```powershell
+docker compose build
+```
+
+Сборка отдельного образа:
+
+```powershell
+docker build --build-arg JAR_FILE=build/libs/*.jar -t my-bank-front-ui:local front-ui
+docker build --build-arg JAR_FILE=build/libs/*.jar -t my-bank-accounts-service:local accounts-service
 ```
 
 ## Запуск через Helm
@@ -214,14 +243,46 @@ kubectl get gatewayclass nginx
 
 Значения секретов не хранятся в git. Realm Keycloak создаётся Helm-чартом из `helm/charts/keycloak/files/bank-realm.json`; client secrets в realm подставляются из env-переменных Keycloak, которые берутся из `bank-service-credentials`.
 
-Проверка и установка:
+Проверка и установка в `dev` namespace:
 
 ```powershell
-helm dependency build helm/bank
+helm dependency update helm/bank
 helm lint helm/bank
-helm template bank helm/bank --namespace dev
-helm upgrade --install bank helm/bank --namespace dev --create-namespace
+helm template bank helm/bank --namespace dev -f helm/bank/values-dev.yaml
+helm upgrade --install bank helm/bank --namespace dev --create-namespace -f helm/bank/values-dev.yaml --rollback-on-failure --timeout 5m
 ```
+
+Helm smoke tests:
+
+```powershell
+helm test bank --namespace dev
+```
+
+Dry-run для test/prod окружений:
+
+```powershell
+helm upgrade --install bank helm/bank --namespace test --create-namespace -f helm/bank/values-test.yaml --set global.imageRegistry=registry.example.com/my-bank --set global.imageTag=ci-test --rollback-on-failure --timeout 5m --dry-run=client
+helm upgrade --install bank helm/bank --namespace prod --create-namespace -f helm/bank/values-prod.yaml --set global.imageRegistry=registry.example.com/my-bank --set global.imageTag=ci-prod --rollback-on-failure --timeout 5m --dry-run=client
+```
+
+## Jenkins CI/CD
+
+В репозитории есть root `Jenkinsfile` для umbrella pipeline и Jenkinsfile рядом с каждым микросервисом. Pipeline покрывает validate, test, `bootJar`, Docker build, image push, Helm lint/template, deploy в `test`, ручное подтверждение и deploy в `prod`.
+
+Ожидаемые Jenkins credentials:
+
+- `bank-registry-credentials` - username/password для container registry;
+- `bank-kubeconfig` - kubeconfig file credential для доступа к Kubernetes.
+
+Параметры root pipeline:
+
+- `IMAGE_REGISTRY` - registry namespace, например `registry.example.com/my-bank`;
+- `IMAGE_TAG` - тег образов, пустое значение использует `BUILD_NUMBER`;
+- `PUSH_IMAGES` - отправлять собранные образы в registry;
+- `DEPLOY_TEST` - выполнить deploy umbrella chart в namespace `test`;
+- `DEPLOY_PROD` - после ручного подтверждения выполнить deploy в namespace `prod`.
+
+Параметры сервисных pipeline аналогичны, но управляют одним образом и одним service chart. Значения registry credentials, kubeconfig и Kubernetes Secret не хранятся в Jenkinsfile.
 
 ## Ручная проверка
 
@@ -249,7 +310,6 @@ docker compose up -d --wait
 - полноценный Circuit Breaker;
 - Transactional Outbox;
 - production-grade Kubernetes-эксплуатация;
-- Jenkins CI/CD;
 - Kafka, JMS или отдельная шина данных;
 - production-grade мониторинг, аудит и централизованная аналитика логов.
 
