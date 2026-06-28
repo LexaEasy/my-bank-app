@@ -66,5 +66,5 @@ spec:
             secretName: {{ required "realmImport.existingSecret is required" .Values.realmImport.existingSecret }}
             items:
               - key: {{ required "realmImport.key is required" .Values.realmImport.key }}
-                path: bank-realm.json
+                path: bank-realm-realm.json
       {{- end }}
