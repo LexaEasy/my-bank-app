@@ -35,3 +35,6 @@ notifications-service:
 
 bank-gateway:
   enabled: true
+
+postgresql:
+  enabled: true

@@ -26,5 +26,8 @@ dependencies:
 - name: bank-gateway
   repository: file://../charts/bank-gateway
   version: 0.1.0
-digest: sha256:4d1e9c9428331c3152523f61df2e2e1577d0ce13281ad100df5e6ca3cd47e8c1
-generated: "2026-06-28T08:15:04.0881667+03:00"
+- name: postgresql
+  repository: file://../charts/postgresql
+  version: 0.1.0
+digest: sha256:ef67f423aaf62b18274263c9164c701ce4dcf7f118eeeba601bb7227f5d8345d
+generated: "2026-06-28T08:23:29.0250395+03:00"

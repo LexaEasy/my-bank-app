@@ -41,3 +41,7 @@ dependencies:
     version: 0.1.0
     repository: file://../charts/bank-gateway
     condition: bank-gateway.enabled
+  - name: postgresql
+    version: 0.1.0
+    repository: file://../charts/postgresql
+    condition: postgresql.enabled
