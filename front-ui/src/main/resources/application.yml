@@ -44,3 +44,5 @@ management:
 
 server:
   port: 8085
+  tomcat:
+    use-relative-redirects: true
