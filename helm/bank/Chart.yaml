@@ -1,0 +1,43 @@
+apiVersion: v2
+name: bank
+description: Umbrella chart for the bank application
+type: application
+version: 0.1.0
+appVersion: "0.0.1-SNAPSHOT"
+dependencies:
+  - name: front-ui
+    version: 0.1.0
+    repository: file://../charts/front-ui
+    condition: front-ui.enabled
+  - name: accounts-service
+    version: 0.1.0
+    repository: file://../charts/accounts-service
+    condition: accounts-service.enabled
+  - name: cash-service
+    version: 0.1.0
+    repository: file://../charts/cash-service
+    condition: cash-service.enabled
+  - name: transfer-service
+    version: 0.1.0
+    repository: file://../charts/transfer-service
+    condition: transfer-service.enabled
+  - name: exchange-service
+    version: 0.1.0
+    repository: file://../charts/exchange-service
+    condition: exchange-service.enabled
+  - name: exchange-generator
+    version: 0.1.0
+    repository: file://../charts/exchange-generator
+    condition: exchange-generator.enabled
+  - name: blocker-service
+    version: 0.1.0
+    repository: file://../charts/blocker-service
+    condition: blocker-service.enabled
+  - name: notifications-service
+    version: 0.1.0
+    repository: file://../charts/notifications-service
+    condition: notifications-service.enabled
+  - name: bank-gateway
+    version: 0.1.0
+    repository: file://../charts/bank-gateway
+    condition: bank-gateway.enabled

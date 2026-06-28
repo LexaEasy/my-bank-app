@@ -1,0 +1,37 @@
+global:
+  namespace: bank
+  imageRegistry: ""
+  imageTag: local
+  keycloakUrl: http://keycloak:8080/realms/bank
+  postgresql:
+    host: postgresql
+    port: 5432
+    database: bank
+    username: bank
+
+front-ui:
+  enabled: true
+
+accounts-service:
+  enabled: true
+
+cash-service:
+  enabled: true
+
+transfer-service:
+  enabled: true
+
+exchange-service:
+  enabled: true
+
+exchange-generator:
+  enabled: true
+
+blocker-service:
+  enabled: true
+
+notifications-service:
+  enabled: true
+
+bank-gateway:
+  enabled: true
