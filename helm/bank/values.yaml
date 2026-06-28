@@ -2,7 +2,7 @@ global:
   namespace: bank
   imageRegistry: ""
   imageTag: local
-  keycloakUrl: http://keycloak:8080/realms/bank
+  keycloakUrl: http://keycloak:8080/realms/bank-realm
   postgresql:
     host: postgresql
     port: 5432
