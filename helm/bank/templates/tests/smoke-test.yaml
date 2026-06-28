@@ -1,0 +1,43 @@
+{{- $test := .Values.helmTest | default dict -}}
+{{- if ($test.enabled | default true) }}
+{{- $frontUi := index .Values "front-ui" -}}
+{{- $accountsService := index .Values "accounts-service" -}}
+{{- $exchangeService := index .Values "exchange-service" -}}
+{{- $keycloak := index .Values "keycloak" -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "bank.fullname" . }}-smoke-test
+  labels:
+    {{- include "bank.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "bank.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: smoke-test
+          image: "{{ $test.imageRepository | default "curlimages/curl" }}:{{ $test.imageTag | default "8.21.0" }}"
+          imagePullPolicy: {{ $test.imagePullPolicy | default "IfNotPresent" }}
+          command:
+            - sh
+            - -ec
+            - |
+              expect_status() {
+                url="$1"
+                expected="$2"
+                actual="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 5 --max-time 10 "$url")"
+                test "$actual" = "$expected"
+              }
+
+              expect_status "http://{{ default "front-ui" $frontUi.fullnameOverride }}:{{ default 8085 $frontUi.service.port }}/" "302"
+              expect_status "http://{{ default "exchange-service" $exchangeService.fullnameOverride }}:{{ default 8086 $exchangeService.service.port }}/api/exchange/rates" "200"
+              expect_status "http://{{ default "accounts-service" $accountsService.fullnameOverride }}:{{ default 8081 $accountsService.service.port }}/api/accounts/me" "401"
+              expect_status "http://{{ default "keycloak" $keycloak.fullnameOverride }}:{{ default 8080 $keycloak.service.port }}/realms/bank-realm/.well-known/openid-configuration" "200"
+{{- end }}
