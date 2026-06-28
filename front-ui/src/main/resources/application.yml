@@ -3,3 +3,46 @@ spring:
     name: front-ui
   config:
     import: ${BANK_CONFIG_IMPORT:configserver:http://localhost:8888}
+  jackson:
+    default-property-inclusion: non_null
+  security:
+    oauth2:
+      client:
+        registration:
+          front-ui:
+            provider: keycloak
+            client-id: front-ui
+            client-secret: ${FRONT_UI_CLIENT_SECRET:}
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid,profile,email
+        provider:
+          keycloak:
+            authorization-uri: ${BANK_KEYCLOAK_AUTHORIZATION_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/auth}
+            token-uri: ${BANK_KEYCLOAK_TOKEN_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/token}
+            jwk-set-uri: ${BANK_KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs}
+            user-info-uri: ${BANK_KEYCLOAK_USER_INFO_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/userinfo}
+            user-name-attribute: preferred_username
+
+bank:
+  gateway:
+    base-url: ${BANK_GATEWAY_URL:http://localhost:8080}
+  security:
+    logout:
+      end-session-uri: ${BANK_KEYCLOAK_END_SESSION_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/logout}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${BANK_EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+server:
+  port: 8085

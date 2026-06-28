@@ -3,3 +3,21 @@ spring:
     name: discovery-server
   config:
     import: ${BANK_CONFIG_IMPORT:configserver:http://localhost:8888}
+  jackson:
+    default-property-inclusion: non_null
+
+eureka:
+  client:
+    fetch-registry: false
+    register-with-eureka: false
+  server:
+    enable-self-preservation: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+server:
+  port: 8761

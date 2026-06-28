@@ -3,3 +3,62 @@ spring:
     name: bank-gateway
   config:
     import: ${BANK_CONFIG_IMPORT:configserver:http://localhost:8888}
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: block-accounts-internal-api
+              uri: no://op
+              predicates:
+                - Path=/api/accounts/internal/**
+              filters:
+                - SetStatus=404
+            - id: accounts-service
+              uri: lb://accounts-service
+              predicates:
+                - Path=/api/accounts/**
+              filters:
+                - JwtTokenRelay
+            - id: cash-service
+              uri: lb://cash-service
+              predicates:
+                - Path=/api/cash/**
+              filters:
+                - JwtTokenRelay
+            - id: transfer-service
+              uri: lb://transfer-service
+              predicates:
+                - Path=/api/transfers
+              filters:
+                - JwtTokenRelay
+            - id: exchange-service
+              uri: lb://exchange-service
+              predicates:
+                - Path=/api/exchange/**
+              filters:
+                - JwtTokenRelay
+  jackson:
+    default-property-inclusion: non_null
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${BANK_KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/bank-realm}
+          jwk-set-uri: ${BANK_KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${BANK_EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+server:
+  port: 8080

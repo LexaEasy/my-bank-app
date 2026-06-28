@@ -3,3 +3,40 @@ spring:
     name: exchange-generator
   config:
     import: ${BANK_CONFIG_IMPORT:configserver:http://localhost:8888}
+  jackson:
+    default-property-inclusion: non_null
+  security:
+    oauth2:
+      client:
+        registration:
+          exchange-generator:
+            provider: keycloak
+            authorization-grant-type: client_credentials
+            client-id: exchange-generator
+            client-secret: ${EXCHANGE_GENERATOR_CLIENT_SECRET:}
+        provider:
+          keycloak:
+            token-uri: ${BANK_KEYCLOAK_TOKEN_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/token}
+
+bank:
+  services:
+    exchange:
+      base-url: ${BANK_EXCHANGE_BASE_URL:http://exchange-service}
+  exchange-generator:
+    fixed-delay-ms: ${BANK_EXCHANGE_GENERATOR_FIXED_DELAY_MS:1000}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${BANK_EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+server:
+  port: 8087
