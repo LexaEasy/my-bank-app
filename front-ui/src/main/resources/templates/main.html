@@ -89,6 +89,7 @@
             <h2>Переводы</h2>
             <form class="transfer-form" th:action="@{/transfers}" th:object="${transferForm}" method="post">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <input type="hidden" th:field="*{sourceCurrency}">
                 <label>
                     Получатель
                     <select th:field="*{recipientLogin}">

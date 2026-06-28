@@ -192,7 +192,9 @@ public class MainPageController {
 
     private void addDefaultTransferForm(Model model) {
         if (!model.containsAttribute("transferForm")) {
-            model.addAttribute("transferForm", new TransferForm("", new BigDecimal("100.00"), "RUB"));
+            Object accountCurrency = model.getAttribute("currency");
+            String sourceCurrency = accountCurrency == null ? "RUB" : accountCurrency.toString();
+            model.addAttribute("transferForm", new TransferForm("", new BigDecimal("100.00"), "RUB", sourceCurrency));
         }
     }
 

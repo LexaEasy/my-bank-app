@@ -82,7 +82,12 @@ public class GatewayClient {
             return transferClient.post()
                     .uri("/api/transfers")
                     .headers(headers -> headers.setBearerAuth(accessToken))
-                    .body(new TransferRequest(form.recipientLogin(), form.amount(), form.currency()))
+                    .body(new TransferRequest(
+                            form.recipientLogin(),
+                            form.amount(),
+                            form.sourceCurrency(),
+                            form.currency()
+                    ))
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, (request, response) -> handleError(response))
                     .body(TransferResponse.class);

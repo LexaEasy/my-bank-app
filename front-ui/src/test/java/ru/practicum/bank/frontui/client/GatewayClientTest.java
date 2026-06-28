@@ -10,12 +10,14 @@ import org.springframework.web.client.RestClient;
 import ru.practicum.bank.common.client.SimpleCircuitBreaker;
 import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.frontui.dto.CashForm;
+import ru.practicum.bank.frontui.dto.TransferForm;
 
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.ExpectedCount.once;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -24,6 +26,51 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 class GatewayClientTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Test
+    void shouldSendTransferTargetCurrency() {
+        var restClientBuilder = RestClient.builder();
+        var server = MockRestServiceServer.bindTo(restClientBuilder).build();
+        var client = new GatewayClient(
+                restClientBuilder,
+                "http://accounts-service:8081",
+                "http://cash-service:8082",
+                "http://transfer-service:8083",
+                "http://exchange-service:8086",
+                SimpleCircuitBreaker.withDefaults("bankServices"),
+                objectMapper
+        );
+
+        server.expect(once(), requestTo("http://transfer-service:8083/api/transfers"))
+                .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
+                .andExpect(content().json("""
+                        {
+                          "recipientLogin": "petr",
+                          "amount": 1.00,
+                          "currency": "RUB",
+                          "targetCurrency": "USD"
+                        }
+                        """))
+                .andRespond(withSuccess("""
+                        {
+                          "senderLogin": "ivan",
+                          "recipientLogin": "petr",
+                          "senderBalance": "908.50",
+                          "currency": "RUB",
+                          "message": "Transfer completed"
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        var response = client.transfer("user-token", new TransferForm(
+                "petr",
+                new BigDecimal("1.00"),
+                "USD",
+                "RUB"
+        ));
+
+        assertThat(response.senderBalance()).isEqualByComparingTo("908.50");
+        server.verify();
+    }
 
     @Test
     void shouldLoadExchangeRatesFromGateway() {
