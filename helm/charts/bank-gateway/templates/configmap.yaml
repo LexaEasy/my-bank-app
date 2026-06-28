@@ -1,0 +1,18 @@
+{{- $global := default dict .Values.global -}}
+{{- $globalEnv := default dict (get $global "env") -}}
+{{- $serviceEnv := default dict .Values.env -}}
+{{- $env := mergeOverwrite (deepCopy $globalEnv) $serviceEnv -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include (printf "%s.fullname" .Chart.Name) . }}
+  labels:
+    {{- include (printf "%s.labels" .Chart.Name) . | nindent 4 }}
+data:
+  {{- if $env }}
+  {{- range $key := keys $env | sortAlpha }}
+  {{ $key }}: {{ index $env $key | quote }}
+  {{- end }}
+  {{- else }}
+  {}
+  {{- end }}

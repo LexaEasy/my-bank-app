@@ -7,34 +7,124 @@ global:
     host: postgresql
     port: 5432
     database: bank
-    username: bank
+    username: postgres
+  env:
+    BANK_CONFIG_IMPORT: optional:file:/etc/bank/
+    EUREKA_CLIENT_ENABLED: "false"
+    SPRING_CLOUD_CONFIG_ENABLED: "false"
+    SPRING_CLOUD_DISCOVERY_ENABLED: "false"
+    SPRING_JACKSON_DEFAULT_PROPERTY_INCLUSION: non_null
+    SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
+    SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
+    SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/bank-realm
+    SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
 
 front-ui:
   enabled: true
+  fullnameOverride: front-ui
+  env:
+    BANK_GATEWAY_BASE_URL: http://bank-gateway:8080
+    BANK_SECURITY_LOGOUT_END_SESSION_URI: http://localhost:8180/realms/bank-realm/protocol/openid-connect/logout
+    SERVER_PORT: "8085"
+    SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI: http://localhost:8180/realms/bank-realm/protocol/openid-connect/auth
+    SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER_INFO_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo
+    SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER_NAME_ATTRIBUTE: preferred_username
+    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FRONT_UI_AUTHORIZATION_GRANT_TYPE: authorization_code
+    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FRONT_UI_CLIENT_ID: front-ui
+    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FRONT_UI_PROVIDER: keycloak
+    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FRONT_UI_REDIRECT_URI: "{baseUrl}/login/oauth2/code/{registrationId}"
+    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FRONT_UI_SCOPE: openid,profile,email
 
 accounts-service:
   enabled: true
+  fullnameOverride: accounts-service
+  env:
+    SERVER_PORT: "8081"
+    SPRING_DATASOURCE_URL: jdbc:postgresql://postgresql:5432/bank
+    SPRING_DATASOURCE_USERNAME: postgres
+    SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+    SPRING_JPA_OPEN_IN_VIEW: "false"
 
 cash-service:
   enabled: true
+  fullnameOverride: cash-service
+  env:
+    BANK_SERVICES_ACCOUNTS_BASE_URL: http://accounts-service:8081
+    BANK_SERVICES_BLOCKER_BASE_URL: http://blocker-service:8088
+    BANK_SERVICES_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
+    SERVER_PORT: "8082"
+    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_CASH_SERVICE_AUTHORIZATION_GRANT_TYPE: client_credentials
+    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_CASH_SERVICE_CLIENT_ID: cash-service
+    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_CASH_SERVICE_PROVIDER: keycloak
 
 transfer-service:
   enabled: true
+  fullnameOverride: transfer-service
+  env:
+    BANK_SERVICES_ACCOUNTS_BASE_URL: http://accounts-service:8081
+    BANK_SERVICES_BLOCKER_BASE_URL: http://blocker-service:8088
+    BANK_SERVICES_EXCHANGE_BASE_URL: http://exchange-service:8086
+    BANK_SERVICES_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
+    SERVER_PORT: "8083"
+    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_TRANSFER_SERVICE_AUTHORIZATION_GRANT_TYPE: client_credentials
+    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_TRANSFER_SERVICE_CLIENT_ID: transfer-service
+    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_TRANSFER_SERVICE_PROVIDER: keycloak
 
 exchange-service:
   enabled: true
+  fullnameOverride: exchange-service
+  env:
+    SERVER_PORT: "8086"
 
 exchange-generator:
   enabled: true
+  fullnameOverride: exchange-generator
+  env:
+    BANK_EXCHANGE_GENERATOR_FIXED_DELAY_MS: "1000"
+    BANK_SERVICES_EXCHANGE_BASE_URL: http://exchange-service:8086
+    SERVER_PORT: "8087"
+    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_EXCHANGE_GENERATOR_AUTHORIZATION_GRANT_TYPE: client_credentials
+    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_EXCHANGE_GENERATOR_CLIENT_ID: exchange-generator
+    SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_EXCHANGE_GENERATOR_PROVIDER: keycloak
 
 blocker-service:
   enabled: true
+  fullnameOverride: blocker-service
+  env:
+    BANK_BLOCKER_MAX_AMOUNT: "100000.00"
+    SERVER_PORT: "8088"
 
 notifications-service:
   enabled: true
+  fullnameOverride: notifications-service
+  env:
+    SERVER_PORT: "8084"
 
 bank-gateway:
   enabled: true
+  fullnameOverride: bank-gateway
+  env:
+    SERVER_PORT: "8080"
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_FILTERS_0: SetStatus=404
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_ID: block-accounts-internal-api
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_PREDICATES_0: Path=/api/accounts/internal/**
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_URI: no://op
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_1_FILTERS_0: JwtTokenRelay
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_1_ID: accounts-service
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_1_PREDICATES_0: Path=/api/accounts/**
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_1_URI: http://accounts-service:8081
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_2_FILTERS_0: JwtTokenRelay
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_2_ID: cash-service
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_2_PREDICATES_0: Path=/api/cash/**
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_2_URI: http://cash-service:8082
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_3_FILTERS_0: JwtTokenRelay
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_3_ID: transfer-service
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_3_PREDICATES_0: Path=/api/transfers
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_3_URI: http://transfer-service:8083
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_4_FILTERS_0: JwtTokenRelay
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_4_ID: exchange-service
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_4_PREDICATES_0: Path=/api/exchange/**
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_4_URI: http://exchange-service:8086
 
 postgresql:
   enabled: true

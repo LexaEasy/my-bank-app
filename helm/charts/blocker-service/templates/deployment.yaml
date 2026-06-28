@@ -27,6 +27,9 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ $repository }}:{{ $tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include (printf "%s.fullname" .Chart.Name) . }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
