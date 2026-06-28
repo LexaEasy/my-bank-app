@@ -15,7 +15,9 @@ admin:
 
 realmImport:
   enabled: true
+  createSecret: true
   existingSecret: keycloak-realm
   key: bank-realm.json
+  file: files/bank-realm.json
 
 resources: {}
