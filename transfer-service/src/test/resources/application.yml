@@ -1,7 +1,4 @@
-spring:
-  cloud:
-    config:
-      enabled: false
+﻿spring:
   security:
     oauth2:
       client:
@@ -13,19 +10,20 @@ spring:
             client-secret: test-secret
         provider:
           keycloak:
-            token-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/token
+            token-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8180/realms/bank-realm
-          jwk-set-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs
+          issuer-uri: http://keycloak:8080/realms/bank-realm
+          jwk-set-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
 
 bank:
   services:
     accounts:
-      base-url: http://accounts-service
+      base-url: http://accounts-service:8081
     notifications:
-      base-url: http://notifications-service
+      base-url: http://notifications-service:8084
+    blocker:
+      base-url: http://blocker-service:8088
+    exchange:
+      base-url: http://exchange-service:8086
 
-eureka:
-  client:
-    enabled: false

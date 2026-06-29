@@ -11,8 +11,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.bank.transfer.dto.TransferRequest;
 import ru.practicum.bank.transfer.dto.TransferResponse;
+import ru.practicum.bank.transfer.exception.OperationBlockedException;
 import ru.practicum.bank.transfer.exception.SelfTransferForbiddenException;
-import ru.practicum.bank.transfer.model.Currency;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.transfer.service.TransferService;
 
 import java.math.BigDecimal;
@@ -65,6 +66,62 @@ class TransferControllerTest {
     }
 
     @Test
+    void shouldAcceptCnyTransferRequest() throws Exception {
+        when(transferService.transfer("ivan", request("olga", "200.00", Currency.CNY))).thenReturn(new TransferResponse(
+                "ivan",
+                "olga",
+                new BigDecimal("800.00"),
+                "CNY",
+                "Transfer completed"
+        ));
+
+        mockMvc.perform(post("/api/transfers")
+                        .principal(jwtAuthentication("ivan"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "recipientLogin": "olga",
+                                  "amount": "200.00",
+                                  "currency": "CNY"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currency").value("CNY"));
+
+        verify(transferService).transfer("ivan", request("olga", "200.00", Currency.CNY));
+    }
+
+    @Test
+    void shouldAcceptTargetCurrencyTransferRequest() throws Exception {
+        when(transferService.transfer("ivan", new TransferRequest(
+                "olga",
+                new BigDecimal("100.00"),
+                Currency.USD,
+                Currency.CNY
+        ))).thenReturn(new TransferResponse(
+                "ivan",
+                "olga",
+                new BigDecimal("900.00"),
+                "USD",
+                "Transfer completed"
+        ));
+
+        mockMvc.perform(post("/api/transfers")
+                        .principal(jwtAuthentication("ivan"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "recipientLogin": "olga",
+                                  "amount": "100.00",
+                                  "currency": "USD",
+                                  "targetCurrency": "CNY"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currency").value("USD"));
+    }
+
+    @Test
     void shouldReturnValidationError() throws Exception {
         mockMvc.perform(post("/api/transfers")
                         .principal(jwtAuthentication("ivan"))
@@ -98,6 +155,26 @@ class TransferControllerTest {
                 .andExpect(jsonPath("$.code").value("SELF_TRANSFER_FORBIDDEN"));
     }
 
+    @Test
+    void shouldReturnOperationBlockedError() throws Exception {
+        when(transferService.transfer("ivan", request("olga", "100000.01")))
+                .thenThrow(new OperationBlockedException("Operation amount exceeds blocker limit"));
+
+        mockMvc.perform(post("/api/transfers")
+                        .principal(jwtAuthentication("ivan"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "recipientLogin": "olga",
+                                  "amount": "100000.01",
+                                  "currency": "RUB"
+                                }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("OPERATION_BLOCKED"))
+                .andExpect(jsonPath("$.message").value("Operation amount exceeds blocker limit"));
+    }
+
     private JwtAuthenticationToken jwtAuthentication(String login) {
         var jwt = Jwt.withTokenValue("token")
                 .header("alg", "none")
@@ -109,6 +186,10 @@ class TransferControllerTest {
     }
 
     private TransferRequest request(String recipientLogin, String amount) {
-        return new TransferRequest(recipientLogin, new BigDecimal(amount), Currency.RUB);
+        return request(recipientLogin, amount, Currency.RUB);
+    }
+
+    private TransferRequest request(String recipientLogin, String amount, Currency currency) {
+        return new TransferRequest(recipientLogin, new BigDecimal(amount), currency);
     }
 }

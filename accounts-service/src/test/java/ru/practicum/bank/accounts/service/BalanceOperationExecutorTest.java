@@ -11,7 +11,7 @@ import ru.practicum.bank.accounts.exception.InvalidAmountScaleException;
 import ru.practicum.bank.accounts.exception.RecipientNotFoundException;
 import ru.practicum.bank.accounts.exception.SelfTransferForbiddenException;
 import ru.practicum.bank.accounts.model.Account;
-import ru.practicum.bank.accounts.model.Currency;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.accounts.repository.AccountRepository;
 
 import java.math.BigDecimal;
@@ -81,6 +81,30 @@ class BalanceOperationExecutorTest {
         assertThat(recipient.getBalance()).isEqualByComparingTo(new BigDecimal("650.00"));
         verify(accountRepository).save(sender);
         verify(accountRepository).save(recipient);
+    }
+
+    @Test
+    void shouldTransferConvertedRecipientAmount() {
+        var sender = account("ivan", 1L, "1000.00");
+        var recipient = account("petr", 2L, "500.00");
+        when(accountRepository.findByLogin("ivan")).thenReturn(Optional.of(sender));
+        when(accountRepository.findByLogin("petr")).thenReturn(Optional.of(recipient));
+        when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = executor.transfer(new TransferBalanceRequest(
+                "ivan",
+                "petr",
+                new BigDecimal("100.00"),
+                Currency.USD,
+                new BigDecimal("741.94"),
+                Currency.CNY,
+                "operation-1"
+        ));
+
+        assertThat(response.senderBalance()).isEqualByComparingTo(new BigDecimal("900.00"));
+        assertThat(sender.getBalance()).isEqualByComparingTo(new BigDecimal("900.00"));
+        assertThat(recipient.getBalance()).isEqualByComparingTo(new BigDecimal("1241.94"));
+        assertThat(response.currency()).isEqualTo("USD");
     }
 
     @Test

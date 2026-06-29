@@ -1,0 +1,88 @@
+{{- if .Values.gatewayApi.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "bank.fullname" . }}-routes
+  labels:
+    {{- include "bank.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ include "bank.fullname" . }}-gateway
+      sectionName: {{ .Values.gatewayApi.listener.name }}
+  {{- with .Values.gatewayApi.listener.hostname }}
+  hostnames:
+    - {{ . | quote }}
+  {{- end }}
+  rules:
+    - matches:
+        - method: GET
+          path:
+            type: Exact
+            value: /api/accounts/me
+        - method: PUT
+          path:
+            type: Exact
+            value: /api/accounts/me
+        - method: GET
+          path:
+            type: Exact
+            value: /api/accounts/recipients
+      backendRefs:
+        - name: accounts-service
+          port: 8081
+    - matches:
+        - method: POST
+          path:
+            type: Exact
+            value: /api/cash/deposit
+        - method: POST
+          path:
+            type: Exact
+            value: /api/cash/withdraw
+      backendRefs:
+        - name: cash-service
+          port: 8082
+    - matches:
+        - method: POST
+          path:
+            type: Exact
+            value: /api/transfers
+      backendRefs:
+        - name: transfer-service
+          port: 8083
+    - matches:
+        - method: GET
+          path:
+            type: Exact
+            value: /api/exchange/rates
+        - method: GET
+          path:
+            type: Exact
+            value: /api/exchange/conversion
+      backendRefs:
+        - name: exchange-service
+          port: 8086
+    - matches:
+        - method: GET
+          path:
+            type: PathPrefix
+            value: /realms
+        - method: POST
+          path:
+            type: PathPrefix
+            value: /realms
+        - method: GET
+          path:
+            type: PathPrefix
+            value: /resources
+      backendRefs:
+        - name: keycloak
+          port: 8080
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: front-ui
+          port: 8085
+{{- end }}

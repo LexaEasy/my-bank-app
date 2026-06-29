@@ -1,0 +1,7 @@
+fullnameOverride: bank-gateway
+
+image:
+  repository: my-bank-gateway
+
+service:
+  port: 8080

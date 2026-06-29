@@ -1,0 +1,192 @@
+global:
+  namespace: bank
+  imageRegistry: ""
+  imageTag: local
+  publicBaseUrl: http://localhost
+  keycloakInternalUrl: http://keycloak:8080/realms/bank-realm
+  keycloakPublicUrl: http://localhost/realms/bank-realm
+  postgresql:
+    host: postgresql
+    port: 5432
+    database: bank
+    username: postgres
+  env:
+    SPRING_JACKSON_DEFAULTPROPERTYINCLUSION: non_null
+    BANK_KEYCLOAK_ISSUER_URI: http://localhost/realms/bank-realm
+    BANK_KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
+    BANK_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
+
+gatewayApi:
+  enabled: true
+  gatewayClassName: nginx
+  listener:
+    name: http
+    port: 80
+    hostname: ""
+
+front-ui:
+  enabled: true
+  fullnameOverride: front-ui
+  image:
+    repository: my-bank-front-ui
+  service:
+    port: 8085
+  env:
+    BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
+    BANK_CASH_BASE_URL: http://cash-service:8082
+    BANK_EXCHANGE_BASE_URL: http://exchange-service:8086
+    BANK_KEYCLOAK_AUTHORIZATION_URI: http://localhost/realms/bank-realm/protocol/openid-connect/auth
+    BANK_KEYCLOAK_END_SESSION_URI: http://localhost/realms/bank-realm/protocol/openid-connect/logout
+    BANK_KEYCLOAK_REDIRECT_URI: http://localhost/login/oauth2/code/{registrationId}
+    BANK_KEYCLOAK_USER_INFO_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo
+    BANK_TRANSFER_BASE_URL: http://transfer-service:8083
+    SERVER_PORT: "8085"
+  secretEnv:
+    - name: FRONT_UI_CLIENT_SECRET
+      secretName: bank-service-credentials
+      key: FRONT_UI_CLIENT_SECRET
+
+accounts-service:
+  enabled: true
+  fullnameOverride: accounts-service
+  image:
+    repository: my-bank-accounts-service
+  service:
+    port: 8081
+  env:
+    SERVER_PORT: "8081"
+    SPRING_DATASOURCE_URL: jdbc:postgresql://postgresql:5432/bank
+    SPRING_DATASOURCE_USERNAME: postgres
+    SPRING_JPA_HIBERNATE_DDLAUTO: validate
+    SPRING_JPA_OPENINVIEW: "false"
+  secretEnv:
+    - name: SPRING_DATASOURCE_PASSWORD
+      secretName: postgresql-credentials
+      key: password
+
+cash-service:
+  enabled: true
+  fullnameOverride: cash-service
+  image:
+    repository: my-bank-cash-service
+  service:
+    port: 8082
+  env:
+    BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
+    BANK_BLOCKER_BASE_URL: http://blocker-service:8088
+    BANK_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
+    SERVER_PORT: "8082"
+  secretEnv:
+    - name: CASH_SERVICE_CLIENT_SECRET
+      secretName: bank-service-credentials
+      key: CASH_SERVICE_CLIENT_SECRET
+
+transfer-service:
+  enabled: true
+  fullnameOverride: transfer-service
+  image:
+    repository: my-bank-transfer-service
+  service:
+    port: 8083
+  env:
+    BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
+    BANK_BLOCKER_BASE_URL: http://blocker-service:8088
+    BANK_EXCHANGE_BASE_URL: http://exchange-service:8086
+    BANK_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
+    SERVER_PORT: "8083"
+  secretEnv:
+    - name: TRANSFER_SERVICE_CLIENT_SECRET
+      secretName: bank-service-credentials
+      key: TRANSFER_SERVICE_CLIENT_SECRET
+
+exchange-service:
+  enabled: true
+  fullnameOverride: exchange-service
+  image:
+    repository: my-bank-exchange-service
+  service:
+    port: 8086
+  env:
+    SERVER_PORT: "8086"
+
+exchange-generator:
+  enabled: true
+  fullnameOverride: exchange-generator
+  image:
+    repository: my-bank-exchange-generator
+  service:
+    port: 8087
+  env:
+    BANK_EXCHANGE_GENERATOR_FIXED_DELAY_MS: "1000"
+    BANK_EXCHANGE_BASE_URL: http://exchange-service:8086
+    SERVER_PORT: "8087"
+  secretEnv:
+    - name: EXCHANGE_GENERATOR_CLIENT_SECRET
+      secretName: bank-service-credentials
+      key: EXCHANGE_GENERATOR_CLIENT_SECRET
+
+blocker-service:
+  enabled: true
+  fullnameOverride: blocker-service
+  image:
+    repository: my-bank-blocker-service
+  service:
+    port: 8088
+  env:
+    BANK_BLOCKER_MAX_AMOUNT: "100000.00"
+    SERVER_PORT: "8088"
+
+notifications-service:
+  enabled: true
+  fullnameOverride: notifications-service
+  image:
+    repository: my-bank-notifications-service
+  service:
+    port: 8084
+  env:
+    SERVER_PORT: "8084"
+
+bank-gateway:
+  enabled: false
+  fullnameOverride: bank-gateway
+  image:
+    repository: my-bank-gateway
+  service:
+    port: 8080
+  env:
+    SERVER_PORT: "8080"
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_FILTERS_0: SetStatus=404
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_ID: block-accounts-internal-api
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_PREDICATES_0: Path=/api/accounts/internal/**
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_URI: no://op
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_1_FILTERS_0: JwtTokenRelay
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_1_ID: accounts-service
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_1_PREDICATES_0: Path=/api/accounts/**
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_1_URI: http://accounts-service:8081
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_2_FILTERS_0: JwtTokenRelay
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_2_ID: cash-service
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_2_PREDICATES_0: Path=/api/cash/**
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_2_URI: http://cash-service:8082
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_3_FILTERS_0: JwtTokenRelay
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_3_ID: transfer-service
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_3_PREDICATES_0: Path=/api/transfers
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_3_URI: http://transfer-service:8083
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_4_FILTERS_0: JwtTokenRelay
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_4_ID: exchange-service
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_4_PREDICATES_0: Path=/api/exchange/**
+    SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_4_URI: http://exchange-service:8086
+
+postgresql:
+  enabled: true
+  fullnameOverride: postgresql
+
+keycloak:
+  enabled: true
+  fullnameOverride: keycloak
+  extraEnv:
+    - name: KC_HOSTNAME
+      value: http://localhost
+    - name: KC_HOSTNAME_STRICT
+      value: "false"
+  realmImport:
+    frontUiPublicUrl: http://localhost

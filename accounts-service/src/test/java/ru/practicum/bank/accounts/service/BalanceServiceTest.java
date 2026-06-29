@@ -6,7 +6,7 @@ import ru.practicum.bank.accounts.dto.BalanceOperationRequest;
 import ru.practicum.bank.accounts.dto.BalanceResponse;
 import ru.practicum.bank.accounts.dto.TransferBalanceRequest;
 import ru.practicum.bank.accounts.dto.TransferBalanceResponse;
-import ru.practicum.bank.accounts.model.Currency;
+import ru.practicum.bank.common.model.Currency;
 
 import java.math.BigDecimal;
 import java.util.function.Supplier;

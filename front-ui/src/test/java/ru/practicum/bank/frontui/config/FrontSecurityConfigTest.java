@@ -12,6 +12,7 @@ import ru.practicum.bank.frontui.client.GatewayClient;
 import ru.practicum.bank.frontui.web.MainPageController;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -38,7 +39,7 @@ class FrontSecurityConfigTest {
     void shouldRedirectAnonymousUserToOauth2Login() throws Exception {
         mockMvc.perform(get("/"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(header().string("Location", containsString("/oauth2/authorization/front-ui")));
+                .andExpect(header().string("Location", equalTo("/oauth2/authorization/front-ui")));
     }
 
     @Test

@@ -1,0 +1,60 @@
+apiVersion: v2
+name: bank
+description: Umbrella chart for the bank application
+type: application
+version: 0.1.0
+appVersion: "0.0.1-SNAPSHOT"
+dependencies:
+  - name: spring-service
+    alias: front-ui
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    condition: front-ui.enabled
+  - name: spring-service
+    alias: accounts-service
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    condition: accounts-service.enabled
+  - name: spring-service
+    alias: cash-service
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    condition: cash-service.enabled
+  - name: spring-service
+    alias: transfer-service
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    condition: transfer-service.enabled
+  - name: spring-service
+    alias: exchange-service
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    condition: exchange-service.enabled
+  - name: spring-service
+    alias: exchange-generator
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    condition: exchange-generator.enabled
+  - name: spring-service
+    alias: blocker-service
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    condition: blocker-service.enabled
+  - name: spring-service
+    alias: notifications-service
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    condition: notifications-service.enabled
+  - name: spring-service
+    alias: bank-gateway
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    condition: bank-gateway.enabled
+  - name: postgresql
+    version: 0.1.0
+    repository: file://../charts/postgresql
+    condition: postgresql.enabled
+  - name: keycloak
+    version: 0.1.0
+    repository: file://../charts/keycloak
+    condition: keycloak.enabled

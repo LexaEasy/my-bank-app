@@ -1,0 +1,7 @@
+fullnameOverride: transfer-service
+
+image:
+  repository: my-bank-transfer-service
+
+service:
+  port: 8083

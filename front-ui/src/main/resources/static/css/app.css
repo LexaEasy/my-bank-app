@@ -142,6 +142,40 @@ input:disabled {
     font-size: 24px;
 }
 
+.rates-table {
+    display: grid;
+    border: 1px solid #d8dee4;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.rates-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    min-height: 42px;
+    align-items: center;
+    gap: 12px;
+    padding: 0 14px;
+    border-top: 1px solid #e7ebef;
+}
+
+.rates-row:first-child {
+    border-top: 0;
+}
+
+.rates-head {
+    background: #f4f6f8;
+    color: #44545e;
+    font-size: 14px;
+}
+
+.empty-state {
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    color: #5c6b75;
+}
+
 .success {
     background: #e7f6ed;
     color: #126b3a;

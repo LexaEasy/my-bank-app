@@ -1,0 +1,6 @@
+apiVersion: v2
+name: postgresql
+description: PostgreSQL chart for the bank application
+type: application
+version: 0.1.0
+appVersion: "18"

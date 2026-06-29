@@ -1,0 +1,7 @@
+fullnameOverride: exchange-generator
+
+image:
+  repository: my-bank-exchange-generator
+
+service:
+  port: 8087

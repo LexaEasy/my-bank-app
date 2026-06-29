@@ -9,7 +9,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import ru.practicum.bank.accounts.dto.TransferBalanceRequest;
 import ru.practicum.bank.accounts.model.Account;
-import ru.practicum.bank.accounts.model.Currency;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.accounts.repository.AccountRepository;
 
 import java.math.BigDecimal;

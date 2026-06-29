@@ -13,6 +13,12 @@ public record TransferForm(
         BigDecimal amount,
 
         @NotBlank
-        String currency
+        String currency,
+
+        @NotBlank
+        String sourceCurrency
 ) {
+    public TransferForm(String recipientLogin, BigDecimal amount, String currency) {
+        this(recipientLogin, amount, currency, "RUB");
+    }
 }

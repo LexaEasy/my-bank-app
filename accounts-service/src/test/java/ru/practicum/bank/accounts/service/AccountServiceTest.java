@@ -7,7 +7,7 @@ import ru.practicum.bank.accounts.exception.AccountNotFoundException;
 import ru.practicum.bank.accounts.exception.InvalidBirthdateException;
 import ru.practicum.bank.accounts.mapper.AccountMapper;
 import ru.practicum.bank.accounts.model.Account;
-import ru.practicum.bank.accounts.model.Currency;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.accounts.repository.AccountRepository;
 
 import java.math.BigDecimal;

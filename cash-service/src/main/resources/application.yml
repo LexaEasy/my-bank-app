@@ -1,5 +1,39 @@
 spring:
   application:
     name: cash-service
-  config:
-    import: ${BANK_CONFIG_IMPORT:configserver:http://localhost:8888}
+  jackson:
+    default-property-inclusion: non_null
+  security:
+    oauth2:
+      client:
+        registration:
+          cash-service:
+            provider: keycloak
+            authorization-grant-type: client_credentials
+            client-id: cash-service
+            client-secret: ${CASH_SERVICE_CLIENT_SECRET:}
+        provider:
+          keycloak:
+            token-uri: ${BANK_KEYCLOAK_TOKEN_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/token}
+      resourceserver:
+        jwt:
+          issuer-uri: ${BANK_KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/bank-realm}
+          jwk-set-uri: ${BANK_KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs}
+
+bank:
+  services:
+    accounts:
+      base-url: ${BANK_ACCOUNTS_BASE_URL:http://accounts-service:8081}
+    notifications:
+      base-url: ${BANK_NOTIFICATIONS_BASE_URL:http://notifications-service:8084}
+    blocker:
+      base-url: ${BANK_BLOCKER_BASE_URL:http://blocker-service:8088}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+server:
+  port: 8082

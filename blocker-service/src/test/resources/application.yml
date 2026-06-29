@@ -1,0 +1,12 @@
+﻿spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/bank-realm
+          jwk-set-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
+
+bank:
+  blocker:
+    max-amount: 100000.00
+

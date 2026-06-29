@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import ru.practicum.bank.common.dto.exchange.ExchangeRateResponse;
 import ru.practicum.bank.frontui.client.GatewayClient;
 import ru.practicum.bank.frontui.client.GatewayClientException;
 import ru.practicum.bank.frontui.dto.AccountForm;
@@ -145,6 +146,7 @@ public class MainPageController {
             model.addAttribute("accountLoadError", exception.getMessage());
         }
         addDefaultCashForm(model);
+        addExchangeRates(model, authentication);
     }
 
     private void addAccountModel(Model model, AccountResponse account) {
@@ -172,6 +174,16 @@ public class MainPageController {
         }
     }
 
+    private void addExchangeRates(Model model, Authentication authentication) {
+        try {
+            List<ExchangeRateResponse> rates = gatewayClient.getExchangeRates(getAccessToken(authentication));
+            model.addAttribute("exchangeRates", rates);
+        } catch (GatewayClientException exception) {
+            model.addAttribute("exchangeRates", List.of());
+            model.addAttribute("exchangeRatesLoadError", exception.getMessage());
+        }
+    }
+
     private void addDefaultCashForm(Model model) {
         if (!model.containsAttribute("cashForm")) {
             model.addAttribute("cashForm", new CashForm(new BigDecimal("100.00"), "RUB"));
@@ -180,7 +192,9 @@ public class MainPageController {
 
     private void addDefaultTransferForm(Model model) {
         if (!model.containsAttribute("transferForm")) {
-            model.addAttribute("transferForm", new TransferForm("", new BigDecimal("100.00"), "RUB"));
+            Object accountCurrency = model.getAttribute("currency");
+            String sourceCurrency = accountCurrency == null ? "RUB" : accountCurrency.toString();
+            model.addAttribute("transferForm", new TransferForm("", new BigDecimal("100.00"), "RUB", sourceCurrency));
         }
     }
 

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import ru.practicum.bank.common.client.SimpleCircuitBreaker;
+import ru.practicum.bank.common.dto.exchange.ExchangeRateResponse;
 import ru.practicum.bank.frontui.dto.ApiErrorResponse;
 import ru.practicum.bank.frontui.dto.AccountForm;
 import ru.practicum.bank.frontui.dto.AccountResponse;
@@ -28,30 +29,48 @@ import java.util.List;
 @Component
 public class GatewayClient {
 
-    private final RestClient restClient;
+    private final RestClient accountsClient;
+    private final RestClient cashClient;
+    private final RestClient transferClient;
+    private final RestClient exchangeClient;
     private final SimpleCircuitBreaker circuitBreaker;
     private final ObjectMapper objectMapper;
 
     @Autowired
     public GatewayClient(
             RestClient.Builder restClientBuilder,
-            @Value("${bank.gateway.base-url}") String gatewayBaseUrl,
+            @Value("${bank.services.accounts.base-url}") String accountsBaseUrl,
+            @Value("${bank.services.cash.base-url}") String cashBaseUrl,
+            @Value("${bank.services.transfer.base-url}") String transferBaseUrl,
+            @Value("${bank.services.exchange.base-url}") String exchangeBaseUrl,
             ObjectMapper objectMapper
     ) {
-        this(restClientBuilder, gatewayBaseUrl, SimpleCircuitBreaker.withDefaults("bankGateway"), objectMapper);
+        this(
+                restClientBuilder,
+                accountsBaseUrl,
+                cashBaseUrl,
+                transferBaseUrl,
+                exchangeBaseUrl,
+                SimpleCircuitBreaker.withDefaults("bankServices"),
+                objectMapper
+        );
     }
 
     GatewayClient(
             RestClient.Builder restClientBuilder,
-            String gatewayBaseUrl,
+            String accountsBaseUrl,
+            String cashBaseUrl,
+            String transferBaseUrl,
+            String exchangeBaseUrl,
             SimpleCircuitBreaker circuitBreaker,
             ObjectMapper objectMapper
     ) {
         this.circuitBreaker = circuitBreaker;
         this.objectMapper = objectMapper;
-        this.restClient = restClientBuilder
-                .baseUrl(gatewayBaseUrl)
-                .build();
+        this.accountsClient = restClientBuilder.clone().baseUrl(accountsBaseUrl).build();
+        this.cashClient = restClientBuilder.clone().baseUrl(cashBaseUrl).build();
+        this.transferClient = restClientBuilder.clone().baseUrl(transferBaseUrl).build();
+        this.exchangeClient = restClientBuilder.clone().baseUrl(exchangeBaseUrl).build();
     }
 
     public TransferResponse transfer(String accessToken, TransferForm form) {
@@ -60,10 +79,15 @@ public class GatewayClient {
 
     private TransferResponse transferWithoutCircuitBreaker(String accessToken, TransferForm form) {
         try {
-            return restClient.post()
+            return transferClient.post()
                     .uri("/api/transfers")
                     .headers(headers -> headers.setBearerAuth(accessToken))
-                    .body(new TransferRequest(form.recipientLogin(), form.amount(), form.currency()))
+                    .body(new TransferRequest(
+                            form.recipientLogin(),
+                            form.amount(),
+                            form.sourceCurrency(),
+                            form.currency()
+                    ))
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, (request, response) -> handleError(response))
                     .body(TransferResponse.class);
@@ -76,9 +100,27 @@ public class GatewayClient {
         return runWithCircuitBreaker(() -> getAccountWithoutCircuitBreaker(accessToken));
     }
 
+    public List<ExchangeRateResponse> getExchangeRates(String accessToken) {
+        return runWithCircuitBreaker(() -> getExchangeRatesWithoutCircuitBreaker(accessToken));
+    }
+
+    private List<ExchangeRateResponse> getExchangeRatesWithoutCircuitBreaker(String accessToken) {
+        try {
+            ExchangeRateResponse[] rates = exchangeClient.get()
+                    .uri("/api/exchange/rates")
+                    .headers(headers -> headers.setBearerAuth(accessToken))
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, (request, response) -> handleError(response))
+                    .body(ExchangeRateResponse[].class);
+            return rates == null ? List.of() : Arrays.asList(rates);
+        } catch (RestClientException exception) {
+            throw new GatewayClientException("Gateway request failed", exception);
+        }
+    }
+
     private AccountResponse getAccountWithoutCircuitBreaker(String accessToken) {
         try {
-            return restClient.get()
+            return accountsClient.get()
                     .uri("/api/accounts/me")
                     .headers(headers -> headers.setBearerAuth(accessToken))
                     .retrieve()
@@ -95,7 +137,7 @@ public class GatewayClient {
 
     private AccountResponse updateAccountWithoutCircuitBreaker(String accessToken, AccountForm form) {
         try {
-            return restClient.put()
+            return accountsClient.put()
                     .uri("/api/accounts/me")
                     .headers(headers -> headers.setBearerAuth(accessToken))
                     .body(new UpdateAccountRequest(form.name(), form.birthdate()))
@@ -113,7 +155,7 @@ public class GatewayClient {
 
     private List<RecipientResponse> getRecipientsWithoutCircuitBreaker(String accessToken) {
         try {
-            RecipientResponse[] recipients = restClient.get()
+            RecipientResponse[] recipients = accountsClient.get()
                     .uri("/api/accounts/recipients")
                     .headers(headers -> headers.setBearerAuth(accessToken))
                     .retrieve()
@@ -139,7 +181,7 @@ public class GatewayClient {
 
     private CashOperationResponse cashOperationWithoutCircuitBreaker(String accessToken, String uri, CashForm form) {
         try {
-            return restClient.post()
+            return cashClient.post()
                     .uri(uri)
                     .headers(headers -> headers.setBearerAuth(accessToken))
                     .body(new CashOperationRequest(form.amount(), form.currency()))

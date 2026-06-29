@@ -12,3 +12,5 @@ out/
 !.env.example
 
 .gradle-cache/
+
+helm/bank/charts/*.tgz

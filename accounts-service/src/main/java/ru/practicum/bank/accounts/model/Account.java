@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import ru.practicum.bank.common.model.Currency;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

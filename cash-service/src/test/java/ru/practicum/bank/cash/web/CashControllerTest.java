@@ -9,9 +9,10 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import ru.practicum.bank.cash.exception.OperationBlockedException;
 import ru.practicum.bank.cash.dto.CashOperationRequest;
 import ru.practicum.bank.cash.dto.CashOperationResponse;
-import ru.practicum.bank.cash.model.Currency;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.cash.service.CashService;
 
 import java.math.BigDecimal;
@@ -59,6 +60,29 @@ class CashControllerTest {
     }
 
     @Test
+    void shouldAcceptUsdDepositRequest() throws Exception {
+        when(cashService.deposit("ivan", request("50.00", Currency.USD))).thenReturn(new CashOperationResponse(
+                new BigDecimal("1050.00"),
+                "USD",
+                "Счёт пополнен"
+        ));
+
+        mockMvc.perform(post("/api/cash/deposit")
+                        .principal(jwtAuthentication("ivan"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "amount": "50.00",
+                                  "currency": "USD"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currency").value("USD"));
+
+        verify(cashService).deposit("ivan", request("50.00", Currency.USD));
+    }
+
+    @Test
     void shouldWithdrawMoney() throws Exception {
         when(cashService.withdraw("ivan", request("100.00"))).thenReturn(new CashOperationResponse(
                 new BigDecimal("900.00"),
@@ -96,6 +120,25 @@ class CashControllerTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
+    @Test
+    void shouldReturnOperationBlockedError() throws Exception {
+        when(cashService.deposit("ivan", request("100000.01")))
+                .thenThrow(new OperationBlockedException("Operation amount exceeds blocker limit"));
+
+        mockMvc.perform(post("/api/cash/deposit")
+                        .principal(jwtAuthentication("ivan"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "amount": "100000.01",
+                                  "currency": "RUB"
+                                }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("OPERATION_BLOCKED"))
+                .andExpect(jsonPath("$.message").value("Operation amount exceeds blocker limit"));
+    }
+
     private JwtAuthenticationToken jwtAuthentication(String login) {
         var jwt = Jwt.withTokenValue("token")
                 .header("alg", "none")
@@ -107,6 +150,10 @@ class CashControllerTest {
     }
 
     private CashOperationRequest request(String amount) {
-        return new CashOperationRequest(new BigDecimal(amount), Currency.RUB);
+        return request(amount, Currency.RUB);
+    }
+
+    private CashOperationRequest request(String amount, Currency currency) {
+        return new CashOperationRequest(new BigDecimal(amount), currency);
     }
 }

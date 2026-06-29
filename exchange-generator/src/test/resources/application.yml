@@ -1,0 +1,21 @@
+﻿spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          exchange-generator:
+            provider: keycloak
+            authorization-grant-type: client_credentials
+            client-id: exchange-generator
+            client-secret: test-secret
+        provider:
+          keycloak:
+            token-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
+
+bank:
+  services:
+    exchange:
+      base-url: http://exchange-service:8086
+  exchange-generator:
+    fixed-delay-ms: 1000
+

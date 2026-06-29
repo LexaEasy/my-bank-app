@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: exchange-service
+  jackson:
+    default-property-inclusion: non_null
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${BANK_KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/bank-realm}
+          jwk-set-uri: ${BANK_KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+server:
+  port: 8086

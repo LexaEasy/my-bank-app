@@ -5,8 +5,6 @@ dependencies {
     implementation(libs.spring.boot.starter.thymeleaf)
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.web)
-    implementation(libs.spring.cloud.starter.config)
-    implementation(libs.spring.cloud.starter.netflix.eureka.client)
 
     testImplementation(libs.spring.security.test)
 }

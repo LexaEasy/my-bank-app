@@ -1,0 +1,20 @@
+replicaCount: 1
+
+image:
+  repository: ""
+  tag: local
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8080
+  type: ClusterIP
+
+env: {}
+secretEnv: []
+resources: {}
+
+test:
+  enabled: true
+  imageRepository: curlimages/curl
+  imageTag: "8.21.0"
+  imagePullPolicy: IfNotPresent

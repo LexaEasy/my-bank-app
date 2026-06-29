@@ -15,12 +15,13 @@ dependencyResolutionManagement {
 rootProject.name = "my-bank-app"
 
 include(
-    "config-server",
-    "discovery-server",
     "bank-gateway",
     "accounts-service",
     "cash-service",
     "transfer-service",
+    "exchange-service",
+    "exchange-generator",
+    "blocker-service",
     "notifications-service",
     "front-ui",
     "shared",

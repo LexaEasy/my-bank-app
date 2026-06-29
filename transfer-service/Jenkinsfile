@@ -1,0 +1,10 @@
+node {
+    checkout scm
+    load('ci/jenkins-service.groovy').runServicePipeline(
+        serviceName: 'transfer-service',
+        gradleModule: ':transfer-service',
+        chartPath: 'helm/charts/spring-service',
+        valuesPath: 'helm/values/services/transfer-service.yaml',
+        imageRepository: 'my-bank-transfer-service'
+    )
+}

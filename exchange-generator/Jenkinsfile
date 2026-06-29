@@ -1,0 +1,10 @@
+node {
+    checkout scm
+    load('ci/jenkins-service.groovy').runServicePipeline(
+        serviceName: 'exchange-generator',
+        gradleModule: ':exchange-generator',
+        chartPath: 'helm/charts/spring-service',
+        valuesPath: 'helm/values/services/exchange-generator.yaml',
+        imageRepository: 'my-bank-exchange-generator'
+    )
+}

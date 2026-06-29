@@ -1,0 +1,7 @@
+fullnameOverride: accounts-service
+
+image:
+  repository: my-bank-accounts-service
+
+service:
+  port: 8081

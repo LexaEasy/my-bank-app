@@ -8,6 +8,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -24,11 +25,15 @@ public class FrontSecurityConfig {
             HttpSecurity http,
             @Value("${bank.security.logout.end-session-uri}") URI endSessionUri
     ) throws Exception {
+        var loginEntryPoint = new LoginUrlAuthenticationEntryPoint("/oauth2/authorization/front-ui");
+        loginEntryPoint.setFavorRelativeUris(true);
+
         return http
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers("/css/**", "/actuator/health", "/actuator/info").permitAll()
                         .anyRequest().authenticated()
                 )
+                .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(loginEntryPoint))
                 .oauth2Login(oauth2 -> oauth2.defaultSuccessUrl("/", true))
                 .logout(logout -> logout
                         .logoutUrl("/logout")

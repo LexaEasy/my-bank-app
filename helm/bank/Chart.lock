@@ -1,0 +1,36 @@
+dependencies:
+- name: spring-service
+  repository: file://../charts/spring-service
+  version: 0.1.0
+- name: spring-service
+  repository: file://../charts/spring-service
+  version: 0.1.0
+- name: spring-service
+  repository: file://../charts/spring-service
+  version: 0.1.0
+- name: spring-service
+  repository: file://../charts/spring-service
+  version: 0.1.0
+- name: spring-service
+  repository: file://../charts/spring-service
+  version: 0.1.0
+- name: spring-service
+  repository: file://../charts/spring-service
+  version: 0.1.0
+- name: spring-service
+  repository: file://../charts/spring-service
+  version: 0.1.0
+- name: spring-service
+  repository: file://../charts/spring-service
+  version: 0.1.0
+- name: spring-service
+  repository: file://../charts/spring-service
+  version: 0.1.0
+- name: postgresql
+  repository: file://../charts/postgresql
+  version: 0.1.0
+- name: keycloak
+  repository: file://../charts/keycloak
+  version: 0.1.0
+digest: sha256:6473fe5e01ca6649f49d694a01182aaf6f01047a69072e25186522566dfa42e9
+generated: "2026-06-29T16:40:28.030743+03:00"

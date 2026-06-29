@@ -18,7 +18,6 @@ import ru.practicum.bank.accounts.exception.InvalidAmountScaleException;
 import ru.practicum.bank.accounts.exception.RecipientNotFoundException;
 import ru.practicum.bank.accounts.exception.SelfTransferForbiddenException;
 import ru.practicum.bank.accounts.model.Account;
-import ru.practicum.bank.accounts.model.Currency;
 import ru.practicum.bank.accounts.repository.AccountRepository;
 
 import java.math.BigDecimal;
@@ -65,13 +64,14 @@ public class BalanceOperationExecutor {
             throw new SelfTransferForbiddenException();
         }
         validateAmount(request.amount());
+        validateAmount(request.resolvedRecipientAmount());
 
         Account sender = findAccount(request.senderLogin());
         Account recipient = accountRepository.findByLogin(request.recipientLogin())
                 .orElseThrow(() -> new RecipientNotFoundException(request.recipientLogin()));
 
         withdraw(sender, request.amount());
-        recipient.setBalance(recipient.getBalance().add(request.amount()));
+        recipient.setBalance(recipient.getBalance().add(request.resolvedRecipientAmount()));
 
         saveInDeterministicOrder(sender, recipient);
 
@@ -79,7 +79,7 @@ public class BalanceOperationExecutor {
                 sender.getLogin(),
                 recipient.getLogin(),
                 sender.getBalance(),
-                Currency.RUB.name()
+                request.currency().name()
         );
     }
 

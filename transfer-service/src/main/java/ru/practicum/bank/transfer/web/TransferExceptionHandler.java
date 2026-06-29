@@ -6,11 +6,14 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.practicum.bank.transfer.client.AccountsClientException;
+import ru.practicum.bank.transfer.client.BlockerClientException;
+import ru.practicum.bank.transfer.client.ExchangeClientException;
 import ru.practicum.bank.transfer.client.NotificationsClientException;
 import ru.practicum.bank.transfer.dto.ApiErrorResponse;
 import ru.practicum.bank.transfer.exception.InvalidAmountException;
 import ru.practicum.bank.transfer.exception.InvalidAmountScaleException;
 import ru.practicum.bank.transfer.exception.MissingPreferredUsernameException;
+import ru.practicum.bank.transfer.exception.OperationBlockedException;
 import ru.practicum.bank.transfer.exception.SelfTransferForbiddenException;
 
 @RestControllerAdvice
@@ -32,6 +35,12 @@ public class TransferExceptionHandler {
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     public ApiErrorResponse handleSelfTransfer(SelfTransferForbiddenException exception) {
         return new ApiErrorResponse("SELF_TRANSFER_FORBIDDEN", exception.getMessage());
+    }
+
+    @ExceptionHandler(OperationBlockedException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    public ApiErrorResponse handleOperationBlocked(OperationBlockedException exception) {
+        return new ApiErrorResponse("OPERATION_BLOCKED", exception.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -56,5 +65,17 @@ public class TransferExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_GATEWAY)
     public ApiErrorResponse handleNotificationsClient(NotificationsClientException exception) {
         return new ApiErrorResponse("NOTIFICATIONS_SERVICE_UNAVAILABLE", exception.getMessage());
+    }
+
+    @ExceptionHandler(BlockerClientException.class)
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    public ApiErrorResponse handleBlockerClient(BlockerClientException exception) {
+        return new ApiErrorResponse("BLOCKER_SERVICE_UNAVAILABLE", exception.getMessage());
+    }
+
+    @ExceptionHandler(ExchangeClientException.class)
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    public ApiErrorResponse handleExchangeClient(ExchangeClientException exception) {
+        return new ApiErrorResponse("EXCHANGE_SERVICE_UNAVAILABLE", exception.getMessage());
     }
 }

@@ -1,7 +1,5 @@
-spring:
+﻿spring:
   cloud:
-    config:
-      enabled: false
     gateway:
       server:
         webflux:
@@ -13,30 +11,34 @@ spring:
               filters:
                 - SetStatus=404
             - id: accounts-service
-              uri: lb://accounts-service
+              uri: http://accounts-service:8081
               predicates:
                 - Path=/api/accounts/**
               filters:
                 - JwtTokenRelay
             - id: cash-service
-              uri: lb://cash-service
+              uri: http://cash-service:8082
               predicates:
                 - Path=/api/cash/**
               filters:
                 - JwtTokenRelay
             - id: transfer-service
-              uri: lb://transfer-service
+              uri: http://transfer-service:8083
               predicates:
                 - Path=/api/transfers
+              filters:
+                - JwtTokenRelay
+            - id: exchange-service
+              uri: http://exchange-service:8086
+              predicates:
+                - Path=/api/exchange/**
               filters:
                 - JwtTokenRelay
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8180/realms/bank-realm
-          jwk-set-uri: http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs
+          issuer-uri: http://keycloak:8080/realms/bank-realm
+          jwk-set-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
 
-eureka:
-  client:
-    enabled: false
+

@@ -8,7 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import ru.practicum.bank.common.client.SimpleCircuitBreaker;
-import ru.practicum.bank.cash.model.Currency;
+import ru.practicum.bank.common.model.Currency;
 
 import java.math.BigDecimal;
 

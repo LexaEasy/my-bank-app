@@ -1,0 +1,29 @@
+{{- if .Values.test.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "spring-service.fullname" . }}-smoke-test
+  labels:
+    {{- include "spring-service.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "spring-service.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: smoke-test
+          image: "{{ .Values.test.imageRepository }}:{{ .Values.test.imageTag }}"
+          imagePullPolicy: {{ .Values.test.imagePullPolicy }}
+          command:
+            - sh
+            - -ec
+            - |
+              code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 5 --max-time 10 http://{{ include "spring-service.fullname" . }}:{{ .Values.service.port }}/)"
+              test "$code" != "000"
+{{- end }}

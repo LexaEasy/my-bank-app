@@ -1,0 +1,7 @@
+fullnameOverride: cash-service
+
+image:
+  repository: my-bank-cash-service
+
+service:
+  port: 8082

@@ -8,27 +8,126 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import ru.practicum.bank.common.client.SimpleCircuitBreaker;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.frontui.dto.CashForm;
+import ru.practicum.bank.frontui.dto.TransferForm;
 
 import java.math.BigDecimal;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.ExpectedCount.once;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class GatewayClientTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
+    void shouldSendTransferTargetCurrency() {
+        var restClientBuilder = RestClient.builder();
+        var server = MockRestServiceServer.bindTo(restClientBuilder).build();
+        var client = new GatewayClient(
+                restClientBuilder,
+                "http://accounts-service:8081",
+                "http://cash-service:8082",
+                "http://transfer-service:8083",
+                "http://exchange-service:8086",
+                SimpleCircuitBreaker.withDefaults("bankServices"),
+                objectMapper
+        );
+
+        server.expect(once(), requestTo("http://transfer-service:8083/api/transfers"))
+                .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
+                .andExpect(content().json("""
+                        {
+                          "recipientLogin": "petr",
+                          "amount": 1.00,
+                          "currency": "RUB",
+                          "targetCurrency": "USD"
+                        }
+                        """))
+                .andRespond(withSuccess("""
+                        {
+                          "senderLogin": "ivan",
+                          "recipientLogin": "petr",
+                          "senderBalance": "908.50",
+                          "currency": "RUB",
+                          "message": "Transfer completed"
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        var response = client.transfer("user-token", new TransferForm(
+                "petr",
+                new BigDecimal("1.00"),
+                "USD",
+                "RUB"
+        ));
+
+        assertThat(response.senderBalance()).isEqualByComparingTo("908.50");
+        server.verify();
+    }
+
+    @Test
+    void shouldLoadExchangeRatesFromGateway() {
+        var restClientBuilder = RestClient.builder();
+        var server = MockRestServiceServer.bindTo(restClientBuilder).build();
+        var client = new GatewayClient(
+                restClientBuilder,
+                "http://accounts-service:8081",
+                "http://cash-service:8082",
+                "http://transfer-service:8083",
+                "http://exchange-service:8086",
+                SimpleCircuitBreaker.withDefaults("bankServices"),
+                objectMapper
+        );
+
+        server.expect(once(), requestTo("http://exchange-service:8086/api/exchange/rates"))
+                .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
+                .andRespond(withSuccess("""
+                        [
+                          {
+                            "currency": "RUB",
+                            "buyRate": "1.0000",
+                            "sellRate": "1.0000",
+                            "updatedAt": null
+                          },
+                          {
+                            "currency": "USD",
+                            "buyRate": "90.0000",
+                            "sellRate": "92.0000",
+                            "updatedAt": null
+                          }
+                        ]
+                        """, MediaType.APPLICATION_JSON));
+
+        var rates = client.getExchangeRates("user-token");
+
+        assertThat(rates).hasSize(2);
+        assertThat(rates.get(1).currency()).isEqualTo(Currency.USD);
+        assertThat(rates.get(1).buyRate()).isEqualByComparingTo("90.0000");
+        server.verify();
+    }
+
+    @Test
     void shouldShowGatewayErrorMessage() {
         var restClientBuilder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(restClientBuilder).build();
-        var client = new GatewayClient(restClientBuilder, "http://bank-gateway", objectMapper);
+        var client = new GatewayClient(
+                restClientBuilder,
+                "http://accounts-service:8081",
+                "http://cash-service:8082",
+                "http://transfer-service:8083",
+                "http://exchange-service:8086",
+                SimpleCircuitBreaker.withDefaults("bankServices"),
+                objectMapper
+        );
 
-        server.expect(once(), requestTo("http://bank-gateway/api/cash/withdraw"))
+        server.expect(once(), requestTo("http://cash-service:8082/api/cash/withdraw"))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
                 .andRespond(withStatus(HttpStatus.BAD_GATEWAY)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -51,8 +150,11 @@ class GatewayClientTest {
         var restClientBuilder = RestClient.builder();
         var client = new GatewayClient(
                 restClientBuilder,
-                "http://bank-gateway",
-                SimpleCircuitBreaker.opened("bankGateway"),
+                "http://accounts-service:8081",
+                "http://cash-service:8082",
+                "http://transfer-service:8083",
+                "http://exchange-service:8086",
+                SimpleCircuitBreaker.opened("bankServices"),
                 objectMapper
         );
 
