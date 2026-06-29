@@ -1,0 +1,48 @@
+{{- $global := default dict .Values.global -}}
+{{- $registry := default "" (get $global "imageRegistry") -}}
+{{- $tag := default .Values.image.tag (get $global "imageTag") -}}
+{{- $repository := required "image.repository is required" .Values.image.repository -}}
+{{- if $registry -}}
+{{- $repository = printf "%s/%s" (trimSuffix "/" $registry) $repository -}}
+{{- end -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "spring-service.fullname" . }}
+  labels:
+    {{- include "spring-service.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "spring-service.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        {{- include "spring-service.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "spring-service.fullname" . }}
+      containers:
+        - name: {{ include "spring-service.name" . }}
+          image: "{{ $repository }}:{{ $tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "spring-service.fullname" . }}
+          {{- with .Values.secretEnv }}
+          env:
+            {{- range . }}
+            - name: {{ .name }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .secretName }}
+                  key: {{ .key }}
+            {{- end }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

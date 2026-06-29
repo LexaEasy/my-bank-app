@@ -1,0 +1,18 @@
+{{- $global := default dict .Values.global -}}
+{{- $globalEnv := default dict (get $global "env") -}}
+{{- $serviceEnv := default dict .Values.env -}}
+{{- $env := mergeOverwrite (deepCopy $globalEnv) $serviceEnv -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "spring-service.fullname" . }}
+  labels:
+    {{- include "spring-service.labels" . | nindent 4 }}
+data:
+  {{- if $env }}
+  {{- range $key := keys $env | sortAlpha }}
+  {{ $key }}: {{ index $env $key | quote }}
+  {{- end }}
+  {{- else }}
+  {}
+  {{- end }}
