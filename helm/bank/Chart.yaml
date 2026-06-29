@@ -5,41 +5,50 @@ type: application
 version: 0.1.0
 appVersion: "0.0.1-SNAPSHOT"
 dependencies:
-  - name: front-ui
+  - name: spring-service
+    alias: front-ui
     version: 0.1.0
-    repository: file://../charts/front-ui
+    repository: file://../charts/spring-service
     condition: front-ui.enabled
-  - name: accounts-service
+  - name: spring-service
+    alias: accounts-service
     version: 0.1.0
-    repository: file://../charts/accounts-service
+    repository: file://../charts/spring-service
     condition: accounts-service.enabled
-  - name: cash-service
+  - name: spring-service
+    alias: cash-service
     version: 0.1.0
-    repository: file://../charts/cash-service
+    repository: file://../charts/spring-service
     condition: cash-service.enabled
-  - name: transfer-service
+  - name: spring-service
+    alias: transfer-service
     version: 0.1.0
-    repository: file://../charts/transfer-service
+    repository: file://../charts/spring-service
     condition: transfer-service.enabled
-  - name: exchange-service
+  - name: spring-service
+    alias: exchange-service
     version: 0.1.0
-    repository: file://../charts/exchange-service
+    repository: file://../charts/spring-service
     condition: exchange-service.enabled
-  - name: exchange-generator
+  - name: spring-service
+    alias: exchange-generator
     version: 0.1.0
-    repository: file://../charts/exchange-generator
+    repository: file://../charts/spring-service
     condition: exchange-generator.enabled
-  - name: blocker-service
+  - name: spring-service
+    alias: blocker-service
     version: 0.1.0
-    repository: file://../charts/blocker-service
+    repository: file://../charts/spring-service
     condition: blocker-service.enabled
-  - name: notifications-service
+  - name: spring-service
+    alias: notifications-service
     version: 0.1.0
-    repository: file://../charts/notifications-service
+    repository: file://../charts/spring-service
     condition: notifications-service.enabled
-  - name: bank-gateway
+  - name: spring-service
+    alias: bank-gateway
     version: 0.1.0
-    repository: file://../charts/bank-gateway
+    repository: file://../charts/spring-service
     condition: bank-gateway.enabled
   - name: postgresql
     version: 0.1.0

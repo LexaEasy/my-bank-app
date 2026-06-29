@@ -1,30 +1,30 @@
 dependencies:
-- name: front-ui
-  repository: file://../charts/front-ui
+- name: spring-service
+  repository: file://../charts/spring-service
   version: 0.1.0
-- name: accounts-service
-  repository: file://../charts/accounts-service
+- name: spring-service
+  repository: file://../charts/spring-service
   version: 0.1.0
-- name: cash-service
-  repository: file://../charts/cash-service
+- name: spring-service
+  repository: file://../charts/spring-service
   version: 0.1.0
-- name: transfer-service
-  repository: file://../charts/transfer-service
+- name: spring-service
+  repository: file://../charts/spring-service
   version: 0.1.0
-- name: exchange-service
-  repository: file://../charts/exchange-service
+- name: spring-service
+  repository: file://../charts/spring-service
   version: 0.1.0
-- name: exchange-generator
-  repository: file://../charts/exchange-generator
+- name: spring-service
+  repository: file://../charts/spring-service
   version: 0.1.0
-- name: blocker-service
-  repository: file://../charts/blocker-service
+- name: spring-service
+  repository: file://../charts/spring-service
   version: 0.1.0
-- name: notifications-service
-  repository: file://../charts/notifications-service
+- name: spring-service
+  repository: file://../charts/spring-service
   version: 0.1.0
-- name: bank-gateway
-  repository: file://../charts/bank-gateway
+- name: spring-service
+  repository: file://../charts/spring-service
   version: 0.1.0
 - name: postgresql
   repository: file://../charts/postgresql
@@ -32,5 +32,5 @@ dependencies:
 - name: keycloak
   repository: file://../charts/keycloak
   version: 0.1.0
-digest: sha256:413bddc79019ea191786e14fe6d86100938458180c875452f4baa0c4c5372a1d
-generated: "2026-06-28T08:24:56.780428+03:00"
+digest: sha256:6473fe5e01ca6649f49d694a01182aaf6f01047a69072e25186522566dfa42e9
+generated: "2026-06-29T16:40:28.030743+03:00"

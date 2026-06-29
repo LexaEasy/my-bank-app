@@ -27,6 +27,10 @@ gatewayApi:
 front-ui:
   enabled: true
   fullnameOverride: front-ui
+  image:
+    repository: my-bank-front-ui
+  service:
+    port: 8085
   env:
     BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
     BANK_CASH_BASE_URL: http://cash-service:8082
@@ -45,6 +49,10 @@ front-ui:
 accounts-service:
   enabled: true
   fullnameOverride: accounts-service
+  image:
+    repository: my-bank-accounts-service
+  service:
+    port: 8081
   env:
     SERVER_PORT: "8081"
     SPRING_DATASOURCE_URL: jdbc:postgresql://postgresql:5432/bank
@@ -59,6 +67,10 @@ accounts-service:
 cash-service:
   enabled: true
   fullnameOverride: cash-service
+  image:
+    repository: my-bank-cash-service
+  service:
+    port: 8082
   env:
     BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
     BANK_BLOCKER_BASE_URL: http://blocker-service:8088
@@ -72,6 +84,10 @@ cash-service:
 transfer-service:
   enabled: true
   fullnameOverride: transfer-service
+  image:
+    repository: my-bank-transfer-service
+  service:
+    port: 8083
   env:
     BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
     BANK_BLOCKER_BASE_URL: http://blocker-service:8088
@@ -86,12 +102,20 @@ transfer-service:
 exchange-service:
   enabled: true
   fullnameOverride: exchange-service
+  image:
+    repository: my-bank-exchange-service
+  service:
+    port: 8086
   env:
     SERVER_PORT: "8086"
 
 exchange-generator:
   enabled: true
   fullnameOverride: exchange-generator
+  image:
+    repository: my-bank-exchange-generator
+  service:
+    port: 8087
   env:
     BANK_EXCHANGE_GENERATOR_FIXED_DELAY_MS: "1000"
     BANK_EXCHANGE_BASE_URL: http://exchange-service:8086
@@ -104,6 +128,10 @@ exchange-generator:
 blocker-service:
   enabled: true
   fullnameOverride: blocker-service
+  image:
+    repository: my-bank-blocker-service
+  service:
+    port: 8088
   env:
     BANK_BLOCKER_MAX_AMOUNT: "100000.00"
     SERVER_PORT: "8088"
@@ -111,12 +139,20 @@ blocker-service:
 notifications-service:
   enabled: true
   fullnameOverride: notifications-service
+  image:
+    repository: my-bank-notifications-service
+  service:
+    port: 8084
   env:
     SERVER_PORT: "8084"
 
 bank-gateway:
   enabled: false
   fullnameOverride: bank-gateway
+  image:
+    repository: my-bank-gateway
+  service:
+    port: 8080
   env:
     SERVER_PORT: "8080"
     SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_FILTERS_0: SetStatus=404
