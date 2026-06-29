@@ -1,0 +1,7 @@
+fullnameOverride: exchange-service
+
+image:
+  repository: my-bank-exchange-service
+
+service:
+  port: 8086

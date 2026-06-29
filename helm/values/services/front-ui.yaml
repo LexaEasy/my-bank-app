@@ -1,0 +1,7 @@
+fullnameOverride: front-ui
+
+image:
+  repository: my-bank-front-ui
+
+service:
+  port: 8085

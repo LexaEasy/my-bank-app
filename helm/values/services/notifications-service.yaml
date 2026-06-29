@@ -1,0 +1,7 @@
+fullnameOverride: notifications-service
+
+image:
+  repository: my-bank-notifications-service
+
+service:
+  port: 8084

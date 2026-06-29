@@ -3,7 +3,8 @@ node {
     load('ci/jenkins-service.groovy').runServicePipeline(
         serviceName: 'blocker-service',
         gradleModule: ':blocker-service',
-        chartPath: 'helm/charts/blocker-service',
+        chartPath: 'helm/charts/spring-service',
+        valuesPath: 'helm/values/services/blocker-service.yaml',
         imageRepository: 'my-bank-blocker-service'
     )
 }

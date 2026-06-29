@@ -1,0 +1,7 @@
+fullnameOverride: blocker-service
+
+image:
+  repository: my-bank-blocker-service
+
+service:
+  port: 8088

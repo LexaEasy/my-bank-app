@@ -15,7 +15,7 @@ def gradle(String args) {
 
 def deployService(Map service, String namespace, String imageRepository, String imageTag) {
     withCredentials([file(credentialsId: 'bank-kubeconfig', variable: 'KUBECONFIG')]) {
-        def command = "helm upgrade --install ${service.serviceName} ${service.chartPath} --namespace ${namespace} --create-namespace --rollback-on-failure --timeout 5m --set image.repository=${imageRepository} --set image.tag=${imageTag}"
+        def command = "helm upgrade --install ${service.serviceName} ${service.chartPath} --namespace ${namespace} --create-namespace --rollback-on-failure --timeout 5m -f ${service.valuesPath} --set image.repository=${imageRepository} --set image.tag=${imageTag}"
         runCommand(
             "${command} --dry-run=client"
         )
@@ -73,8 +73,8 @@ def runServicePipeline(Map service) {
     }
 
     stage('Helm lint and template') {
-        runCommand("helm lint ${service.chartPath}")
-        runCommand("helm template ${service.serviceName} ${service.chartPath} --namespace test --set image.repository=${imageRepository} --set image.tag=${imageTag}")
+        runCommand("helm lint ${service.chartPath} -f ${service.valuesPath}")
+        runCommand("helm template ${service.serviceName} ${service.chartPath} --namespace test -f ${service.valuesPath} --set image.repository=${imageRepository} --set image.tag=${imageTag}")
     }
 
     stage('Deploy test') {

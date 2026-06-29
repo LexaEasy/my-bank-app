@@ -3,7 +3,8 @@ node {
     load('ci/jenkins-service.groovy').runServicePipeline(
         serviceName: 'front-ui',
         gradleModule: ':front-ui',
-        chartPath: 'helm/charts/front-ui',
+        chartPath: 'helm/charts/spring-service',
+        valuesPath: 'helm/values/services/front-ui.yaml',
         imageRepository: 'my-bank-front-ui'
     )
 }
