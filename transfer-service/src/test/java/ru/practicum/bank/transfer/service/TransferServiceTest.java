@@ -6,11 +6,13 @@ import ru.practicum.bank.common.dto.blocker.OperationCheckRequest;
 import ru.practicum.bank.common.dto.blocker.OperationCheckResponse;
 import ru.practicum.bank.common.dto.exchange.ConversionResponse;
 import ru.practicum.bank.common.model.OperationType;
+import ru.practicum.bank.common.notification.NotificationEvent;
+import ru.practicum.bank.common.notification.NotificationEventPublisher;
+import ru.practicum.bank.common.notification.NotificationSource;
+import ru.practicum.bank.common.notification.NotificationType;
 import ru.practicum.bank.transfer.client.AccountsClientException;
 import ru.practicum.bank.transfer.client.BlockerClient;
 import ru.practicum.bank.transfer.client.ExchangeClient;
-import ru.practicum.bank.transfer.client.NotificationRequest;
-import ru.practicum.bank.transfer.client.NotificationsClient;
 import ru.practicum.bank.transfer.dto.TransferRequest;
 import ru.practicum.bank.transfer.exception.InvalidAmountException;
 import ru.practicum.bank.transfer.exception.InvalidAmountScaleException;
@@ -19,7 +21,9 @@ import ru.practicum.bank.transfer.exception.SelfTransferForbiddenException;
 import ru.practicum.bank.common.model.Currency;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -27,6 +31,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -35,12 +40,14 @@ class TransferServiceTest {
     private final TransferExecutor transferExecutor = mock(TransferExecutor.class);
     private final BlockerClient blockerClient = mock(BlockerClient.class);
     private final ExchangeClient exchangeClient = mock(ExchangeClient.class);
-    private final NotificationsClient notificationsClient = mock(NotificationsClient.class);
+    private final NotificationEventPublisher notificationEventPublisher = mock(NotificationEventPublisher.class);
+    private final Clock clock = Clock.fixed(Instant.parse("2026-06-30T05:00:00Z"), ZoneOffset.UTC);
     private final TransferService transferService = new TransferService(
             transferExecutor,
             blockerClient,
             exchangeClient,
-            notificationsClient
+            notificationEventPublisher,
+            clock
     );
 
     @Test
@@ -79,12 +86,30 @@ class TransferServiceTest {
         assertThat(blockerCaptor.getValue().recipient()).isEqualTo("olga");
         verify(exchangeClient, never()).convert(any(), any(), any());
 
-        var notificationCaptor = ArgumentCaptor.forClass(NotificationRequest.class);
-        verify(notificationsClient).notify(notificationCaptor.capture());
-        assertThat(notificationCaptor.getValue().recipientLogin()).isEqualTo("ivan");
-        assertThat(notificationCaptor.getValue().type()).isEqualTo("TRANSFER_COMPLETED");
-        assertThat(notificationCaptor.getValue().message()).isEqualTo("Transfer completed to olga: 200.00 RUB");
-        assertThat(notificationCaptor.getValue().operationId()).isEqualTo(captor.getValue().operationId());
+        var notificationCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(notificationEventPublisher, times(2)).publish(notificationCaptor.capture());
+        var notifications = notificationCaptor.getAllValues();
+        var outgoing = notifications.get(0);
+        var incoming = notifications.get(1);
+
+        assertThat(outgoing.eventId()).isNotEqualTo(incoming.eventId());
+        assertThat(outgoing.operationId()).isEqualTo(incoming.operationId());
+        assertThat(outgoing.operationId().toString()).isEqualTo(captor.getValue().operationId());
+        assertThat(outgoing.source()).isEqualTo(NotificationSource.TRANSFER);
+        assertThat(outgoing.type()).isEqualTo(NotificationType.TRANSFER_OUTGOING);
+        assertThat(outgoing.recipientLogin()).isEqualTo("ivan");
+        assertThat(outgoing.message()).isEqualTo("Перевод пользователю olga: 200.00 RUB");
+        assertThat(outgoing.occurredAt()).isEqualTo(clock.instant());
+        assertThat(outgoing.amount()).isEqualByComparingTo("200.00");
+        assertThat(outgoing.currency()).isEqualTo(Currency.RUB);
+
+        assertThat(incoming.source()).isEqualTo(NotificationSource.TRANSFER);
+        assertThat(incoming.type()).isEqualTo(NotificationType.TRANSFER_INCOMING);
+        assertThat(incoming.recipientLogin()).isEqualTo("olga");
+        assertThat(incoming.message()).isEqualTo("Получен перевод от ivan: 200.00 RUB");
+        assertThat(incoming.occurredAt()).isEqualTo(clock.instant());
+        assertThat(incoming.amount()).isEqualByComparingTo("200.00");
+        assertThat(incoming.currency()).isEqualTo(Currency.RUB);
     }
 
     @Test
@@ -120,20 +145,23 @@ class TransferServiceTest {
         assertThat(captor.getValue().recipientAmount()).isEqualByComparingTo("741.94");
         assertThat(captor.getValue().recipientCurrency()).isEqualTo(Currency.CNY);
 
-        var notificationCaptor = ArgumentCaptor.forClass(NotificationRequest.class);
-        verify(notificationsClient).notify(notificationCaptor.capture());
-        assertThat(notificationCaptor.getValue().message())
-                .isEqualTo("Transfer completed to olga: 100.00 USD -> 741.94 CNY");
+        var notificationCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(notificationEventPublisher, times(2)).publish(notificationCaptor.capture());
+        var notifications = notificationCaptor.getAllValues();
+        assertThat(notifications.get(0).amount()).isEqualByComparingTo("100.00");
+        assertThat(notifications.get(0).currency()).isEqualTo(Currency.USD);
+        assertThat(notifications.get(1).amount()).isEqualByComparingTo("741.94");
+        assertThat(notifications.get(1).currency()).isEqualTo(Currency.CNY);
     }
 
     @Test
-    void shouldNotNotifyWhenAccountsTransferFails() {
+    void shouldNotPublishEventsWhenAccountsTransferFails() {
         when(blockerClient.check(any())).thenReturn(new OperationCheckResponse(true, null));
         when(transferExecutor.execute(any())).thenThrow(new AccountsClientException("Accounts service request failed"));
 
         assertThatThrownBy(() -> transferService.transfer("ivan", request("olga", "200.00")))
                 .isInstanceOf(AccountsClientException.class);
-        verify(notificationsClient, never()).notify(any());
+        verify(notificationEventPublisher, never()).publish(any());
     }
 
     @Test
@@ -147,7 +175,7 @@ class TransferServiceTest {
 
         verify(exchangeClient, never()).convert(any(), any(), any());
         verify(transferExecutor, never()).execute(any());
-        verify(notificationsClient, never()).notify(any());
+        verify(notificationEventPublisher, never()).publish(any());
     }
 
     @Test
@@ -174,7 +202,7 @@ class TransferServiceTest {
         verify(blockerClient, never()).check(any());
         verify(exchangeClient, never()).convert(any(), any(), any());
         verify(transferExecutor, never()).execute(any());
-        verify(notificationsClient, never()).notify(any());
+        verify(notificationEventPublisher, never()).publish(any());
     }
 
     @Test
@@ -184,7 +212,7 @@ class TransferServiceTest {
         verify(blockerClient, never()).check(any());
         verify(exchangeClient, never()).convert(any(), any(), any());
         verify(transferExecutor, never()).execute(any());
-        verify(notificationsClient, never()).notify(any());
+        verify(notificationEventPublisher, never()).publish(any());
     }
 
     @Test
@@ -194,7 +222,7 @@ class TransferServiceTest {
         verify(blockerClient, never()).check(any());
         verify(exchangeClient, never()).convert(any(), any(), any());
         verify(transferExecutor, never()).execute(any());
-        verify(notificationsClient, never()).notify(any());
+        verify(notificationEventPublisher, never()).publish(any());
     }
 
     private TransferRequest request(String recipientLogin, String amount) {
