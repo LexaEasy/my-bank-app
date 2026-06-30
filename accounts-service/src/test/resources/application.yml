@@ -6,6 +6,8 @@
   jpa:
     hibernate:
       ddl-auto: validate
+  kafka:
+    bootstrap-servers: localhost:9092
   security:
     oauth2:
       resourceserver:
@@ -13,4 +15,6 @@
           issuer-uri: http://keycloak:8080/realms/bank-realm
           jwk-set-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
 
-
+bank:
+  kafka:
+    notifications-topic: bank.notifications

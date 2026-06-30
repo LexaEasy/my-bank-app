@@ -1,4 +1,6 @@
 ﻿spring:
+  kafka:
+    bootstrap-servers: localhost:9092
   security:
     oauth2:
       client:
@@ -17,6 +19,8 @@
           jwk-set-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
 
 bank:
+  kafka:
+    notifications-topic: bank.notifications
   services:
     accounts:
       base-url: http://accounts-service:8081

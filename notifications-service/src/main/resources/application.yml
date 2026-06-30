@@ -3,12 +3,21 @@ spring:
     name: notifications-service
   jackson:
     default-property-inclusion: non_null
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${SPRING_KAFKA_CONSUMER_GROUP_ID:bank-notifications}
   security:
     oauth2:
       resourceserver:
         jwt:
           issuer-uri: ${BANK_KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/bank-realm}
           jwk-set-uri: ${BANK_KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs}
+
+bank:
+  kafka:
+    notifications-topic: ${BANK_KAFKA_NOTIFICATIONS_TOPIC:bank.notifications}
+    notifications-dlt-topic: ${BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC:bank.notifications.dlt}
 
 management:
   endpoints:

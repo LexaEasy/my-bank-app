@@ -3,6 +3,8 @@ spring:
     name: cash-service
   jackson:
     default-property-inclusion: non_null
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
   security:
     oauth2:
       client:
@@ -21,6 +23,8 @@ spring:
           jwk-set-uri: ${BANK_KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs}
 
 bank:
+  kafka:
+    notifications-topic: ${BANK_KAFKA_NOTIFICATIONS_TOPIC:bank.notifications}
   services:
     accounts:
       base-url: ${BANK_ACCOUNTS_BASE_URL:http://accounts-service:8081}

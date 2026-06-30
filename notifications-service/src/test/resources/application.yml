@@ -1,4 +1,8 @@
 ﻿spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: bank-notifications
   security:
     oauth2:
       resourceserver:
@@ -6,4 +10,7 @@
           issuer-uri: http://keycloak:8080/realms/bank-realm
           jwk-set-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
 
-
+bank:
+  kafka:
+    notifications-topic: bank.notifications
+    notifications-dlt-topic: bank.notifications.dlt
