@@ -16,12 +16,14 @@ dependencies {
     implementation(libs.spring.retry)
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.kafka)
 
     runtimeOnly(libs.flyway.database.postgresql)
     runtimeOnly(libs.postgresql)
     "contractTestImplementation"(libs.spring.boot.starter.test)
     "contractTestImplementation"(libs.spring.cloud.starter.contract.verifier)
     "contractTestImplementation"(libs.spring.security.test)
+    testImplementation(libs.spring.kafka.test)
     testImplementation(libs.spring.security.test)
     testRuntimeOnly(libs.h2)
 }
