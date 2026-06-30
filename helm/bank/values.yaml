@@ -91,7 +91,6 @@ transfer-service:
     BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
     BANK_BLOCKER_BASE_URL: http://blocker-service:8088
     BANK_EXCHANGE_BASE_URL: http://exchange-service:8086
-    BANK_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
     SERVER_PORT: "8083"
   secretEnv:
     - name: TRANSFER_SERVICE_CLIENT_SECRET

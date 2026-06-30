@@ -202,8 +202,6 @@ services:
         condition: service_healthy
       exchange-service:
         condition: service_healthy
-      notifications-service:
-        condition: service_healthy
       kafka:
         condition: service_healthy
     healthcheck:
