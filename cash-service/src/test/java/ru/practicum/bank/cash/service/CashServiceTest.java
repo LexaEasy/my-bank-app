@@ -7,8 +7,6 @@ import ru.practicum.bank.cash.client.AccountsBalanceResponse;
 import ru.practicum.bank.cash.client.AccountsClient;
 import ru.practicum.bank.cash.client.AccountsClientException;
 import ru.practicum.bank.cash.client.BlockerClient;
-import ru.practicum.bank.cash.client.NotificationRequest;
-import ru.practicum.bank.cash.client.NotificationsClient;
 import ru.practicum.bank.cash.dto.CashOperationRequest;
 import ru.practicum.bank.cash.exception.InvalidAmountException;
 import ru.practicum.bank.cash.exception.InvalidAmountScaleException;
@@ -17,8 +15,15 @@ import ru.practicum.bank.common.dto.blocker.OperationCheckRequest;
 import ru.practicum.bank.common.dto.blocker.OperationCheckResponse;
 import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.common.model.OperationType;
+import ru.practicum.bank.common.notification.NotificationEvent;
+import ru.practicum.bank.common.notification.NotificationEventPublisher;
+import ru.practicum.bank.common.notification.NotificationSource;
+import ru.practicum.bank.common.notification.NotificationType;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -33,8 +38,10 @@ class CashServiceTest {
 
     private final AccountsClient accountsClient = mock(AccountsClient.class);
     private final BlockerClient blockerClient = mock(BlockerClient.class);
-    private final NotificationsClient notificationsClient = mock(NotificationsClient.class);
-    private final CashService cashService = new CashService(accountsClient, blockerClient, notificationsClient);
+    private final NotificationEventPublisher notificationEventPublisher = mock(NotificationEventPublisher.class);
+    private final Clock clock = Clock.fixed(Instant.parse("2026-06-30T05:00:00Z"), ZoneOffset.UTC);
+    private final CashService cashService =
+            new CashService(accountsClient, blockerClient, notificationEventPublisher, clock);
 
     @Test
     void shouldDepositMoneyThroughAccountsService() {
@@ -65,12 +72,17 @@ class CashServiceTest {
         assertThat(blockerCaptor.getValue().login()).isEqualTo("ivan");
         assertThat(blockerCaptor.getValue().amount()).isEqualByComparingTo(new BigDecimal("250.00"));
 
-        var notificationCaptor = ArgumentCaptor.forClass(NotificationRequest.class);
-        verify(notificationsClient).notify(notificationCaptor.capture());
+        var notificationCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(notificationEventPublisher).publish(notificationCaptor.capture());
+        assertThat(notificationCaptor.getValue().eventId()).isNotNull();
         assertThat(notificationCaptor.getValue().recipientLogin()).isEqualTo("ivan");
-        assertThat(notificationCaptor.getValue().type()).isEqualTo("CASH_DEPOSIT");
+        assertThat(notificationCaptor.getValue().source()).isEqualTo(NotificationSource.CASH);
+        assertThat(notificationCaptor.getValue().type()).isEqualTo(NotificationType.CASH_DEPOSITED);
         assertThat(notificationCaptor.getValue().message()).isEqualTo("Счёт пополнен на 250.00 RUB");
-        assertThat(notificationCaptor.getValue().operationId()).isEqualTo(captor.getValue().operationId());
+        assertThat(notificationCaptor.getValue().operationId().toString()).isEqualTo(captor.getValue().operationId());
+        assertThat(notificationCaptor.getValue().occurredAt()).isEqualTo(clock.instant());
+        assertThat(notificationCaptor.getValue().amount()).isEqualByComparingTo(new BigDecimal("250.00"));
+        assertThat(notificationCaptor.getValue().currency()).isEqualTo(Currency.RUB);
     }
 
     @Test
@@ -94,22 +106,39 @@ class CashServiceTest {
         assertThat(blockerCaptor.getValue().operationId()).isEqualTo(accountsCaptor.getValue().operationId());
         assertThat(blockerCaptor.getValue().operationType()).isEqualTo(OperationType.WITHDRAW);
 
-        var notificationCaptor = ArgumentCaptor.forClass(NotificationRequest.class);
-        verify(notificationsClient).notify(notificationCaptor.capture());
+        var notificationCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(notificationEventPublisher).publish(notificationCaptor.capture());
+        assertThat(notificationCaptor.getValue().eventId()).isNotNull();
         assertThat(notificationCaptor.getValue().recipientLogin()).isEqualTo("ivan");
-        assertThat(notificationCaptor.getValue().type()).isEqualTo("CASH_WITHDRAW");
+        assertThat(notificationCaptor.getValue().source()).isEqualTo(NotificationSource.CASH);
+        assertThat(notificationCaptor.getValue().type()).isEqualTo(NotificationType.CASH_WITHDRAWN);
         assertThat(notificationCaptor.getValue().message()).isEqualTo("Со счёта снято 100.00 RUB");
-        assertThat(notificationCaptor.getValue().operationId()).isEqualTo(accountsCaptor.getValue().operationId());
+        assertThat(notificationCaptor.getValue().operationId().toString())
+                .isEqualTo(accountsCaptor.getValue().operationId());
+        assertThat(notificationCaptor.getValue().occurredAt()).isEqualTo(clock.instant());
+        assertThat(notificationCaptor.getValue().amount()).isEqualByComparingTo(new BigDecimal("100.00"));
+        assertThat(notificationCaptor.getValue().currency()).isEqualTo(Currency.RUB);
     }
 
     @Test
-    void shouldNotNotifyWhenAccountsDepositFails() {
+    void shouldNotPublishEventWhenAccountsDepositFails() {
         when(blockerClient.check(any())).thenReturn(new OperationCheckResponse(true, null));
         when(accountsClient.deposit(any())).thenThrow(new AccountsClientException("Accounts service request failed"));
 
         assertThatThrownBy(() -> cashService.deposit("ivan", request("250.00")))
                 .isInstanceOf(AccountsClientException.class);
-        verify(notificationsClient, never()).notify(any());
+        verify(notificationEventPublisher, never()).publish(any());
+    }
+
+    @Test
+    void shouldNotPublishEventWhenAccountsWithdrawFails() {
+        when(blockerClient.check(any())).thenReturn(new OperationCheckResponse(true, null));
+        when(accountsClient.withdraw(any()))
+                .thenThrow(new AccountsClientException("Accounts service request failed"));
+
+        assertThatThrownBy(() -> cashService.withdraw("ivan", request("100.00")))
+                .isInstanceOf(AccountsClientException.class);
+        verify(notificationEventPublisher, never()).publish(any());
     }
 
     @Test
@@ -123,7 +152,7 @@ class CashServiceTest {
 
         verify(accountsClient, never()).deposit(any());
         verify(accountsClient, never()).withdraw(any());
-        verify(notificationsClient, never()).notify(any());
+        verify(notificationEventPublisher, never()).publish(any());
     }
 
     @Test
@@ -148,7 +177,7 @@ class CashServiceTest {
                 .isInstanceOf(InvalidAmountException.class);
         verify(blockerClient, never()).check(any());
         verify(accountsClient, never()).deposit(any());
-        verify(notificationsClient, never()).notify(any());
+        verify(notificationEventPublisher, never()).publish(any());
     }
 
     @Test
@@ -157,7 +186,7 @@ class CashServiceTest {
                 .isInstanceOf(InvalidAmountScaleException.class);
         verify(blockerClient, never()).check(any());
         verify(accountsClient, never()).deposit(any());
-        verify(notificationsClient, never()).notify(any());
+        verify(notificationEventPublisher, never()).publish(any());
     }
 
     private CashOperationRequest request(String amount) {
