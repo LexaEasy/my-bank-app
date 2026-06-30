@@ -74,7 +74,6 @@ cash-service:
   env:
     BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
     BANK_BLOCKER_BASE_URL: http://blocker-service:8088
-    BANK_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
     SERVER_PORT: "8082"
   secretEnv:
     - name: CASH_SERVICE_CLIENT_SECRET

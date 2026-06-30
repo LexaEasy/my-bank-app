@@ -34,8 +34,6 @@ bank:
   services:
     accounts:
       base-url: http://accounts-service:8081
-    notifications:
-      base-url: http://notifications-service:8084
     blocker:
       base-url: http://blocker-service:8088
 
