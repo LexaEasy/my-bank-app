@@ -47,6 +47,30 @@ my-bank-app/
 
 Контрактные проверки лежат рядом с сервисами-поставщиками и потребителями в `src/contractTest`. Internal API `accounts-service` используется только межсервисно и не должен публиковаться через Gateway.
 
+## Kafka и уведомления
+
+Kafka используется как асинхронная граница между банковскими сервисами и `notifications-service`. `accounts-service`, `cash-service` и `transfer-service` публикуют события после успешных операций, а `notifications-service` читает их и записывает уведомления в application log. REST-вызовов Notifications и OAuth-клиента Notifications нет.
+
+Основные параметры:
+
+- основной топик — `bank.notifications`, 3 partition;
+- consumer group — `bank-notifications`;
+- dead letter topic — `bank.notifications.dlt`, 3 partition, retention 7 дней;
+- message key — `recipientLogin`, поэтому события одного получателя сохраняют порядок внутри partition;
+- Kafka работает в single-node combined KRaft-режиме без ZooKeeper;
+- автоматическое создание топиков отключено, топики объявляются через Spring `KafkaAdmin`.
+
+При временной ошибке consumer выполняет ровно три попытки: первая обработка и два повтора с интервалом 1 секунда (`FixedBackOff(1000L, 2L)`). После исчерпания попыток событие отправляется в DLT. Невалидный JSON и ошибки валидации отправляются в DLT без повторов.
+
+Offset исходного события фиксируется только после успешной обработки либо успешной публикации в DLT. Если публикация в DLT завершилась ошибкой, offset не фиксируется. Поэтому consumer реализует обработку **at least once**: событие может быть обработано повторно после сбоя, а consumer должен безопасно принимать дубликаты.
+
+Бизнес-транзакция и Kafka send не являются одной атомарной операцией. Сначала фиксируется изменение банковских данных, затем отправляется событие. Окончательная ошибка producer:
+
+- не откатывает успешную банковскую операцию;
+- не заменяет успешный HTTP-ответ ошибкой Kafka;
+- регистрируется обработчиком ошибки;
+- может привести к потере уведомления, поскольку Transactional Outbox намеренно не реализован.
+
 ## Данные
 
 PostgreSQL используется как единая локальная инсталляция с отдельной схемой для данных аккаунтов:
@@ -140,7 +164,27 @@ Dockerfile каждого приложения содержит встроенн
 ```powershell
 docker compose logs -f front-ui
 docker compose logs -f accounts-service
+docker compose logs -f kafka
+docker compose logs -f notifications-service
 ```
+
+Посмотреть топики, consumer group и содержимое DLT:
+
+```powershell
+docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list
+docker compose exec kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka:9092 --group bank-notifications --describe
+docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:9092 --topic bank.notifications.dlt --from-beginning
+```
+
+Проверка persistence Kafka:
+
+```powershell
+docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --describe --topic bank.notifications
+docker compose restart kafka
+docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --describe --topic bank.notifications
+```
+
+После перезапуска топик и offsets должны сохраниться в именованном volume `kafka-data`. Команда `docker compose down --volumes` намеренно удаляет эти данные.
 
 Остановить контейнеры без удаления образов:
 
@@ -159,7 +203,7 @@ docker compose down --volumes
 Для запуска из IDE сначала подними платформенные сервисы:
 
 ```powershell
-docker compose up -d postgres keycloak
+docker compose up -d postgres keycloak kafka
 ```
 
 После этого можно запускать приложения обычными Spring Boot run configurations. Удобный порядок:
@@ -177,7 +221,7 @@ docker compose up -d postgres keycloak
 
 ## Запуск через Gradle
 
-Тесты всех модулей:
+Unit- и integration-тесты всех модулей, включая `@EmbeddedKafka` в KRaft-режиме:
 
 ```powershell
 .\gradlew.bat --no-daemon --console=plain test
@@ -188,6 +232,14 @@ docker compose up -d postgres keycloak
 ```powershell
 .\gradlew.bat --no-daemon --console=plain :accounts-service:contractTest :cash-service:contractTest :transfer-service:contractTest :exchange-service:contractTest :blocker-service:contractTest :notifications-service:contractTest
 ```
+
+Полная команда, используемая umbrella CI:
+
+```powershell
+.\gradlew.bat --no-daemon --console=plain test contractTest
+```
+
+Integration-тесты Kafka не требуют Docker или Testcontainers: broker запускается внутри JVM через Spring Kafka Test.
 
 Сборка JAR всех приложений:
 
@@ -247,10 +299,31 @@ kubectl get gatewayclass nginx
 
 ```powershell
 helm dependency update helm/bank
-helm lint helm/bank
+helm lint helm/bank -f helm/bank/values-dev.yaml
 helm template bank helm/bank --namespace dev -f helm/bank/values-dev.yaml
 helm upgrade --install bank helm/bank --namespace dev --create-namespace -f helm/bank/values-dev.yaml --rollback-on-failure --timeout 5m
 ```
+
+Kafka разворачивается локальным Helm-сабчартом `helm/charts/kafka` как StatefulSet с PVC. Значение `kafka.clusterId` постоянно для каждого окружения и не должно меняться при повторной установке поверх существующего PVC.
+
+Просмотр состояния и логов:
+
+```powershell
+kubectl get statefulset,pod,pvc -n dev -l app.kubernetes.io/name=kafka
+kubectl logs -n dev statefulset/kafka -f
+kubectl logs -n dev deployment/notifications-service -f
+```
+
+Проверка persistence в Kubernetes:
+
+```powershell
+kubectl get pvc -n dev kafka-data
+kubectl delete pod -n dev kafka-0
+kubectl wait --for=condition=Ready pod/kafka-0 -n dev --timeout=180s
+kubectl exec -n dev kafka-0 -- /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --describe --topic bank.notifications
+```
+
+Проверка `at least once`: выполнить успешную банковскую операцию, дождаться обработки события, перезапустить `notifications-service` и убедиться, что подтверждённая запись не обработана повторно. Затем остановить Notifications, выполнить ещё одну операцию, запустить Notifications и убедиться, что накопленное событие обработано. При аварии до фиксации offset допустима повторная доставка одного события.
 
 Helm smoke tests:
 
@@ -267,7 +340,7 @@ helm upgrade --install bank helm/bank --namespace prod --create-namespace -f hel
 
 ## Jenkins CI/CD
 
-В репозитории есть root `Jenkinsfile` для umbrella pipeline и Jenkinsfile рядом с каждым микросервисом. Pipeline покрывает validate, test, `bootJar`, Docker build, image push, Helm lint/template, deploy в `test`, ручное подтверждение и deploy в `prod`.
+В репозитории есть root `Jenkinsfile` для umbrella pipeline и Jenkinsfile рядом с каждым микросервисом. Pipeline покрывает validate, unit/integration/contract tests, `bootJar` и Helm lint/template. Docker build, image push и deploy отключены по умолчанию и выполняются только при явном включении соответствующих параметров.
 
 Ожидаемые Jenkins credentials:
 
@@ -278,6 +351,7 @@ helm upgrade --install bank helm/bank --namespace prod --create-namespace -f hel
 
 - `IMAGE_REGISTRY` - registry namespace, например `registry.example.com/my-bank`;
 - `IMAGE_TAG` - тег образов, пустое значение использует `BUILD_NUMBER`;
+- `BUILD_IMAGES` - собрать Docker images;
 - `PUSH_IMAGES` - отправлять собранные образы в registry;
 - `DEPLOY_TEST` - выполнить deploy umbrella chart в namespace `test`;
 - `DEPLOY_PROD` - после ручного подтверждения выполнить deploy в namespace `prod`.
@@ -302,15 +376,25 @@ docker compose up -d --wait
 6. Перевести `150.00` пользователю `petr`, ожидать баланс `1000.00`.
 7. Попробовать снять `999999.00`, ожидать ошибку недостатка средств.
 8. Проверить, что в логах `notifications-service` появились уведомления по успешным операциям.
+9. Повторить одну из успешных операций после перезапуска `notifications-service` и проверить, что consumer продолжил работу с сохранённого offset.
 
 ## Ограничения спринта
 
-В рамках текущего спринта осознанно не реализуются без отдельного решения ревьюера или наставника:
+В рамках Sprint 11 намеренно не реализуются:
 
-- полноценный Circuit Breaker;
-- Transactional Outbox;
-- production-grade Kubernetes-эксплуатация;
-- Kafka, JMS или отдельная шина данных;
-- production-grade мониторинг, аудит и централизованная аналитика логов.
+- ELK или другое централизованное хранение и анализ логов;
+- новые health checks и production-grade monitoring;
+- аудит, distributed tracing, Prometheus или Grafana;
+- Kafka Exactly Once Semantics и сквозная гарантия между PostgreSQL commit и Kafka send;
+- глобальный порядок сообщений и multi-node Kafka;
+- ZooKeeper, внешний Gateway/Ingress для Kafka и REST fallback Notifications;
+- OAuth Client Credentials Flow только ради Notifications;
+- Transactional Outbox, CDC, Schema Registry и in-memory background retry;
+- Testcontainers для Kafka integration tests;
+- создание топиков через Helm hook или только ручной командой;
+- переработка бизнес-правил валют, blocker и балансовых операций;
+- удаление REST-вызовов, не относящихся к Notifications;
+- хранение credentials в Compose, Helm values, Java config или README;
+- изменение истории Git и push без явного подтверждения.
 
-В клиентских модулях используется простая локальная защита от недоступности зависимых сервисов (`SimpleCircuitBreaker`) как учебное ограничение. Полноценный Circuit Breaker на базе отдельной библиотеки и Transactional Outbox не внедряются в этом спринте без отдельного подтверждения ревьюера или наставника.
+Существующие actuator и health checks предыдущего спринта сохраняются, но не расширяются. В клиентских модулях остаётся учебная локальная защита `SimpleCircuitBreaker`; полноценный Circuit Breaker и Transactional Outbox требуют отдельного решения.
