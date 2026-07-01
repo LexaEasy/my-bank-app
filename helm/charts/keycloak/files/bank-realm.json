@@ -18,8 +18,7 @@
       { "name": "CASH_WRITE", "description": "Permission to perform cash operations" },
       { "name": "TRANSFER_WRITE", "description": "Permission to perform transfers" },
       { "name": "SERVICE", "description": "Generic service role for microservices" },
-      { "name": "ACCOUNTS_INTERNAL", "description": "Permission to call internal accounts API" },
-      { "name": "NOTIFICATIONS_WRITE", "description": "Permission to create notifications" }
+      { "name": "ACCOUNTS_INTERNAL", "description": "Permission to call internal accounts API" }
     ]
   },
   "clients": [
@@ -73,16 +72,6 @@
       "serviceAccountsEnabled": true
     },
     {
-      "clientId": "notifications-service",
-      "name": "Notifications Service",
-      "protocol": "openid-connect",
-      "publicClient": false,
-      "secret": "__NOTIFICATIONS_SERVICE_CLIENT_SECRET__",
-      "standardFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": true
-    },
-    {
       "clientId": "exchange-generator",
       "name": "Exchange Generator",
       "protocol": "openid-connect",
@@ -131,25 +120,19 @@
       "username": "service-account-cash-service",
       "enabled": true,
       "serviceAccountClientId": "cash-service",
-      "realmRoles": ["SERVICE", "ACCOUNTS_INTERNAL", "NOTIFICATIONS_WRITE"]
+      "realmRoles": ["SERVICE", "ACCOUNTS_INTERNAL"]
     },
     {
       "username": "service-account-transfer-service",
       "enabled": true,
       "serviceAccountClientId": "transfer-service",
-      "realmRoles": ["SERVICE", "ACCOUNTS_INTERNAL", "NOTIFICATIONS_WRITE"]
+      "realmRoles": ["SERVICE", "ACCOUNTS_INTERNAL"]
     },
     {
       "username": "service-account-accounts-service",
       "enabled": true,
       "serviceAccountClientId": "accounts-service",
-      "realmRoles": ["SERVICE", "NOTIFICATIONS_WRITE"]
-    },
-    {
-      "username": "service-account-notifications-service",
-      "enabled": true,
-      "serviceAccountClientId": "notifications-service",
-      "realmRoles": ["SERVICE", "NOTIFICATIONS_WRITE"]
+      "realmRoles": ["SERVICE"]
     },
     {
       "username": "service-account-exchange-generator",

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,6 +33,7 @@ class KeycloakRealmSecurityTest {
                 .isEqualTo("${TRANSFER_SERVICE_CLIENT_SECRET}");
         assertThat(client(realm, "exchange-generator").get("secret").asText())
                 .isEqualTo("${EXCHANGE_GENERATOR_CLIENT_SECRET}");
+        assertThat(hasClient(realm, "notifications-service")).isFalse();
     }
 
     @Test
@@ -39,11 +41,15 @@ class KeycloakRealmSecurityTest {
         JsonNode realm = objectMapper.readTree(Path.of("../keycloak/realms/bank-realm.json").toFile());
 
         assertThat(realmRoles(user(realm, "service-account-cash-service")))
-                .contains("SERVICE", "ACCOUNTS_INTERNAL", "NOTIFICATIONS_WRITE");
+                .contains("SERVICE", "ACCOUNTS_INTERNAL")
+                .doesNotContain("NOTIFICATIONS_WRITE");
         assertThat(realmRoles(user(realm, "service-account-transfer-service")))
-                .contains("SERVICE", "ACCOUNTS_INTERNAL", "NOTIFICATIONS_WRITE");
-        assertThat(realmRoles(user(realm, "service-account-notifications-service")))
-                .contains("SERVICE", "NOTIFICATIONS_WRITE");
+                .contains("SERVICE", "ACCOUNTS_INTERNAL")
+                .doesNotContain("NOTIFICATIONS_WRITE");
+        assertThat(realmRoles(user(realm, "service-account-accounts-service")))
+                .contains("SERVICE")
+                .doesNotContain("NOTIFICATIONS_WRITE");
+        assertThat(hasUser(realm, "service-account-notifications-service")).isFalse();
         assertThat(realmRoles(user(realm, "service-account-exchange-generator")))
                 .contains("SERVICE");
     }
@@ -62,9 +68,19 @@ class KeycloakRealmSecurityTest {
                 .orElseThrow();
     }
 
-    private Iterable<String> realmRoles(JsonNode user) {
+    private boolean hasClient(JsonNode realm, String clientId) {
+        return StreamSupport.stream(realm.get("clients").spliterator(), false)
+                .anyMatch(client -> clientId.equals(client.get("clientId").asText()));
+    }
+
+    private boolean hasUser(JsonNode realm, String username) {
+        return StreamSupport.stream(realm.get("users").spliterator(), false)
+                .anyMatch(user -> username.equals(user.get("username").asText()));
+    }
+
+    private List<String> realmRoles(JsonNode user) {
         return StreamSupport.stream(user.get("realmRoles").spliterator(), false)
                 .map(JsonNode::asText)
-                ::iterator;
+                .toList();
     }
 }
