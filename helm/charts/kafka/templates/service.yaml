@@ -7,10 +7,15 @@ metadata:
     {{- include "kafka.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
+  publishNotReadyAddresses: true
   ports:
     - name: broker
       port: {{ .Values.service.brokerPort }}
       targetPort: broker
+      protocol: TCP
+    - name: controller
+      port: {{ .Values.service.controllerPort }}
+      targetPort: controller
       protocol: TCP
   selector:
     {{- include "kafka.selectorLabels" . | nindent 4 }}
