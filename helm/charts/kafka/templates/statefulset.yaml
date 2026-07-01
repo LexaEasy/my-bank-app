@@ -1,0 +1,79 @@
+{{- if .Values.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "kafka.fullname" . }}
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "kafka.fullname" . }}-headless
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "kafka.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kafka.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: kafka
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: broker
+              containerPort: {{ .Values.service.brokerPort }}
+            - name: controller
+              containerPort: {{ .Values.service.controllerPort }}
+          env:
+            - name: CLUSTER_ID
+              value: {{ required "clusterId is required" .Values.clusterId | quote }}
+            - name: KAFKA_NODE_ID
+              value: {{ .Values.kRaft.nodeId | quote }}
+            - name: KAFKA_PROCESS_ROLES
+              value: {{ .Values.kRaft.processRoles | quote }}
+            - name: KAFKA_LISTENERS
+              value: {{ .Values.kRaft.listeners | quote }}
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: {{ .Values.kRaft.advertisedListeners | quote }}
+            - name: KAFKA_CONTROLLER_LISTENER_NAMES
+              value: {{ .Values.kRaft.controllerListenerNames | quote }}
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: {{ .Values.kRaft.listenerSecurityProtocolMap | quote }}
+            - name: KAFKA_INTER_BROKER_LISTENER_NAME
+              value: {{ .Values.kRaft.interBrokerListenerName | quote }}
+            - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+              value: {{ .Values.kRaft.controllerQuorumVoters | quote }}
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: {{ .Values.kRaft.offsetsTopicReplicationFactor | quote }}
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: {{ .Values.kRaft.transactionStateLogReplicationFactor | quote }}
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: {{ .Values.kRaft.transactionStateLogMinIsr | quote }}
+            - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
+              value: {{ .Values.kRaft.groupInitialRebalanceDelayMs | quote }}
+            - name: KAFKA_NUM_PARTITIONS
+              value: {{ .Values.kRaft.numPartitions | quote }}
+            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+              value: {{ .Values.kRaft.autoCreateTopicsEnable | quote }}
+            - name: KAFKA_LOG_DIRS
+              value: {{ .Values.kRaft.logDirs | quote }}
+          readinessProbe:
+            tcpSocket:
+              port: broker
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/kafka/data
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "kafka.fullname" . }}-data
+{{- end }}

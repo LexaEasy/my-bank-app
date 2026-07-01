@@ -1,0 +1,37 @@
+enabled: true
+replicaCount: 1
+
+image:
+  repository: apache/kafka
+  tag: "4.3.1"
+  pullPolicy: IfNotPresent
+
+clusterId: ""
+
+service:
+  brokerPort: 9092
+  controllerPort: 9093
+
+kRaft:
+  nodeId: 1
+  processRoles: broker,controller
+  listeners: PLAINTEXT://:9092,CONTROLLER://:9093
+  advertisedListeners: PLAINTEXT://kafka:9092
+  controllerListenerNames: CONTROLLER
+  listenerSecurityProtocolMap: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+  interBrokerListenerName: PLAINTEXT
+  controllerQuorumVoters: 1@kafka:9093
+  offsetsTopicReplicationFactor: 1
+  transactionStateLogReplicationFactor: 1
+  transactionStateLogMinIsr: 1
+  groupInitialRebalanceDelayMs: 0
+  numPartitions: 3
+  autoCreateTopicsEnable: false
+  logDirs: /var/lib/kafka/data
+
+persistence:
+  accessMode: ReadWriteOnce
+  size: 2Gi
+  storageClass: ""
+
+resources: {}
