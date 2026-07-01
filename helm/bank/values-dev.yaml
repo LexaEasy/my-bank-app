@@ -1,3 +1,6 @@
 global:
   namespace: dev
   imageTag: dev
+
+kafka:
+  clusterId: PMhRLbHTjJwfXr-gB_MhyQ

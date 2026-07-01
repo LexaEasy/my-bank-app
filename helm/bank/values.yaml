@@ -55,6 +55,8 @@ accounts-service:
     port: 8081
   env:
     SERVER_PORT: "8081"
+    SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    BANK_KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
     SPRING_DATASOURCE_URL: jdbc:postgresql://postgresql:5432/bank
     SPRING_DATASOURCE_USERNAME: postgres
     SPRING_JPA_HIBERNATE_DDLAUTO: validate
@@ -74,7 +76,9 @@ cash-service:
   env:
     BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
     BANK_BLOCKER_BASE_URL: http://blocker-service:8088
+    BANK_KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
     SERVER_PORT: "8082"
+    SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
   secretEnv:
     - name: CASH_SERVICE_CLIENT_SECRET
       secretName: bank-service-credentials
@@ -91,7 +95,9 @@ transfer-service:
     BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
     BANK_BLOCKER_BASE_URL: http://blocker-service:8088
     BANK_EXCHANGE_BASE_URL: http://exchange-service:8086
+    BANK_KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
     SERVER_PORT: "8083"
+    SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
   secretEnv:
     - name: TRANSFER_SERVICE_CLIENT_SECRET
       secretName: bank-service-credentials
@@ -142,7 +148,11 @@ notifications-service:
   service:
     port: 8084
   env:
+    BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC: bank.notifications.dlt
+    BANK_KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
     SERVER_PORT: "8084"
+    SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    SPRING_KAFKA_CONSUMER_GROUP_ID: bank-notifications
 
 bank-gateway:
   enabled: false
@@ -188,3 +198,10 @@ keycloak:
       value: "false"
   realmImport:
     frontUiPublicUrl: http://localhost
+
+kafka:
+  enabled: true
+  fullnameOverride: kafka
+  persistence:
+    size: 2Gi
+    storageClass: ""

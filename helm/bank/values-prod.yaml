@@ -10,6 +10,9 @@ gatewayApi:
   listener:
     hostname: bank.example.local
 
+kafka:
+  clusterId: tHpujkPZ0YlgcfpZjXG-vQ
+
 front-ui:
   env:
     BANK_KEYCLOAK_AUTHORIZATION_URI: https://bank.example.local/realms/bank-realm/protocol/openid-connect/auth
