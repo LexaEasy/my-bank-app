@@ -1,4 +1,6 @@
 ﻿spring:
+  main:
+    web-application-type: none
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
@@ -14,13 +16,6 @@
         spring.json.trusted.packages: ru.practicum.bank.common.notification
     listener:
       ack-mode: record
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://keycloak:8080/realms/bank-realm
-          jwk-set-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
-
 bank:
   kafka:
     notifications-topic: bank.notifications

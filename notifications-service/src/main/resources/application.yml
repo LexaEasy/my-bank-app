@@ -1,6 +1,8 @@
 spring:
   application:
     name: notifications-service
+  main:
+    web-application-type: none
   jackson:
     default-property-inclusion: non_null
   kafka:
@@ -18,23 +20,7 @@ spring:
         spring.json.trusted.packages: ru.practicum.bank.common.notification
     listener:
       ack-mode: record
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${BANK_KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/bank-realm}
-          jwk-set-uri: ${BANK_KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs}
-
 bank:
   kafka:
     notifications-topic: ${BANK_KAFKA_NOTIFICATIONS_TOPIC:bank.notifications}
     notifications-dlt-topic: ${BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC:bank.notifications.dlt}
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-
-server:
-  port: 8084

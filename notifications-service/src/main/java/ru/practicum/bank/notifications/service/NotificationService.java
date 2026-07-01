@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ru.practicum.bank.common.notification.NotificationEvent;
-import ru.practicum.bank.notifications.dto.NotificationRequest;
 
 @Service
 public class NotificationService {
@@ -23,13 +22,4 @@ public class NotificationService {
         );
     }
 
-    public void notify(NotificationRequest request) {
-        log.info(
-                "Notification accepted: recipientLogin={}, type={}, operationId={}, message={}",
-                request.recipientLogin(),
-                request.type(),
-                request.operationId(),
-                request.message()
-        );
-    }
 }

@@ -107,17 +107,12 @@ services:
     image: my-bank-notifications-service:local
     restart: unless-stopped
     environment:
-      <<: [*resource-server-env, *kafka-producer-env]
+      <<: *kafka-producer-env
       BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC: bank.notifications.dlt
       SPRING_KAFKA_CONSUMER_GROUP_ID: bank-notifications
     depends_on:
-      keycloak:
-        condition: service_healthy
       kafka:
         condition: service_healthy
-    healthcheck:
-      <<: *app-health
-      test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/8084'"]
     networks: [bank-network]
 
   exchange-service:
