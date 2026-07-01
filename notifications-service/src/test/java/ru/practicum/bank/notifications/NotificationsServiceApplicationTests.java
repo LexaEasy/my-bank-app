@@ -24,6 +24,12 @@ class NotificationsServiceApplicationTests {
                 .isEqualTo("localhost:9092");
         assertThat(environment.getProperty("spring.kafka.consumer.group-id"))
                 .isEqualTo("bank-notifications");
+        assertThat(environment.getProperty("spring.kafka.consumer.enable-auto-commit"))
+                .isEqualTo("false");
+        assertThat(environment.getProperty("spring.kafka.consumer.auto-offset-reset"))
+                .isEqualTo("earliest");
+        assertThat(environment.getProperty("spring.kafka.listener.ack-mode"))
+                .isEqualTo("record");
         assertThat(environment.getProperty("bank.kafka.notifications-topic"))
                 .isEqualTo("bank.notifications");
         assertThat(environment.getProperty("bank.kafka.notifications-dlt-topic"))
