@@ -1,4 +1,4 @@
-{{- if .Values.test.enabled }}
+{{- if and .Values.test.enabled .Values.service.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:

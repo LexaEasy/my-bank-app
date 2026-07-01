@@ -149,7 +149,10 @@ notifications-service:
   image:
     repository: my-bank-notifications-service
   service:
+    enabled: false
     port: 8084
+  test:
+    enabled: false
   env:
     BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC: bank.notifications.dlt
     BANK_KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
