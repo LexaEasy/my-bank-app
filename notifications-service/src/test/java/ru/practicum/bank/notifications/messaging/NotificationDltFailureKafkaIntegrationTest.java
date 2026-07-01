@@ -20,7 +20,10 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest(properties = "spring.kafka.consumer.group-id=" + KafkaIntegrationTestSupport.GROUP_ID)
+@SpringBootTest(properties = {
+        "spring.kafka.admin.fail-fast=true",
+        "spring.kafka.consumer.group-id=" + KafkaIntegrationTestSupport.GROUP_ID
+})
 @EmbeddedKafka(
         kraft = true,
         partitions = 3,

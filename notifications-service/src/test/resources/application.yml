@@ -2,6 +2,8 @@
   main:
     web-application-type: none
   kafka:
+    admin:
+      fail-fast: false
     bootstrap-servers: localhost:9092
     consumer:
       group-id: bank-notifications

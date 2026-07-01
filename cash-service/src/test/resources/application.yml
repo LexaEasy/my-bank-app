@@ -1,5 +1,7 @@
 ﻿spring:
   kafka:
+    admin:
+      fail-fast: false
     bootstrap-servers: localhost:9092
     producer:
       acks: all
@@ -30,6 +32,7 @@
 
 bank:
   kafka:
+    notifications-dlt-topic: bank.notifications.dlt
     notifications-topic: bank.notifications
   services:
     accounts:
