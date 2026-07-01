@@ -56,6 +56,7 @@ accounts-service:
   env:
     SERVER_PORT: "8081"
     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC: bank.notifications.dlt
     BANK_KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
     SPRING_DATASOURCE_URL: jdbc:postgresql://postgresql:5432/bank
     SPRING_DATASOURCE_USERNAME: postgres
@@ -76,6 +77,7 @@ cash-service:
   env:
     BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
     BANK_BLOCKER_BASE_URL: http://blocker-service:8088
+    BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC: bank.notifications.dlt
     BANK_KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
     SERVER_PORT: "8082"
     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -95,6 +97,7 @@ transfer-service:
     BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
     BANK_BLOCKER_BASE_URL: http://blocker-service:8088
     BANK_EXCHANGE_BASE_URL: http://exchange-service:8086
+    BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC: bank.notifications.dlt
     BANK_KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
     SERVER_PORT: "8083"
     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092

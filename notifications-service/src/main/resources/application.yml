@@ -6,6 +6,8 @@ spring:
   jackson:
     default-property-inclusion: non_null
   kafka:
+    admin:
+      fail-fast: true
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: ${SPRING_KAFKA_CONSUMER_GROUP_ID:bank-notifications}

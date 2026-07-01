@@ -8,11 +8,10 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.config.TopicBuilder;
-import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.DelegatingByTypeSerializer;
@@ -20,6 +19,7 @@ import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.util.backoff.FixedBackOff;
 import ru.practicum.bank.common.notification.NotificationEvent;
+import ru.practicum.bank.common.notification.NotificationTopicsConfiguration;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,18 +30,8 @@ import static org.apache.kafka.clients.producer.ProducerConfig.DELIVERY_TIMEOUT_
 import static org.apache.kafka.clients.producer.ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG;
 
 @Configuration
+@Import(NotificationTopicsConfiguration.class)
 public class KafkaConsumerConfiguration {
-
-    @Bean
-    KafkaAdmin.NewTopics notificationTopics(
-            @Value("${bank.kafka.notifications-topic}") String notificationsTopic,
-            @Value("${bank.kafka.notifications-dlt-topic}") String dltTopic
-    ) {
-        return new KafkaAdmin.NewTopics(
-                TopicBuilder.name(notificationsTopic).partitions(3).replicas(1).build(),
-                TopicBuilder.name(dltTopic).partitions(3).replicas(1).build()
-        );
-    }
 
     @Bean
     ProducerFactory<Object, Object> dltProducerFactory(

@@ -11,6 +11,8 @@ spring:
       ddl-auto: validate
     open-in-view: false
   kafka:
+    admin:
+      fail-fast: true
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       acks: all
@@ -31,6 +33,7 @@ spring:
 
 bank:
   kafka:
+    notifications-dlt-topic: ${BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC:bank.notifications.dlt}
     notifications-topic: ${BANK_KAFKA_NOTIFICATIONS_TOPIC:bank.notifications}
 
 management:
