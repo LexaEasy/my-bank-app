@@ -28,7 +28,8 @@ def runServicePipeline(Map service) {
         parameters([
             string(name: 'IMAGE_REGISTRY', defaultValue: 'registry.example.com/my-bank', description: 'Container registry namespace'),
             string(name: 'IMAGE_TAG', defaultValue: '', description: 'Image tag. Empty value uses Jenkins BUILD_NUMBER.'),
-            booleanParam(name: 'PUSH_IMAGE', defaultValue: true, description: 'Push image to registry'),
+            booleanParam(name: 'BUILD_IMAGE', defaultValue: false, description: 'Build image using Docker'),
+            booleanParam(name: 'PUSH_IMAGE', defaultValue: false, description: 'Build and push image to registry'),
             booleanParam(name: 'DEPLOY_TEST', defaultValue: false, description: 'Deploy chart to test namespace'),
             booleanParam(name: 'DEPLOY_PROD', defaultValue: false, description: 'Deploy chart to prod namespace after manual approval')
         ])
@@ -43,7 +44,7 @@ def runServicePipeline(Map service) {
         gradle("${service.gradleModule}:compileJava ${service.gradleModule}:processResources")
     }
 
-    stage('Test') {
+    stage('Java tests (Embedded Kafka, no Docker)') {
         gradle("${service.gradleModule}:test")
         if (fileExists("${service.serviceName}/src/contractTest")) {
             gradle("${service.gradleModule}:contractTest")
@@ -55,7 +56,11 @@ def runServicePipeline(Map service) {
     }
 
     stage('Docker build') {
-        runCommand("docker build --build-arg JAR_FILE=build/libs/*.jar -t ${image} ${service.serviceName}")
+        if (params.BUILD_IMAGE || params.PUSH_IMAGE) {
+            runCommand("docker build --build-arg JAR_FILE=build/libs/*.jar -t ${image} ${service.serviceName}")
+        } else {
+            echo 'Docker build skipped by parameter.'
+        }
     }
 
     stage('Image push') {

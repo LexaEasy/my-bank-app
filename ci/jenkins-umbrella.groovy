@@ -40,7 +40,8 @@ def runUmbrellaPipeline() {
         parameters([
             string(name: 'IMAGE_REGISTRY', defaultValue: 'registry.example.com/my-bank', description: 'Container registry namespace'),
             string(name: 'IMAGE_TAG', defaultValue: '', description: 'Image tag. Empty value uses Jenkins BUILD_NUMBER.'),
-            booleanParam(name: 'PUSH_IMAGES', defaultValue: true, description: 'Push all images to registry'),
+            booleanParam(name: 'BUILD_IMAGES', defaultValue: false, description: 'Build all images using Docker'),
+            booleanParam(name: 'PUSH_IMAGES', defaultValue: false, description: 'Build and push all images to registry'),
             booleanParam(name: 'DEPLOY_TEST', defaultValue: false, description: 'Deploy umbrella chart to test namespace'),
             booleanParam(name: 'DEPLOY_PROD', defaultValue: false, description: 'Deploy umbrella chart to prod namespace after manual approval')
         ])
@@ -53,8 +54,8 @@ def runUmbrellaPipeline() {
         gradle('projects')
     }
 
-    stage('Test') {
-        gradle('test')
+    stage('Java tests (Embedded Kafka, no Docker)') {
+        gradle('test contractTest')
     }
 
     stage('bootJar') {
@@ -62,8 +63,12 @@ def runUmbrellaPipeline() {
     }
 
     stage('Docker build') {
-        services.each { service ->
-            runCommand("docker build --build-arg JAR_FILE=build/libs/*.jar -t ${params.IMAGE_REGISTRY}/${service.image}:${imageTag} ${service.name}")
+        if (params.BUILD_IMAGES || params.PUSH_IMAGES) {
+            services.each { service ->
+                runCommand("docker build --build-arg JAR_FILE=build/libs/*.jar -t ${params.IMAGE_REGISTRY}/${service.image}:${imageTag} ${service.name}")
+            }
+        } else {
+            echo 'Docker builds skipped by parameter.'
         }
     }
 
@@ -85,7 +90,7 @@ def runUmbrellaPipeline() {
 
     stage('Helm lint and template') {
         runCommand('helm dependency update helm/bank')
-        runCommand('helm lint helm/bank')
+        runCommand('helm lint helm/bank -f helm/bank/values-test.yaml')
         runCommand("helm template bank helm/bank --namespace test -f helm/bank/values-test.yaml --set global.imageRegistry=${params.IMAGE_REGISTRY} --set global.imageTag=${imageTag}")
     }
 
