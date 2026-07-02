@@ -4,12 +4,6 @@
   retries: 12
   start_period: 30s
 
-x-platform-health: &platform-health
-  interval: 10s
-  timeout: 5s
-  retries: 12
-  start_period: 20s
-
 x-resource-server-env: &resource-server-env
   BANK_KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/bank-realm
   BANK_KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
@@ -78,9 +72,6 @@ services:
       KAFKA_NUM_PARTITIONS: 3
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
       KAFKA_LOG_DIRS: /var/lib/kafka/data
-    healthcheck:
-      <<: *platform-health
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
     volumes:
       - kafka-data:/var/lib/kafka/data
     networks: [bank-network]
@@ -100,7 +91,7 @@ services:
       keycloak:
         condition: service_healthy
       kafka:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       <<: *app-health
       test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/8081'"]
@@ -117,7 +108,7 @@ services:
       SPRING_KAFKA_CONSUMER_GROUP_ID: bank-notifications
     depends_on:
       kafka:
-        condition: service_healthy
+        condition: service_started
     networks: [bank-network]
 
   exchange-service:
@@ -180,7 +171,7 @@ services:
       blocker-service:
         condition: service_healthy
       kafka:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       <<: *app-health
       test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/8082'"]
@@ -203,7 +194,7 @@ services:
       exchange-service:
         condition: service_healthy
       kafka:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       <<: *app-health
       test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/8083'"]

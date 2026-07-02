@@ -62,11 +62,6 @@ spec:
               value: {{ .Values.kRaft.autoCreateTopicsEnable | quote }}
             - name: KAFKA_LOG_DIRS
               value: {{ .Values.kRaft.logDirs | quote }}
-          readinessProbe:
-            tcpSocket:
-              port: broker
-            initialDelaySeconds: 10
-            periodSeconds: 10
           volumeMounts:
             - name: data
               mountPath: /var/lib/kafka/data
