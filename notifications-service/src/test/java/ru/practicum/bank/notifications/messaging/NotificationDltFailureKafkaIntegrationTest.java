@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import ru.practicum.bank.notifications.service.NotificationService;
 
@@ -30,6 +31,7 @@ import static org.mockito.Mockito.when;
         topics = {KafkaIntegrationTestSupport.TOPIC, KafkaIntegrationTestSupport.DLT_TOPIC},
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class NotificationDltFailureKafkaIntegrationTest extends KafkaIntegrationTestSupport {
 
     @MockitoBean

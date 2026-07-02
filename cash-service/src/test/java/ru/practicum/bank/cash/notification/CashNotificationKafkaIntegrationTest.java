@@ -12,6 +12,7 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import ru.practicum.bank.cash.client.AccountsBalanceResponse;
 import ru.practicum.bank.cash.client.AccountsClient;
@@ -42,6 +43,7 @@ import static org.mockito.Mockito.when;
         topics = CashNotificationKafkaIntegrationTest.TOPIC,
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class CashNotificationKafkaIntegrationTest {
 
     static final String TOPIC = "bank.notifications";

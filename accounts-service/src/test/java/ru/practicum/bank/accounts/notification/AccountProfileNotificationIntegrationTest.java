@@ -12,6 +12,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -43,6 +44,7 @@ import static org.mockito.Mockito.when;
         topics = AccountProfileNotificationIntegrationTest.TOPIC,
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class AccountProfileNotificationIntegrationTest {
 
     static final String TOPIC = "bank.notifications";

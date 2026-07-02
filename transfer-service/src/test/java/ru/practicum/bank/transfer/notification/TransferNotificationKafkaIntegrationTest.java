@@ -11,6 +11,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import ru.practicum.bank.common.dto.blocker.OperationCheckResponse;
@@ -43,6 +44,7 @@ import static org.mockito.Mockito.when;
         topics = TransferNotificationKafkaIntegrationTest.TOPIC,
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class TransferNotificationKafkaIntegrationTest {
 
     static final String TOPIC = "bank.notifications";

@@ -8,6 +8,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -23,6 +24,8 @@ import ru.practicum.bank.common.notification.NotificationType;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -37,22 +40,36 @@ abstract class KafkaIntegrationTestSupport {
     @Autowired
     EmbeddedKafkaBroker broker;
 
+    private final List<DefaultKafkaProducerFactory<?, ?>> producerFactories = new ArrayList<>();
+
+    @AfterEach
+    void closeProducerFactories() {
+        producerFactories.forEach(DefaultKafkaProducerFactory::destroy);
+        producerFactories.clear();
+    }
+
     KafkaTemplate<String, NotificationEvent> eventTemplate() {
         var properties = KafkaTestUtils.producerProps(broker);
-        return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(
+        DefaultKafkaProducerFactory<String, NotificationEvent> producerFactory =
+                new DefaultKafkaProducerFactory<>(
                 properties,
                 new org.apache.kafka.common.serialization.StringSerializer(),
                 new JsonSerializer<>()
-        ));
+        );
+        producerFactories.add(producerFactory);
+        return new KafkaTemplate<>(producerFactory);
     }
 
     KafkaTemplate<String, byte[]> byteTemplate() {
         var properties = KafkaTestUtils.producerProps(broker);
-        return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(
+        DefaultKafkaProducerFactory<String, byte[]> producerFactory =
+                new DefaultKafkaProducerFactory<>(
                 properties,
                 new org.apache.kafka.common.serialization.StringSerializer(),
                 new org.apache.kafka.common.serialization.ByteArraySerializer()
-        ));
+        );
+        producerFactories.add(producerFactory);
+        return new KafkaTemplate<>(producerFactory);
     }
 
     Consumer<String, byte[]> dltConsumer(String groupId) {
