@@ -11,6 +11,10 @@ out/
 .env.*
 !.env.example
 
+envs/dev/runtime/
+
+docs/
+
 .gradle-cache/
 
 helm/bank/charts/*.tgz

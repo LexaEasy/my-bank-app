@@ -44,13 +44,18 @@ services:
       KC_HEALTH_ENABLED: "true"
       KC_HOSTNAME: http://localhost:8180
       KC_HTTP_PORT: 8080
+      BANK_FRONT_UI_PUBLIC_URL: http://localhost:8085
+      FRONT_UI_CLIENT_SECRET: ${FRONT_UI_CLIENT_SECRET:-__FRONT_UI_CLIENT_SECRET__}
+      CASH_SERVICE_CLIENT_SECRET: ${CASH_SERVICE_CLIENT_SECRET:-__CASH_SERVICE_CLIENT_SECRET__}
+      TRANSFER_SERVICE_CLIENT_SECRET: ${TRANSFER_SERVICE_CLIENT_SECRET:-__TRANSFER_SERVICE_CLIENT_SECRET__}
+      EXCHANGE_GENERATOR_CLIENT_SECRET: ${EXCHANGE_GENERATOR_CLIENT_SECRET:-__EXCHANGE_GENERATOR_CLIENT_SECRET__}
     ports:
       - "8180:8080"
     healthcheck:
       <<: *app-health
       test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/8080'"]
     volumes:
-      - ./keycloak/realms/bank-realm.json:/opt/keycloak/data/import/bank-realm-realm.json:ro
+      - ${BANK_KEYCLOAK_REALM_FILE:-./envs/dev/runtime/bank-realm.json}:/opt/keycloak/data/import/bank-realm-realm.json:ro
     networks: [bank-network]
 
   kafka:

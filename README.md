@@ -89,11 +89,15 @@ PostgreSQL используется как единая локальная ин�
 
 Realm Keycloak: `bank-realm`.
 
-| Username | Password | Roles |
-| --- | --- | --- |
-| `ivan` | `ivan` | `USER`, `ACCOUNTS_READ`, `ACCOUNTS_WRITE`, `CASH_WRITE`, `TRANSFER_WRITE` |
-| `petr` | `petr` | `USER`, `ACCOUNTS_READ`, `ACCOUNTS_WRITE`, `CASH_WRITE`, `TRANSFER_WRITE` |
-| `anna` | `anna` | `USER`, `ACCOUNTS_READ`, `ACCOUNTS_WRITE`, `CASH_WRITE`, `TRANSFER_WRITE` |
+| Username | Roles |
+| --- | --- |
+| `ivan` | `USER`, `ACCOUNTS_READ`, `ACCOUNTS_WRITE`, `CASH_WRITE`, `TRANSFER_WRITE` |
+| `petr` | `USER`, `ACCOUNTS_READ`, `ACCOUNTS_WRITE`, `CASH_WRITE`, `TRANSFER_WRITE` |
+| `anna` | `USER`, `ACCOUNTS_READ`, `ACCOUNTS_WRITE`, `CASH_WRITE`, `TRANSFER_WRITE` |
+
+Пароли демонстрационных пользователей хранятся только в локальном
+SOPS-зашифрованном файле. Подготовка realm описана в локальном runbook
+`docs/dev/README.md`, который не отслеживается Git.
 
 Начальные аккаунты:
 
@@ -369,7 +373,7 @@ docker compose up -d --wait
 Сценарий:
 
 1. Открыть `http://localhost:8085`.
-2. Войти пользователем `ivan` / `ivan`.
+2. Получить пароль пользователя `ivan` через локальный SOPS-контур и выполнить вход.
 3. Проверить баланс `1000.00 RUB` и таблицу курсов валют.
 4. Пополнить счёт на `250.00`, ожидать баланс `1250.00`.
 5. Снять `100.00`, ожидать баланс `1150.00`.

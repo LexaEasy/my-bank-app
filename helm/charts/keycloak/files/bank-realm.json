@@ -91,7 +91,6 @@
       "lastName": "Иванов",
       "email": "ivan@example.local",
       "requiredActions": [],
-      "credentials": [{ "type": "password", "value": "ivan", "temporary": false }],
       "realmRoles": ["USER", "ACCOUNTS_READ", "ACCOUNTS_WRITE", "CASH_WRITE", "TRANSFER_WRITE"]
     },
     {
@@ -102,7 +101,6 @@
       "lastName": "Петров",
       "email": "petr@example.local",
       "requiredActions": [],
-      "credentials": [{ "type": "password", "value": "petr", "temporary": false }],
       "realmRoles": ["USER", "ACCOUNTS_READ", "ACCOUNTS_WRITE", "CASH_WRITE", "TRANSFER_WRITE"]
     },
     {
@@ -113,7 +111,6 @@
       "lastName": "Сидорова",
       "email": "anna@example.local",
       "requiredActions": [],
-      "credentials": [{ "type": "password", "value": "anna", "temporary": false }],
       "realmRoles": ["USER", "ACCOUNTS_READ", "ACCOUNTS_WRITE", "CASH_WRITE", "TRANSFER_WRITE"]
     },
     {
