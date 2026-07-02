@@ -1,0 +1,66 @@
+{{- $test := .Values.helmTest | default dict -}}
+{{- if ($test.enabled | default true) }}
+{{- $kafka := index .Values "kafka" -}}
+{{- $accounts := index .Values "accounts-service" -}}
+{{- $notifications := index .Values "notifications-service" -}}
+{{- $kafkaName := default "kafka" $kafka.fullnameOverride -}}
+{{- $mainTopic := required "accounts-service.env.BANK_KAFKA_NOTIFICATIONS_TOPIC is required" (get $accounts.env "BANK_KAFKA_NOTIFICATIONS_TOPIC") -}}
+{{- $dltTopic := required "notifications-service.env.BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC is required" (get $notifications.env "BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC") -}}
+{{- $consumerGroup := required "notifications-service.env.SPRING_KAFKA_CONSUMER_GROUP_ID is required" (get $notifications.env "SPRING_KAFKA_CONSUMER_GROUP_ID") -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "bank.fullname" . }}-kafka-broker-test
+  labels:
+    {{- include "bank.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "bank.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: kafka-broker-test
+          image: "{{ $kafka.image.repository }}:{{ $kafka.image.tag }}"
+          imagePullPolicy: {{ $kafka.image.pullPolicy }}
+          command:
+            - bash
+            - -ec
+            - |
+              bootstrap="{{ $kafkaName }}:{{ $kafka.service.brokerPort }}"
+
+              /opt/kafka/bin/kafka-broker-api-versions.sh \
+                --bootstrap-server "$bootstrap" >/dev/null
+
+              main_description="$(/opt/kafka/bin/kafka-topics.sh \
+                --bootstrap-server "$bootstrap" \
+                --describe \
+                --topic "{{ $mainTopic }}")"
+              echo "$main_description" | grep -q "PartitionCount: 3"
+              echo "$main_description" | grep -q "ReplicationFactor: 1"
+
+              dlt_description="$(/opt/kafka/bin/kafka-topics.sh \
+                --bootstrap-server "$bootstrap" \
+                --describe \
+                --topic "{{ $dltTopic }}")"
+              echo "$dlt_description" | grep -q "PartitionCount: 3"
+              echo "$dlt_description" | grep -q "ReplicationFactor: 1"
+
+              dlt_config="$(/opt/kafka/bin/kafka-configs.sh \
+                --bootstrap-server "$bootstrap" \
+                --entity-type topics \
+                --entity-name "{{ $dltTopic }}" \
+                --describe)"
+              echo "$dlt_config" | grep -q "retention.ms=604800000"
+
+              /opt/kafka/bin/kafka-consumer-groups.sh \
+                --bootstrap-server "$bootstrap" \
+                --describe \
+                --group "{{ $consumerGroup }}" >/dev/null
+{{- end }}

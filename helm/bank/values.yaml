@@ -16,6 +16,10 @@ global:
     BANK_KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
     BANK_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
 
+helmTest:
+  enabled: true
+  kubectlImage: registry.k8s.io/kubectl:v1.35.5
+
 gatewayApi:
   enabled: true
   gatewayClassName: nginx
