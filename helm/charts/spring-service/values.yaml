@@ -1,5 +1,7 @@
 replicaCount: 1
 
+inheritGlobalEnv: true
+
 image:
   repository: ""
   tag: local

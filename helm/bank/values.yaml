@@ -149,18 +149,17 @@ blocker-service:
 
 notifications-service:
   enabled: true
+  inheritGlobalEnv: false
   fullnameOverride: notifications-service
   image:
     repository: my-bank-notifications-service
   service:
     enabled: false
-    port: 8084
   test:
     enabled: false
   env:
     BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC: bank.notifications.dlt
     BANK_KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
-    SERVER_PORT: "8084"
     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     SPRING_KAFKA_CONSUMER_GROUP_ID: bank-notifications
 
