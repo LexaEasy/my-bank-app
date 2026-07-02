@@ -131,6 +131,33 @@ Internal endpoints `accounts-service` вида `/api/accounts/internal/...` не
 
 Docker Compose сохранён только как локальный dev-сценарий. Обязательный способ развёртывания Sprint 10 - Kubernetes через Helm.
 
+### Локальные секреты
+
+Репозиторий является development-only и не содержит
+`docs/infra/SECRETS.md`. Источники истины для локального secret workflow:
+`.sops.yaml`, `envs/dev/secrets/*.enc.yaml` и локальный игнорируемый runbook
+`docs/dev/README.md`.
+
+Закрытый age-ключ хранится вне Git в `%APPDATA%\sops\age\keys.txt`. Перед
+запуском расшифруйте Keycloak realm в игнорируемый runtime-каталог:
+
+```powershell
+New-Item -ItemType Directory -Force envs/dev/runtime | Out-Null
+
+sops --decrypt `
+  --input-type yaml `
+  --output-type json `
+  --output envs/dev/runtime/bank-realm.json `
+  envs/dev/secrets/keycloak-realm.enc.yaml
+```
+
+Пароли и содержимое расшифрованного realm нельзя выводить в логи, сохранять в
+README или добавлять в Git. После остановки окружения удалите runtime-файл:
+
+```powershell
+Remove-Item -LiteralPath envs/dev/runtime/bank-realm.json
+```
+
 Сначала собрать executable JAR:
 
 ```powershell
@@ -161,7 +188,10 @@ docker compose up -d --wait
 docker compose ps
 ```
 
-Dockerfile каждого приложения содержит встроенный `HEALTHCHECK`, который проверяет `/actuator/health`. Поэтому health status доступен не только в Docker Compose, но и при запуске отдельного образа через `docker run`.
+Healthcheck определены в Docker Compose только для HTTP-сервисов, которым они
+нужны для локального порядка запуска. Kafka и non-web
+`notifications-service` не имеют добавленных Sprint 11 healthcheck.
+Dockerfile не гарантирует наличие встроенного `HEALTHCHECK`.
 
 Посмотреть логи конкретного сервиса:
 
@@ -184,22 +214,24 @@ docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-s
 
 ```powershell
 docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --describe --topic bank.notifications
+docker compose exec kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka:9092 --group bank-notifications --describe
 docker compose restart kafka
 docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --describe --topic bank.notifications
+docker compose exec kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka:9092 --group bank-notifications --describe
 ```
 
-После перезапуска топик и offsets должны сохраниться в именованном volume `kafka-data`. Команда `docker compose down --volumes` намеренно удаляет эти данные.
+До и после перезапуска сравниваются `TopicId` и текущие offsets каждой
+partition. Конкретные значения зависят от запуска и в документации не
+фиксируются. Топик и offsets должны сохраниться в именованном volume
+`kafka-data`.
+
+Не используйте `docker compose down --volumes` в recovery/persistence
+сценариях: команда намеренно удаляет постоянные данные.
 
 Остановить контейнеры без удаления образов:
 
 ```powershell
 docker compose down
-```
-
-Сбросить локальные данные PostgreSQL и Keycloak:
-
-```powershell
-docker compose down --volumes
 ```
 
 ## Запуск из IDE
@@ -296,8 +328,19 @@ kubectl get gatewayclass nginx
 - `bank-service-credentials` с ключами `FRONT_UI_CLIENT_SECRET`, `CASH_SERVICE_CLIENT_SECRET`, `TRANSFER_SERVICE_CLIENT_SECRET`, `EXCHANGE_GENERATOR_CLIENT_SECRET`;
 - `postgresql-credentials` с ключом `password`;
 - `keycloak-credentials` с ключами `admin-username`, `admin-password`.
+- `keycloak-realm` с ключом `bank-realm.json`, созданный из локально
+  расшифрованного SOPS-файла.
 
-Значения секретов не хранятся в git. Realm Keycloak создаётся Helm-чартом из `helm/charts/keycloak/files/bank-realm.json`; client secrets в realm подставляются из env-переменных Keycloak, которые берутся из `bank-service-credentials`.
+Значения секретов не хранятся в Git. Создание или обновление realm Secret:
+
+```powershell
+kubectl create secret generic keycloak-realm `
+  --from-file=bank-realm.json=envs/dev/runtime/bank-realm.json `
+  --namespace dev `
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+Helm использует существующий Secret и не рендерит credentials в manifests.
 
 Проверка и установка в `dev` namespace:
 
@@ -322,10 +365,17 @@ kubectl logs -n dev deployment/notifications-service -f
 
 ```powershell
 kubectl get pvc -n dev kafka-data
+kubectl exec -n dev kafka-0 -- /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --describe --topic bank.notifications
+kubectl exec -n dev kafka-0 -- /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka:9092 --group bank-notifications --describe
 kubectl delete pod -n dev kafka-0
 kubectl wait --for=condition=Ready pod/kafka-0 -n dev --timeout=180s
 kubectl exec -n dev kafka-0 -- /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --describe --topic bank.notifications
+kubectl exec -n dev kafka-0 -- /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka:9092 --group bank-notifications --describe
 ```
+
+До и после пересоздания pod сравниваются `TopicId`, offsets и lag. PVC
+`kafka-data` должен оставаться `Bound`; одноразовые значения конкретного
+запуска в README не сохраняются.
 
 Проверка `at least once`: выполнить успешную банковскую операцию, дождаться обработки события, перезапустить `notifications-service` и убедиться, что подтверждённая запись не обработана повторно. Затем остановить Notifications, выполнить ещё одну операцию, запустить Notifications и убедиться, что накопленное событие обработано. При аварии до фиксации offset допустима повторная доставка одного события.
 
@@ -333,7 +383,13 @@ Helm smoke tests:
 
 ```powershell
 helm test bank --namespace dev
+helm test bank --namespace dev --logs
 ```
+
+Test hooks сохраняют завершённые pods до следующего запуска, поэтому
+`--logs` может вывести результаты broker, topic и persistence-проверок и
+должен завершиться с кодом `0`. Следующий запуск удаляет предыдущие test
+resources политикой `before-hook-creation`.
 
 Dry-run для test/prod окружений:
 
@@ -380,7 +436,10 @@ docker compose up -d --wait
 6. Перевести `150.00` пользователю `petr`, ожидать баланс `1000.00`.
 7. Попробовать снять `999999.00`, ожидать ошибку недостатка средств.
 8. Проверить, что в логах `notifications-service` появились уведомления по успешным операциям.
-9. Повторить одну из успешных операций после перезапуска `notifications-service` и проверить, что consumer продолжил работу с сохранённого offset.
+9. Остановить `notifications-service`, выполнить успешную операцию и проверить, что операция не зависит от доступности consumer.
+10. Запустить `notifications-service`, проверить обработку накопленного события и возврат lag к `0`.
+11. Перезапустить Kafka без удаления volume/PVC и повторить успешную операцию.
+12. Сравнить `TopicId` и offsets до и после перезапуска.
 
 ## Ограничения спринта
 
