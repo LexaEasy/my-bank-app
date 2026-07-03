@@ -18,7 +18,10 @@ class AccountProfileUpdatedNotificationListenerTest {
 
     private final NotificationEventPublisher notificationEventPublisher = mock(NotificationEventPublisher.class);
     private final AccountProfileUpdatedNotificationListener listener =
-            new AccountProfileUpdatedNotificationListener(notificationEventPublisher);
+            new AccountProfileUpdatedNotificationListener(
+                    notificationEventPublisher,
+                    new AccountUpdatedNotificationFactory()
+            );
 
     @Test
     void shouldPublishAccountUpdatedNotification() {
@@ -37,7 +40,7 @@ class AccountProfileUpdatedNotificationListenerTest {
         assertThat(notificationEvent.source()).isEqualTo(NotificationSource.ACCOUNTS);
         assertThat(notificationEvent.type()).isEqualTo(NotificationType.ACCOUNT_UPDATED);
         assertThat(notificationEvent.recipientLogin()).isEqualTo("ivan");
-        assertThat(notificationEvent.message()).isEqualTo("Данные профиля обновлены");
+        assertThat(notificationEvent.message()).isEqualTo(AccountUpdatedNotificationFactory.NOTIFICATION_MESSAGE);
         assertThat(notificationEvent.occurredAt()).isEqualTo(occurredAt);
         assertThat(notificationEvent.amount()).isNull();
         assertThat(notificationEvent.currency()).isNull();

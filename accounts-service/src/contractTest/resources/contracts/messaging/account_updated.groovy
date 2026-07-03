@@ -14,8 +14,10 @@ Contract.make {
                 source        : "ACCOUNTS",
                 type          : "ACCOUNT_UPDATED",
                 recipientLogin: "ivan",
-                message       : "Профиль обновлён",
-                occurredAt    : "2026-07-01T05:00:00Z"
+                message       : "Р”Р°РЅРЅС‹Рµ РїСЂРѕС„РёР»СЏ РѕР±РЅРѕРІР»РµРЅС‹",
+                occurredAt    : "2026-07-01T05:00:00Z",
+                amount        : null,
+                currency      : null
         ])
         headers {
             messagingContentType(applicationJson())

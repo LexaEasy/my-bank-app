@@ -13,6 +13,7 @@ import ru.practicum.bank.accounts.mapper.AccountMapper;
 import ru.practicum.bank.accounts.model.Account;
 import ru.practicum.bank.accounts.notification.AccountProfileUpdatedEvent;
 import ru.practicum.bank.accounts.notification.AccountProfileUpdatedNotificationListener;
+import ru.practicum.bank.accounts.notification.AccountUpdatedNotificationFactory;
 import ru.practicum.bank.accounts.repository.AccountRepository;
 import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.common.notification.KafkaNotificationEventPublisher;
@@ -46,7 +47,8 @@ class AccountKafkaFailureBusinessTest {
         var applicationEvents = mock(ApplicationEventPublisher.class);
         var kafkaTemplate = kafkaTemplate(failureMode);
         var listener = new AccountProfileUpdatedNotificationListener(
-                new KafkaNotificationEventPublisher(kafkaTemplate, TOPIC)
+                new KafkaNotificationEventPublisher(kafkaTemplate, TOPIC),
+                new AccountUpdatedNotificationFactory()
         );
         doAnswer(invocation -> {
             listener.onProfileUpdated(invocation.getArgument(0, AccountProfileUpdatedEvent.class));
