@@ -63,6 +63,30 @@ class ExchangeServiceTest {
     }
 
     @Test
+    void shouldConvertRubToRubWithoutRateCalculation() {
+        var response = exchangeService.convert(Currency.RUB, Currency.RUB, new BigDecimal("100.00"));
+
+        assertThat(response.sourceAmount()).isEqualByComparingTo("100.00");
+        assertThat(response.targetAmount()).isEqualByComparingTo("100.00");
+        assertThat(response.rate()).isEqualByComparingTo(BigDecimal.ONE);
+        assertThat(response.updatedAt()).isNull();
+    }
+
+    @Test
+    void shouldConvertUsdToUsdWithoutRateCalculation() {
+        exchangeService.updateRates(new ExchangeRatesUpdateRequest(List.of(
+                new ExchangeRateUpdateRequest(Currency.USD, new BigDecimal("101.0000"), new BigDecimal("103.0000"))
+        )));
+
+        var response = exchangeService.convert(Currency.USD, Currency.USD, new BigDecimal("100.00"));
+
+        assertThat(response.sourceAmount()).isEqualByComparingTo("100.00");
+        assertThat(response.targetAmount()).isEqualByComparingTo("100.00");
+        assertThat(response.rate()).isEqualByComparingTo(BigDecimal.ONE);
+        assertThat(response.updatedAt()).isNull();
+    }
+
+    @Test
     void shouldRejectInvalidRate() {
         var request = new ExchangeRatesUpdateRequest(List.of(
                 new ExchangeRateUpdateRequest(Currency.USD, new BigDecimal("91.12345"), new BigDecimal("93.1234"))

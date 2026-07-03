@@ -64,6 +64,9 @@ public class ExchangeService {
 
     public ConversionResponse convert(Currency sourceCurrency, Currency targetCurrency, BigDecimal amount) {
         validateAmount(amount);
+        if (sourceCurrency == targetCurrency) {
+            return sameCurrencyConversion(sourceCurrency, targetCurrency, amount);
+        }
 
         Map<Currency, ExchangeRateSnapshot> currentRates = rates;
         ExchangeRateSnapshot sourceRate = currentRates.get(sourceCurrency);
@@ -83,6 +86,21 @@ public class ExchangeService {
                 targetAmount,
                 conversionRate,
                 updatedAt
+        );
+    }
+
+    private ConversionResponse sameCurrencyConversion(
+            Currency sourceCurrency,
+            Currency targetCurrency,
+            BigDecimal amount
+    ) {
+        return new ConversionResponse(
+                sourceCurrency,
+                targetCurrency,
+                amount,
+                amount,
+                BigDecimal.ONE,
+                null
         );
     }
 
