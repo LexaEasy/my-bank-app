@@ -15,10 +15,8 @@ admin:
 
 realmImport:
   enabled: true
-  createSecret: false
   existingSecret: keycloak-realm
   key: bank-realm.json
-  file: files/bank-realm.json
   frontUiPublicUrl: http://localhost
   secretEnv:
     - name: FRONT_UI_CLIENT_SECRET

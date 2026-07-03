@@ -7,11 +7,15 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class KeycloakRealmSecurityTest {
+
+    private static final Pattern SECRET_PLACEHOLDER =
+            Pattern.compile("(\\$\\{[A-Z][A-Z0-9_]*}|__[A-Z][A-Z0-9_]*__)");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -51,7 +55,17 @@ class KeycloakRealmSecurityTest {
                 .doesNotContain("NOTIFICATIONS_WRITE");
         assertThat(hasUser(realm, "service-account-notifications-service")).isFalse();
         assertThat(realmRoles(user(realm, "service-account-exchange-generator")))
-                .contains("SERVICE");
+                .contains("SERVICE", "EXCHANGE_GENERATOR");
+    }
+
+    @Test
+    void shouldNotContainOpenCredentials() throws IOException {
+        JsonNode realm = objectMapper.readTree(Path.of("../keycloak/realms/bank-realm.json").toFile());
+
+        assertThat(realm.findValues("credentials")).isEmpty();
+        assertThat(realm.findValues("secret"))
+                .extracting(JsonNode::asText)
+                .allMatch(secret -> SECRET_PLACEHOLDER.matcher(secret).matches());
     }
 
     private JsonNode client(JsonNode realm, String clientId) {
