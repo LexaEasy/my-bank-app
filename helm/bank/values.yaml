@@ -71,6 +71,8 @@ accounts-service:
       enabled: true
       alert:
         enabled: true
+  probes:
+    port: management
   env:
     BANK_BALANCE_RETRY_BACKOFF_MS: "50"
     BANK_BALANCE_RETRY_MAX_ATTEMPTS: "3"
@@ -100,6 +102,8 @@ cash-service:
       enabled: true
       alert:
         enabled: true
+  probes:
+    port: management
   env:
     BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
     BANK_BLOCKER_BASE_URL: http://blocker-service:8088
@@ -125,6 +129,8 @@ transfer-service:
       enabled: true
       alert:
         enabled: true
+  probes:
+    port: management
   env:
     BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
     BANK_BLOCKER_BASE_URL: http://blocker-service:8088
