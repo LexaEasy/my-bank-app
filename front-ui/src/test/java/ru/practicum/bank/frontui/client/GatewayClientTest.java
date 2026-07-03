@@ -7,7 +7,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
-import ru.practicum.bank.common.client.SimpleCircuitBreaker;
+import ru.practicum.bank.common.client.ResilientClientExecutor;
+import ru.practicum.bank.common.client.ResilientClientFactory;
 import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.frontui.dto.CashForm;
 import ru.practicum.bank.frontui.dto.TransferForm;
@@ -39,7 +40,7 @@ class GatewayClientTest {
                 "http://cash-service:8082",
                 "http://transfer-service:8083",
                 "http://exchange-service:8086",
-                SimpleCircuitBreaker.withDefaults("bankServices"),
+                ResilientClientFactory.withDefaults().create("bankServices", GatewayClient::isRecoverable),
                 objectMapper
         );
 
@@ -86,7 +87,7 @@ class GatewayClientTest {
                 "http://cash-service:8082",
                 "http://transfer-service:8083",
                 "http://exchange-service:8086",
-                SimpleCircuitBreaker.withDefaults("bankServices"),
+                ResilientClientFactory.withDefaults().create("bankServices", GatewayClient::isRecoverable),
                 objectMapper
         );
 
@@ -127,14 +128,14 @@ class GatewayClientTest {
                 "http://cash-service:8082",
                 "http://transfer-service:8083",
                 "http://exchange-service:8086",
-                SimpleCircuitBreaker.withDefaults("bankServices"),
+                ResilientClientFactory.withDefaults().create("bankServices", GatewayClient::isRecoverable),
                 objectMapper
         );
 
         server.expect(once(), requestTo("http://cash-service:8082/api/cash/withdraw"))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
                 .andExpect(header("Idempotency-Key", IDEMPOTENCY_KEY))
-                .andRespond(withStatus(HttpStatus.BAD_GATEWAY)
+                .andRespond(withStatus(HttpStatus.UNPROCESSABLE_ENTITY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("""
                                 {
@@ -162,7 +163,7 @@ class GatewayClientTest {
                 "http://cash-service:8082",
                 "http://transfer-service:8083",
                 "http://exchange-service:8086",
-                SimpleCircuitBreaker.opened("bankServices"),
+                ResilientClientExecutor.opened("bankServices"),
                 objectMapper
         );
 

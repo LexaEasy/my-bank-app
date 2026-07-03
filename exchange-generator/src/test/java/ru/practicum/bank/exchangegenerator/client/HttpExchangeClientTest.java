@@ -5,7 +5,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
-import ru.practicum.bank.common.client.SimpleCircuitBreaker;
+import ru.practicum.bank.common.client.ResilientClientExecutor;
 import ru.practicum.bank.common.dto.exchange.ExchangeRateUpdateRequest;
 import ru.practicum.bank.common.dto.exchange.ExchangeRatesUpdateRequest;
 import ru.practicum.bank.common.model.Currency;
@@ -51,7 +51,7 @@ class HttpExchangeClientTest {
                 restClientBuilder,
                 "http://exchange-service",
                 serviceTokenProvider,
-                SimpleCircuitBreaker.opened("exchangeService")
+                ResilientClientExecutor.opened("exchangeService")
         );
 
         client.updateRates(updateRequest());

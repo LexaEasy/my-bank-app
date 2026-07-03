@@ -8,7 +8,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
-import ru.practicum.bank.common.client.SimpleCircuitBreaker;
+import ru.practicum.bank.common.client.ResilientClientExecutor;
+import ru.practicum.bank.common.client.ResilientClientFactory;
 import ru.practicum.bank.transfer.dto.ApiErrorResponse;
 import ru.practicum.bank.transfer.service.TransferExecutor;
 import ru.practicum.bank.transfer.service.TransferOperation;
@@ -19,7 +20,7 @@ public class HttpAccountsClient implements TransferExecutor {
 
     private final RestClient restClient;
     private final ServiceTokenProvider serviceTokenProvider;
-    private final SimpleCircuitBreaker circuitBreaker;
+    private final ResilientClientExecutor clientExecutor;
     private final ObjectMapper objectMapper;
 
     @Autowired
@@ -27,13 +28,14 @@ public class HttpAccountsClient implements TransferExecutor {
             RestClient.Builder restClientBuilder,
             @Value("${bank.services.accounts.base-url}") String accountsBaseUrl,
             ServiceTokenProvider serviceTokenProvider,
+            ResilientClientFactory resilientClientFactory,
             ObjectMapper objectMapper
     ) {
         this(
                 restClientBuilder,
                 accountsBaseUrl,
                 serviceTokenProvider,
-                SimpleCircuitBreaker.withDefaults("accountsService"),
+                resilientClientFactory.create("accountsService", HttpAccountsClient::isRecoverable),
                 objectMapper
         );
     }
@@ -42,11 +44,26 @@ public class HttpAccountsClient implements TransferExecutor {
             RestClient.Builder restClientBuilder,
             String accountsBaseUrl,
             ServiceTokenProvider serviceTokenProvider,
-            SimpleCircuitBreaker circuitBreaker,
+            ObjectMapper objectMapper
+    ) {
+        this(
+                restClientBuilder,
+                accountsBaseUrl,
+                serviceTokenProvider,
+                ResilientClientFactory.withDefaults(),
+                objectMapper
+        );
+    }
+
+    HttpAccountsClient(
+            RestClient.Builder restClientBuilder,
+            String accountsBaseUrl,
+            ServiceTokenProvider serviceTokenProvider,
+            ResilientClientExecutor clientExecutor,
             ObjectMapper objectMapper
     ) {
         this.serviceTokenProvider = serviceTokenProvider;
-        this.circuitBreaker = circuitBreaker;
+        this.clientExecutor = clientExecutor;
         this.objectMapper = objectMapper;
         this.restClient = restClientBuilder
                 .baseUrl(accountsBaseUrl)
@@ -55,10 +72,9 @@ public class HttpAccountsClient implements TransferExecutor {
 
     @Override
     public TransferResult execute(TransferOperation operation) {
-        return circuitBreaker.execute(
+        return clientExecutor.execute(
                 () -> executeWithoutCircuitBreaker(operation),
-                this::accountsFallback,
-                this::shouldRecordFailure
+                this::accountsFallback
         );
     }
 
@@ -90,7 +106,7 @@ public class HttpAccountsClient implements TransferExecutor {
         }
     }
 
-    private boolean shouldRecordFailure(Throwable exception) {
+    private static boolean isRecoverable(Throwable exception) {
         if (exception instanceof AccountsClientException accountsClientException) {
             return accountsClientException.getStatusCode().is5xxServerError();
         }

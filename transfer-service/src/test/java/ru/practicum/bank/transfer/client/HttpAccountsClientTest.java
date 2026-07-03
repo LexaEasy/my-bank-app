@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
-import ru.practicum.bank.common.client.SimpleCircuitBreaker;
+import ru.practicum.bank.common.client.ResilientClientExecutor;
 import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.transfer.service.TransferOperation;
 
@@ -160,7 +160,7 @@ class HttpAccountsClientTest {
                 restClientBuilder,
                 "http://accounts-service",
                 serviceTokenProvider,
-                SimpleCircuitBreaker.opened("accountsService"),
+                ResilientClientExecutor.opened("accountsService"),
                 objectMapper
         );
 
