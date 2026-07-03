@@ -52,12 +52,12 @@ def runServicePipeline(Map service) {
     }
 
     stage('bootJar') {
-        gradle("${service.gradleModule}:bootJar")
+        gradle("${service.gradleModule}:clean ${service.gradleModule}:bootJar")
     }
 
     stage('Docker build') {
         if (params.BUILD_IMAGE || params.PUSH_IMAGE) {
-            runCommand("docker build --build-arg JAR_FILE=build/libs/*.jar -t ${image} ${service.serviceName}")
+            runCommand("docker build -t ${image} ${service.serviceName}")
         } else {
             echo 'Docker build skipped by parameter.'
         }

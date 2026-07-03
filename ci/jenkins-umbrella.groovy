@@ -59,13 +59,13 @@ def runUmbrellaPipeline() {
     }
 
     stage('bootJar') {
-        gradle('bootJar')
+        gradle('clean bootJar')
     }
 
     stage('Docker build') {
         if (params.BUILD_IMAGES || params.PUSH_IMAGES) {
             services.each { service ->
-                runCommand("docker build --build-arg JAR_FILE=build/libs/*.jar -t ${params.IMAGE_REGISTRY}/${service.image}:${imageTag} ${service.name}")
+                runCommand("docker build -t ${params.IMAGE_REGISTRY}/${service.image}:${imageTag} ${service.name}")
             }
         } else {
             echo 'Docker builds skipped by parameter.'

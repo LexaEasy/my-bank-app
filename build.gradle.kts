@@ -1,4 +1,5 @@
 import io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension
+import org.springframework.boot.gradle.tasks.bundling.BootJar
 
 plugins {
     java
@@ -29,6 +30,14 @@ subprojects {
 
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
+    }
+
+    tasks.named<BootJar>("bootJar") {
+        archiveFileName.set("${project.name}.jar")
+    }
+
+    tasks.named<Jar>("jar") {
+        enabled = false
     }
 
     extensions.configure<DependencyManagementExtension> {
