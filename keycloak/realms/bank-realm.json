@@ -18,7 +18,8 @@
       { "name": "CASH_WRITE", "description": "Permission to perform cash operations" },
       { "name": "TRANSFER_WRITE", "description": "Permission to perform transfers" },
       { "name": "SERVICE", "description": "Generic service role for microservices" },
-      { "name": "ACCOUNTS_INTERNAL", "description": "Permission to call internal accounts API" }
+      { "name": "ACCOUNTS_INTERNAL", "description": "Permission to call internal accounts API" },
+      { "name": "EXCHANGE_GENERATOR", "description": "Permission to update exchange rates" }
     ]
   },
   "clients": [
@@ -135,7 +136,7 @@
       "username": "service-account-exchange-generator",
       "enabled": true,
       "serviceAccountClientId": "exchange-generator",
-      "realmRoles": ["SERVICE"]
+      "realmRoles": ["SERVICE", "EXCHANGE_GENERATOR"]
     }
   ]
 }
