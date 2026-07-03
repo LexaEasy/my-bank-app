@@ -10,7 +10,7 @@ spec:
     - name: {{ include "spring-service.fullname" . }}.kafka
       rules:
         - alert: KafkaNotificationPublicationFailures
-          expr: sum(increase(bank_kafka_publication_failures_total{application="{{ include "spring-service.name" . }}"}[5m])) > {{ .Values.management.monitoring.alert.threshold }}
+          expr: sum(increase(bank_kafka_publication_failures_total{application="{{ include "spring-service.name" . }}"}[15m])) > {{ .Values.management.monitoring.alert.threshold }}
           for: {{ .Values.management.monitoring.alert.for }}
           labels:
             severity: warning

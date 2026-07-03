@@ -92,6 +92,7 @@ def runUmbrellaPipeline() {
         runCommand('helm dependency update helm/bank')
         runCommand('helm lint helm/bank -f helm/bank/values-test.yaml')
         runCommand("helm template bank helm/bank --namespace test -f helm/bank/values-test.yaml --set global.imageRegistry=${params.IMAGE_REGISTRY} --set global.imageTag=${imageTag}")
+        runCommand('promtool test rules helm/charts/spring-service/tests/kafka-publication-alert.test.yaml')
     }
 
     stage('Deploy test') {

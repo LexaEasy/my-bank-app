@@ -81,7 +81,13 @@ PostgreSQL используется как единая локальная ин�
 
 Для защиты конкурентных изменений баланса используется optimistic locking через поле `@Version` в entity аккаунта.
 
-Балансовые операции защищены от повторного выполнения через `operationId`. `accounts-service` сохраняет начало операции в таблицу `processed_operations`, после успешного изменения баланса записывает JSON-ответ и при повторе того же запроса возвращает сохранённый результат без повторного изменения баланса. Если операция завершилась ошибкой, её статус сохраняется как `FAILED`, чтобы повтор с тем же `operationId` не запускал бизнес-операцию заново без явного нового идентификатора.
+Балансовые операции защищены от повторного выполнения через `operationId`.
+`accounts-service` сохраняет начало операции в таблицу `processed_operations`,
+а изменение баланса и перевод операции в `COMPLETED` выполняет в одной
+транзакции. При бизнес-ошибке или исчерпании повторов транзакция откатывается,
+запись `PROCESSING` удаляется и тот же запрос с тем же ключом можно выполнить
+повторно. Для optimistic-lock конфликта каждая повторная попытка открывает
+новую полную транзакцию.
 
 Бизнес-ошибки балансовых операций возвращают `422 Unprocessable Entity`: например, недостаток средств и перевод самому себе. Конфликты конкурентного изменения и конфликты идемпотентности остаются `409 Conflict`.
 
@@ -319,6 +325,12 @@ docker build -t my-bank-accounts-service:local accounts-service
 
 Для проверки Gateway API в локальном Docker Desktop-кластере заранее должны быть установлены Gateway API CRD и совместимый контроллер, создающий `GatewayClass nginx`.
 
+Для ресурсов `ServiceMonitor` и `PrometheusRule` также должны быть заранее
+установлены CRD Prometheus Operator:
+`servicemonitors.monitoring.coreos.com` и
+`prometheusrules.monitoring.coreos.com`. Helm chart не устанавливает
+Prometheus Operator и полный monitoring stack.
+
 Команды, которые использовались для локальной проверки:
 
 ```powershell
@@ -461,6 +473,13 @@ Prometheus endpoint доступен только через внутренни�
 
 Gateway не публикует management endpoints. Helm создаёт для producer-сервисов
 внутренние `Service`, `ServiceMonitor` и `PrometheusRule`.
+
+Alert использует окно `increase(...[15m])` и переходит в состояние firing
+после `for: 1m`. Синтаксис и ожидаемое срабатывание проверяются командой:
+
+```powershell
+promtool test rules helm/charts/spring-service/tests/kafka-publication-alert.test.yaml
+```
 
 Transactional Outbox, CDC и durable retry остаются отдельным архитектурным
 backlog и не входят в Sprint 11.

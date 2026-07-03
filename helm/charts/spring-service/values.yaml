@@ -21,7 +21,7 @@ management:
     alert:
       enabled: false
       threshold: 0
-      for: 5m
+      for: 1m
 
 env: {}
 secretEnv: []
