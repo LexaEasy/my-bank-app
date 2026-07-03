@@ -33,7 +33,7 @@ public class BalanceOperationExecutor {
         this.accountRepository = accountRepository;
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRED)
     public BalanceResponse deposit(BalanceOperationRequest request) {
         validateAmount(request.amount());
         Account account = findAccount(request.login());
@@ -43,7 +43,7 @@ public class BalanceOperationExecutor {
         return toBalanceResponse(accountRepository.save(account));
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRED)
     public BalanceResponse withdraw(BalanceOperationRequest request) {
         validateAmount(request.amount());
         Account account = findAccount(request.login());
@@ -58,7 +58,7 @@ public class BalanceOperationExecutor {
             maxAttempts = 3,
             backoff = @Backoff(delay = 50)
     )
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRED)
     public TransferBalanceResponse transfer(TransferBalanceRequest request) {
         if (request.senderLogin().equals(request.recipientLogin())) {
             throw new SelfTransferForbiddenException();

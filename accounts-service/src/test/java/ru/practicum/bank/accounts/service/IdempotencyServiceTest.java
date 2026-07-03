@@ -1,9 +1,5 @@
 package ru.practicum.bank.accounts.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,15 +10,12 @@ import ru.practicum.bank.accounts.exception.OperationInProgressException;
 import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.accounts.model.ProcessedOperation;
 import ru.practicum.bank.accounts.model.ProcessedOperationStatus;
+import ru.practicum.bank.accounts.repository.AccountRepository;
 import ru.practicum.bank.accounts.repository.ProcessedOperationRepository;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.HexFormat;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,10 +31,10 @@ class IdempotencyServiceTest {
     private ProcessedOperationRepository operationRepository;
 
     @Autowired
-    private Clock clock;
+    private AccountRepository accountRepository;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private Clock clock;
 
     @Test
     void shouldReturnStoredResponseForRepeatedOperationId() {
@@ -105,7 +98,7 @@ class IdempotencyServiceTest {
         operationRepository.saveAndFlush(new ProcessedOperation(
                 operationId,
                 "DEPOSIT",
-                hashRequest(request),
+                idempotencyService.hashRequest("DEPOSIT", request),
                 LocalDateTime.now(clock)
         ));
 
@@ -119,7 +112,7 @@ class IdempotencyServiceTest {
     }
 
     @Test
-    void shouldSaveFailedStatusWhenBusinessOperationFails() {
+    void shouldReleaseOperationWhenBusinessOperationFails() {
         String operationId = "failed-operation";
 
         assertThatThrownBy(() -> idempotencyService.execute(
@@ -132,26 +125,115 @@ class IdempotencyServiceTest {
                 }
         )).isInstanceOf(IllegalStateException.class);
 
+        assertThat(operationRepository.findById(operationId)).isEmpty();
+
+        var response = idempotencyService.execute(
+                operationId,
+                "DEPOSIT",
+                request(operationId, "ivan", "100.00"),
+                BalanceResponse.class,
+                () -> new BalanceResponse("ivan", new BigDecimal("1100.00"), "RUB")
+        );
+
+        assertThat(response.balance()).isEqualByComparingTo("1100.00");
+    }
+
+    @Test
+    void shouldRejectSameKeyForDifferentOperationType() {
+        String operationId = "operation-type-conflict";
+        var request = request(operationId, "ivan", "100.00");
+        idempotencyService.execute(
+                operationId,
+                "DEPOSIT",
+                request,
+                BalanceResponse.class,
+                () -> new BalanceResponse("ivan", new BigDecimal("1100.00"), "RUB")
+        );
+
+        assertThatThrownBy(() -> idempotencyService.execute(
+                operationId,
+                "WITHDRAW",
+                request,
+                BalanceResponse.class,
+                () -> new BalanceResponse("ivan", new BigDecimal("900.00"), "RUB")
+        )).isInstanceOf(IdempotencyConflictException.class);
+    }
+
+    @Test
+    void shouldTreatEquivalentDecimalPayloadAsSameRequest() {
+        String operationId = "normalized-amount";
+        idempotencyService.execute(
+                operationId,
+                "DEPOSIT",
+                request(operationId, "ivan", "100.0"),
+                BalanceResponse.class,
+                () -> new BalanceResponse("ivan", new BigDecimal("1100.00"), "RUB")
+        );
+
+        var repeated = idempotencyService.execute(
+                operationId,
+                "DEPOSIT",
+                request(operationId, "ivan", "100.00"),
+                BalanceResponse.class,
+                () -> {
+                    throw new AssertionError("Business operation must not be repeated");
+                }
+        );
+
+        assertThat(repeated.balance()).isEqualByComparingTo("1100.00");
+    }
+
+    @Test
+    void shouldRecoverStaleProcessingOperation() {
+        String operationId = "stale-processing";
+        var request = request(operationId, "ivan", "100.00");
+        operationRepository.saveAndFlush(new ProcessedOperation(
+                operationId,
+                "DEPOSIT",
+                idempotencyService.hashRequest("DEPOSIT", request),
+                LocalDateTime.now(clock).minusMinutes(6)
+        ));
+
+        var response = idempotencyService.execute(
+                operationId,
+                "DEPOSIT",
+                request,
+                BalanceResponse.class,
+                () -> new BalanceResponse("ivan", new BigDecimal("1100.00"), "RUB")
+        );
+
+        assertThat(response.balance()).isEqualByComparingTo("1100.00");
         assertThat(operationRepository.findById(operationId))
                 .get()
                 .extracting(ProcessedOperation::getStatus)
-                .isEqualTo(ProcessedOperationStatus.FAILED);
+                .isEqualTo(ProcessedOperationStatus.COMPLETED);
+    }
+
+    @Test
+    void shouldRollbackBalanceAndReleaseOperationWhenTransactionFails() {
+        String operationId = "balance-rollback";
+        BigDecimal initialBalance = accountRepository.findByLogin("ivan").orElseThrow().getBalance();
+
+        assertThatThrownBy(() -> idempotencyService.execute(
+                operationId,
+                "DEPOSIT",
+                request(operationId, "ivan", "25.00"),
+                BalanceResponse.class,
+                () -> {
+                    var account = accountRepository.findByLogin("ivan").orElseThrow();
+                    account.setBalance(account.getBalance().add(new BigDecimal("25.00")));
+                    accountRepository.save(account);
+                    throw new IllegalStateException("failure after balance update");
+                }
+        )).isInstanceOf(IllegalStateException.class);
+
+        assertThat(accountRepository.findByLogin("ivan").orElseThrow().getBalance())
+                .isEqualByComparingTo(initialBalance);
+        assertThat(operationRepository.findById(operationId)).isEmpty();
     }
 
     private BalanceOperationRequest request(String operationId, String login, String amount) {
         return new BalanceOperationRequest(login, new BigDecimal(amount), Currency.RUB, operationId);
     }
 
-    private String hashRequest(Object request) {
-        try {
-            var mapper = objectMapper.copy()
-                    .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
-                    .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(mapper.writeValueAsString(request).getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (JsonProcessingException | NoSuchAlgorithmException exception) {
-            throw new IllegalStateException(exception);
-        }
-    }
 }
