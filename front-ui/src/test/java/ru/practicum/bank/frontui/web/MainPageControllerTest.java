@@ -48,6 +48,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(MainPageController.class)
 class MainPageControllerTest {
 
+    private static final String IDEMPOTENCY_KEY = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -146,7 +148,9 @@ class MainPageControllerTest {
         when(gatewayClient.transfer(eq("user-token"), eq(new TransferForm(
                 "petr",
                 new BigDecimal("100.00"),
-                "RUB"
+                "RUB",
+                "RUB",
+                IDEMPOTENCY_KEY
         )))).thenReturn(new TransferResponse(
                 "ivan",
                 "petr",
@@ -161,7 +165,8 @@ class MainPageControllerTest {
                         .param("recipientLogin", "petr")
                         .param("amount", "100.00")
                         .param("currency", "RUB")
-                        .param("sourceCurrency", "RUB"))
+                        .param("sourceCurrency", "RUB")
+                        .param("idempotencyKey", IDEMPOTENCY_KEY))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/"))
                 .andExpect(flash().attribute("successMessage", "Перевод выполнен"))
@@ -180,7 +185,9 @@ class MainPageControllerTest {
         when(gatewayClient.transfer(eq("user-token"), eq(new TransferForm(
                 "petr",
                 new BigDecimal("1500.00"),
-                "RUB"
+                "RUB",
+                "RUB",
+                IDEMPOTENCY_KEY
         )))).thenThrow(new GatewayClientException("Недостаточно средств"));
 
         mockMvc.perform(post("/transfers")
@@ -189,7 +196,8 @@ class MainPageControllerTest {
                         .param("recipientLogin", "petr")
                         .param("amount", "1500.00")
                         .param("currency", "RUB")
-                        .param("sourceCurrency", "RUB"))
+                        .param("sourceCurrency", "RUB")
+                        .param("idempotencyKey", IDEMPOTENCY_KEY))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/"))
                 .andExpect(flash().attribute("errorMessage", "Недостаточно средств"));
@@ -228,7 +236,8 @@ class MainPageControllerTest {
                 .thenReturn(recipients());
         when(gatewayClient.deposit(eq("user-token"), eq(new CashForm(
                 new BigDecimal("250.00"),
-                "RUB"
+                "RUB",
+                IDEMPOTENCY_KEY
         )))).thenReturn(new CashOperationResponse(
                 new BigDecimal("1250.00"),
                 "RUB",
@@ -240,6 +249,7 @@ class MainPageControllerTest {
                         .with(csrf())
                         .param("amount", "250.00")
                         .param("currency", "RUB")
+                        .param("idempotencyKey", IDEMPOTENCY_KEY)
                         .param("action", "deposit"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/"))
@@ -257,7 +267,8 @@ class MainPageControllerTest {
                 .thenReturn(recipients());
         when(gatewayClient.withdraw(eq("user-token"), eq(new CashForm(
                 new BigDecimal("100.00"),
-                "RUB"
+                "RUB",
+                IDEMPOTENCY_KEY
         )))).thenReturn(new CashOperationResponse(
                 new BigDecimal("900.00"),
                 "RUB",
@@ -269,6 +280,7 @@ class MainPageControllerTest {
                         .with(csrf())
                         .param("amount", "100.00")
                         .param("currency", "RUB")
+                        .param("idempotencyKey", IDEMPOTENCY_KEY)
                         .param("action", "withdraw"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/"))

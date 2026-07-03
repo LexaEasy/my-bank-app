@@ -76,7 +76,7 @@ class TransferSecurityConfigTest {
 
     @Test
     void shouldAllowTransferWithRequiredRoles() throws Exception {
-        when(transferService.transfer(any(), any())).thenReturn(new TransferResponse(
+        when(transferService.transfer(any(), any(), any())).thenReturn(new TransferResponse(
                 "ivan",
                 "olga",
                 new BigDecimal("800.00"),
@@ -85,6 +85,7 @@ class TransferSecurityConfigTest {
         ));
 
         mockMvc.perform(post("/api/transfers")
+                        .header("Idempotency-Key", "66666666-6666-6666-6666-666666666666")
                         .with(jwt()
                                 .jwt(token -> token.claim("preferred_username", "ivan"))
                                 .authorities(

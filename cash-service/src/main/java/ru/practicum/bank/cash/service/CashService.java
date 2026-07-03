@@ -41,9 +41,8 @@ public class CashService {
         this.clock = clock;
     }
 
-    public CashOperationResponse deposit(String login, CashOperationRequest request) {
+    public CashOperationResponse deposit(String login, CashOperationRequest request, UUID operationId) {
         validateAmount(request.amount());
-        var operationId = UUID.randomUUID();
         checkOperation(login, request, operationId, OperationType.DEPOSIT);
         var balance = accountsClient.deposit(toAccountsRequest(login, request, operationId));
         publishNotification(login, request, operationId, NotificationType.CASH_DEPOSITED);
@@ -51,9 +50,8 @@ public class CashService {
         return new CashOperationResponse(balance.balance(), balance.currency(), "Счёт пополнен");
     }
 
-    public CashOperationResponse withdraw(String login, CashOperationRequest request) {
+    public CashOperationResponse withdraw(String login, CashOperationRequest request, UUID operationId) {
         validateAmount(request.amount());
-        var operationId = UUID.randomUUID();
         checkOperation(login, request, operationId, OperationType.WITHDRAW);
         var balance = accountsClient.withdraw(toAccountsRequest(login, request, operationId));
         publishNotification(login, request, operationId, NotificationType.CASH_WITHDRAWN);

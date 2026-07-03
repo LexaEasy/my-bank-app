@@ -75,7 +75,7 @@ class TransferNotificationKafkaIntegrationTest {
                     new TransferResult("ivan", "olga", new BigDecimal("800.00"), "RUB")
             );
 
-            transferService.transfer("ivan", request("200.00"));
+            transferService.transfer("ivan", request("200.00"), UUID.randomUUID());
 
             var records = receive(consumer, 2);
             assertThat(records).hasSize(2);
@@ -93,7 +93,7 @@ class TransferNotificationKafkaIntegrationTest {
     @Test
     void shouldNotPublishNotificationsForInvalidTransfer() {
         try (var consumer = consumer()) {
-            assertThatThrownBy(() -> transferService.transfer("ivan", request("0.00")))
+            assertThatThrownBy(() -> transferService.transfer("ivan", request("0.00"), UUID.randomUUID()))
                     .isInstanceOf(InvalidAmountException.class);
 
             assertThat(receive(consumer, 1)).isEmpty();

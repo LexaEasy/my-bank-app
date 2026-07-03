@@ -45,13 +45,12 @@ public class TransferService {
         this.clock = clock;
     }
 
-    public TransferResponse transfer(String senderLogin, TransferRequest request) {
+    public TransferResponse transfer(String senderLogin, TransferRequest request, UUID operationId) {
         validateAmount(request.amount());
         if (senderLogin.equals(request.recipientLogin())) {
             throw new SelfTransferForbiddenException();
         }
 
-        var operationId = UUID.randomUUID();
         checkOperation(senderLogin, request, operationId);
         var conversion = convert(request);
         var result = transferExecutor.execute(new TransferOperation(

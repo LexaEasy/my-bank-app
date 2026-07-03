@@ -71,7 +71,7 @@ class CashNotificationKafkaIntegrationTest {
                     new AccountsBalanceResponse("ivan", new BigDecimal("1100.00"), "RUB")
             );
 
-            cashService.deposit("ivan", request("100.00"));
+            cashService.deposit("ivan", request("100.00"), UUID.randomUUID());
 
             var record = KafkaTestUtils.getSingleRecord(consumer, TOPIC, Duration.ofSeconds(10));
             assertThat(record.key()).isEqualTo(record.value().recipientLogin()).isEqualTo("ivan");
@@ -85,7 +85,7 @@ class CashNotificationKafkaIntegrationTest {
     @Test
     void shouldNotPublishNotificationForInvalidDeposit() {
         try (var consumer = consumer()) {
-            assertThatThrownBy(() -> cashService.deposit("ivan", request("0.00")))
+            assertThatThrownBy(() -> cashService.deposit("ivan", request("0.00"), UUID.randomUUID()))
                     .isInstanceOf(InvalidAmountException.class);
 
             assertThat(KafkaTestUtils.getRecords(consumer, Duration.ofMillis(500)).count()).isZero();

@@ -53,6 +53,7 @@
             <h2>Операции с наличными</h2>
             <form class="cash-form" method="post" th:action="@{/cash}" th:object="${cashForm}">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <input type="hidden" th:field="*{idempotencyKey}">
                 <label>
                     Сумма
                     <input type="number" th:field="*{amount}" min="0.01" step="0.01">
@@ -90,6 +91,7 @@
             <form class="transfer-form" th:action="@{/transfers}" th:object="${transferForm}" method="post">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                 <input type="hidden" th:field="*{sourceCurrency}">
+                <input type="hidden" th:field="*{idempotencyKey}">
                 <label>
                     Получатель
                     <select th:field="*{recipientLogin}">

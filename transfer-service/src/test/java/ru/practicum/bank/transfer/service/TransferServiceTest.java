@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -36,6 +37,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TransferServiceTest {
+
+    private static final UUID OPERATION_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     private final TransferExecutor transferExecutor = mock(TransferExecutor.class);
     private final BlockerClient blockerClient = mock(BlockerClient.class);
@@ -60,7 +63,7 @@ class TransferServiceTest {
                 "RUB"
         ));
 
-        var response = transferService.transfer("ivan", request("olga", "200.00"));
+        var response = transferService.transfer("ivan", request("olga", "200.00"), OPERATION_ID);
 
         assertThat(response.senderLogin()).isEqualTo("ivan");
         assertThat(response.recipientLogin()).isEqualTo("olga");
@@ -76,7 +79,7 @@ class TransferServiceTest {
         assertThat(captor.getValue().currency()).isEqualTo(Currency.RUB);
         assertThat(captor.getValue().recipientAmount()).isEqualByComparingTo(new BigDecimal("200.00"));
         assertThat(captor.getValue().recipientCurrency()).isEqualTo(Currency.RUB);
-        assertThat(captor.getValue().operationId()).isNotBlank();
+        assertThat(captor.getValue().operationId()).isEqualTo(OPERATION_ID.toString());
 
         var blockerCaptor = ArgumentCaptor.forClass(OperationCheckRequest.class);
         verify(blockerClient).check(blockerCaptor.capture());
@@ -136,7 +139,7 @@ class TransferServiceTest {
                 new BigDecimal("100.00"),
                 Currency.USD,
                 Currency.CNY
-        ));
+        ), OPERATION_ID);
 
         var captor = ArgumentCaptor.forClass(TransferOperation.class);
         verify(transferExecutor).execute(captor.capture());
@@ -159,7 +162,7 @@ class TransferServiceTest {
         when(blockerClient.check(any())).thenReturn(new OperationCheckResponse(true, null));
         when(transferExecutor.execute(any())).thenThrow(new AccountsClientException("Accounts service request failed"));
 
-        assertThatThrownBy(() -> transferService.transfer("ivan", request("olga", "200.00")))
+        assertThatThrownBy(() -> transferService.transfer("ivan", request("olga", "200.00"), OPERATION_ID))
                 .isInstanceOf(AccountsClientException.class);
         verify(notificationEventPublisher, never()).publish(any());
     }
@@ -169,7 +172,7 @@ class TransferServiceTest {
         when(blockerClient.check(any()))
                 .thenReturn(new OperationCheckResponse(false, "Operation amount exceeds blocker limit"));
 
-        assertThatThrownBy(() -> transferService.transfer("ivan", request("olga", "100000.01")))
+        assertThatThrownBy(() -> transferService.transfer("ivan", request("olga", "100000.01"), OPERATION_ID))
                 .isInstanceOf(OperationBlockedException.class)
                 .hasMessage("Operation amount exceeds blocker limit");
 
@@ -188,7 +191,7 @@ class TransferServiceTest {
                 "RUB"
         ));
 
-        transferService.transfer("ivan", request("olga", "200.00"));
+        transferService.transfer("ivan", request("olga", "200.00"), OPERATION_ID);
 
         var ordered = inOrder(blockerClient, transferExecutor);
         ordered.verify(blockerClient).check(any());
@@ -197,7 +200,7 @@ class TransferServiceTest {
 
     @Test
     void shouldRejectSelfTransfer() {
-        assertThatThrownBy(() -> transferService.transfer("ivan", request("ivan", "200.00")))
+        assertThatThrownBy(() -> transferService.transfer("ivan", request("ivan", "200.00"), OPERATION_ID))
                 .isInstanceOf(SelfTransferForbiddenException.class);
         verify(blockerClient, never()).check(any());
         verify(exchangeClient, never()).convert(any(), any(), any());
@@ -207,7 +210,7 @@ class TransferServiceTest {
 
     @Test
     void shouldRejectZeroAmount() {
-        assertThatThrownBy(() -> transferService.transfer("ivan", request("olga", "0.00")))
+        assertThatThrownBy(() -> transferService.transfer("ivan", request("olga", "0.00"), OPERATION_ID))
                 .isInstanceOf(InvalidAmountException.class);
         verify(blockerClient, never()).check(any());
         verify(exchangeClient, never()).convert(any(), any(), any());
@@ -217,7 +220,7 @@ class TransferServiceTest {
 
     @Test
     void shouldRejectAmountWithInvalidScale() {
-        assertThatThrownBy(() -> transferService.transfer("ivan", request("olga", "100.001")))
+        assertThatThrownBy(() -> transferService.transfer("ivan", request("olga", "100.001"), OPERATION_ID))
                 .isInstanceOf(InvalidAmountScaleException.class);
         verify(blockerClient, never()).check(any());
         verify(exchangeClient, never()).convert(any(), any(), any());

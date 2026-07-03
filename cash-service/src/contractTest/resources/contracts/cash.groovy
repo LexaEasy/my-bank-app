@@ -9,6 +9,7 @@ import org.springframework.cloud.contract.spec.Contract
                 headers {
                     contentType applicationJson()
                     header "Authorization", "Bearer token"
+                    header "Idempotency-Key", "77777777-7777-7777-7777-777777777777"
                 }
                 body(
                         amount: "250.00",
@@ -35,6 +36,7 @@ import org.springframework.cloud.contract.spec.Contract
                 headers {
                     contentType applicationJson()
                     header "Authorization", "Bearer token"
+                    header "Idempotency-Key", "88888888-8888-8888-8888-888888888888"
                 }
                 body(
                         amount: "100.00",

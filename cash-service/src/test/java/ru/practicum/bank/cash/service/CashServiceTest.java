@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,6 +36,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class CashServiceTest {
+
+    private static final UUID OPERATION_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     private final AccountsClient accountsClient = mock(AccountsClient.class);
     private final BlockerClient blockerClient = mock(BlockerClient.class);
@@ -52,7 +55,7 @@ class CashServiceTest {
                 "RUB"
         ));
 
-        var response = cashService.deposit("ivan", request("250.00"));
+        var response = cashService.deposit("ivan", request("250.00"), OPERATION_ID);
 
         assertThat(response.balance()).isEqualByComparingTo(new BigDecimal("1250.00"));
         assertThat(response.currency()).isEqualTo("RUB");
@@ -63,7 +66,7 @@ class CashServiceTest {
         assertThat(captor.getValue().login()).isEqualTo("ivan");
         assertThat(captor.getValue().amount()).isEqualByComparingTo(new BigDecimal("250.00"));
         assertThat(captor.getValue().currency()).isEqualTo(Currency.RUB);
-        assertThat(captor.getValue().operationId()).isNotBlank();
+        assertThat(captor.getValue().operationId()).isEqualTo(OPERATION_ID.toString());
 
         var blockerCaptor = ArgumentCaptor.forClass(OperationCheckRequest.class);
         verify(blockerClient).check(blockerCaptor.capture());
@@ -94,7 +97,7 @@ class CashServiceTest {
                 "RUB"
         ));
 
-        var response = cashService.withdraw("ivan", request("100.00"));
+        var response = cashService.withdraw("ivan", request("100.00"), OPERATION_ID);
 
         assertThat(response.balance()).isEqualByComparingTo(new BigDecimal("900.00"));
         assertThat(response.message()).isEqualTo("Деньги сняты со счёта");
@@ -125,7 +128,7 @@ class CashServiceTest {
         when(blockerClient.check(any())).thenReturn(new OperationCheckResponse(true, null));
         when(accountsClient.deposit(any())).thenThrow(new AccountsClientException("Accounts service request failed"));
 
-        assertThatThrownBy(() -> cashService.deposit("ivan", request("250.00")))
+        assertThatThrownBy(() -> cashService.deposit("ivan", request("250.00"), OPERATION_ID))
                 .isInstanceOf(AccountsClientException.class);
         verify(notificationEventPublisher, never()).publish(any());
     }
@@ -136,7 +139,7 @@ class CashServiceTest {
         when(accountsClient.withdraw(any()))
                 .thenThrow(new AccountsClientException("Accounts service request failed"));
 
-        assertThatThrownBy(() -> cashService.withdraw("ivan", request("100.00")))
+        assertThatThrownBy(() -> cashService.withdraw("ivan", request("100.00"), OPERATION_ID))
                 .isInstanceOf(AccountsClientException.class);
         verify(notificationEventPublisher, never()).publish(any());
     }
@@ -146,7 +149,7 @@ class CashServiceTest {
         when(blockerClient.check(any()))
                 .thenReturn(new OperationCheckResponse(false, "Operation amount exceeds blocker limit"));
 
-        assertThatThrownBy(() -> cashService.deposit("ivan", request("100000.01")))
+        assertThatThrownBy(() -> cashService.deposit("ivan", request("100000.01"), OPERATION_ID))
                 .isInstanceOf(OperationBlockedException.class)
                 .hasMessage("Operation amount exceeds blocker limit");
 
@@ -164,7 +167,7 @@ class CashServiceTest {
                 "RUB"
         ));
 
-        cashService.withdraw("ivan", request("100.00"));
+        cashService.withdraw("ivan", request("100.00"), OPERATION_ID);
 
         var ordered = inOrder(blockerClient, accountsClient);
         ordered.verify(blockerClient).check(any());
@@ -173,7 +176,7 @@ class CashServiceTest {
 
     @Test
     void shouldRejectZeroAmount() {
-        assertThatThrownBy(() -> cashService.deposit("ivan", request("0.00")))
+        assertThatThrownBy(() -> cashService.deposit("ivan", request("0.00"), OPERATION_ID))
                 .isInstanceOf(InvalidAmountException.class);
         verify(blockerClient, never()).check(any());
         verify(accountsClient, never()).deposit(any());
@@ -182,7 +185,7 @@ class CashServiceTest {
 
     @Test
     void shouldRejectAmountWithInvalidScale() {
-        assertThatThrownBy(() -> cashService.deposit("ivan", request("100.001")))
+        assertThatThrownBy(() -> cashService.deposit("ivan", request("100.001"), OPERATION_ID))
                 .isInstanceOf(InvalidAmountScaleException.class);
         verify(blockerClient, never()).check(any());
         verify(accountsClient, never()).deposit(any());

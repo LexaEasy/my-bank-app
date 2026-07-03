@@ -8,6 +8,7 @@ Contract.make {
         headers {
             contentType applicationJson()
             header "Authorization", "Bearer token"
+            header "Idempotency-Key", "99999999-9999-9999-9999-999999999999"
         }
         body(
                 recipientLogin: "petr",

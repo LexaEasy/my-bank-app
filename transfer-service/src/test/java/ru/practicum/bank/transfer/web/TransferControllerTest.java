@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import ru.practicum.bank.transfer.dto.TransferRequest;
 import ru.practicum.bank.transfer.dto.TransferResponse;
 import ru.practicum.bank.transfer.exception.OperationBlockedException;
@@ -18,6 +19,7 @@ import ru.practicum.bank.transfer.service.TransferService;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,6 +31,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 class TransferControllerTest {
 
+    private static final UUID IDEMPOTENCY_KEY = UUID.fromString("44444444-4444-4444-4444-444444444444");
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -37,7 +41,7 @@ class TransferControllerTest {
 
     @Test
     void shouldTransferMoney() throws Exception {
-        when(transferService.transfer("ivan", request("olga", "200.00"))).thenReturn(new TransferResponse(
+        when(transferService.transfer("ivan", request("olga", "200.00"), IDEMPOTENCY_KEY)).thenReturn(new TransferResponse(
                 "ivan",
                 "olga",
                 new BigDecimal("800.00"),
@@ -45,7 +49,7 @@ class TransferControllerTest {
                 "Transfer completed"
         ));
 
-        mockMvc.perform(post("/api/transfers")
+        mockMvc.perform(postWithIdempotencyKey("/api/transfers")
                         .principal(jwtAuthentication("ivan"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -62,12 +66,12 @@ class TransferControllerTest {
                 .andExpect(jsonPath("$.currency").value("RUB"))
                 .andExpect(jsonPath("$.message").value("Transfer completed"));
 
-        verify(transferService).transfer("ivan", request("olga", "200.00"));
+        verify(transferService).transfer("ivan", request("olga", "200.00"), IDEMPOTENCY_KEY);
     }
 
     @Test
     void shouldAcceptCnyTransferRequest() throws Exception {
-        when(transferService.transfer("ivan", request("olga", "200.00", Currency.CNY))).thenReturn(new TransferResponse(
+        when(transferService.transfer("ivan", request("olga", "200.00", Currency.CNY), IDEMPOTENCY_KEY)).thenReturn(new TransferResponse(
                 "ivan",
                 "olga",
                 new BigDecimal("800.00"),
@@ -75,7 +79,7 @@ class TransferControllerTest {
                 "Transfer completed"
         ));
 
-        mockMvc.perform(post("/api/transfers")
+        mockMvc.perform(postWithIdempotencyKey("/api/transfers")
                         .principal(jwtAuthentication("ivan"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -88,7 +92,7 @@ class TransferControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.currency").value("CNY"));
 
-        verify(transferService).transfer("ivan", request("olga", "200.00", Currency.CNY));
+        verify(transferService).transfer("ivan", request("olga", "200.00", Currency.CNY), IDEMPOTENCY_KEY);
     }
 
     @Test
@@ -98,7 +102,7 @@ class TransferControllerTest {
                 new BigDecimal("100.00"),
                 Currency.USD,
                 Currency.CNY
-        ))).thenReturn(new TransferResponse(
+        ), IDEMPOTENCY_KEY)).thenReturn(new TransferResponse(
                 "ivan",
                 "olga",
                 new BigDecimal("900.00"),
@@ -106,7 +110,7 @@ class TransferControllerTest {
                 "Transfer completed"
         ));
 
-        mockMvc.perform(post("/api/transfers")
+        mockMvc.perform(postWithIdempotencyKey("/api/transfers")
                         .principal(jwtAuthentication("ivan"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -123,7 +127,7 @@ class TransferControllerTest {
 
     @Test
     void shouldReturnValidationError() throws Exception {
-        mockMvc.perform(post("/api/transfers")
+        mockMvc.perform(postWithIdempotencyKey("/api/transfers")
                         .principal(jwtAuthentication("ivan"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -138,10 +142,10 @@ class TransferControllerTest {
 
     @Test
     void shouldReturnUnprocessableEntityForSelfTransfer() throws Exception {
-        when(transferService.transfer("ivan", request("ivan", "200.00")))
+        when(transferService.transfer("ivan", request("ivan", "200.00"), IDEMPOTENCY_KEY))
                 .thenThrow(new SelfTransferForbiddenException());
 
-        mockMvc.perform(post("/api/transfers")
+        mockMvc.perform(postWithIdempotencyKey("/api/transfers")
                         .principal(jwtAuthentication("ivan"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -157,10 +161,10 @@ class TransferControllerTest {
 
     @Test
     void shouldReturnOperationBlockedError() throws Exception {
-        when(transferService.transfer("ivan", request("olga", "100000.01")))
+        when(transferService.transfer("ivan", request("olga", "100000.01"), IDEMPOTENCY_KEY))
                 .thenThrow(new OperationBlockedException("Operation amount exceeds blocker limit"));
 
-        mockMvc.perform(post("/api/transfers")
+        mockMvc.perform(postWithIdempotencyKey("/api/transfers")
                         .principal(jwtAuthentication("ivan"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -173,6 +177,21 @@ class TransferControllerTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("OPERATION_BLOCKED"))
                 .andExpect(jsonPath("$.message").value("Operation amount exceeds blocker limit"));
+    }
+
+    @Test
+    void shouldRejectRequestWithoutIdempotencyKey() throws Exception {
+        mockMvc.perform(post("/api/transfers")
+                        .principal(jwtAuthentication("ivan"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "recipientLogin": "olga",
+                                  "amount": "10.00",
+                                  "currency": "RUB"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
     }
 
     private JwtAuthenticationToken jwtAuthentication(String login) {
@@ -191,5 +210,9 @@ class TransferControllerTest {
 
     private TransferRequest request(String recipientLogin, String amount, Currency currency) {
         return new TransferRequest(recipientLogin, new BigDecimal(amount), currency);
+    }
+
+    private MockHttpServletRequestBuilder postWithIdempotencyKey(String uri) {
+        return post(uri).header("Idempotency-Key", IDEMPOTENCY_KEY);
     }
 }

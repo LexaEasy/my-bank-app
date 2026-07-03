@@ -101,6 +101,7 @@ public class MainPageController {
             redirectAttributes.addFlashAttribute("successMessage", response.message());
         } catch (GatewayClientException exception) {
             redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
+            redirectAttributes.addFlashAttribute("cashForm", cashForm);
         }
 
         return "redirect:/";
@@ -131,6 +132,7 @@ public class MainPageController {
             redirectAttributes.addFlashAttribute("transferResponse", response);
         } catch (GatewayClientException exception) {
             redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
+            redirectAttributes.addFlashAttribute("transferForm", transferForm);
         }
 
         return "redirect:/";

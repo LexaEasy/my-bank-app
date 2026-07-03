@@ -13,6 +13,7 @@ import ru.practicum.bank.cash.web.CashExceptionHandler;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -25,13 +26,13 @@ public abstract class CashContractBase {
     @BeforeEach
     void setUp() {
         var cashService = mock(CashService.class);
-        when(cashService.deposit(eq("ivan"), any(CashOperationRequest.class)))
+        when(cashService.deposit(eq("ivan"), any(CashOperationRequest.class), any(UUID.class)))
                 .thenReturn(new CashOperationResponse(
                         new BigDecimal("1250.00"),
                         "RUB",
                         "Счёт пополнен"
                 ));
-        when(cashService.withdraw(eq("ivan"), any(CashOperationRequest.class)))
+        when(cashService.withdraw(eq("ivan"), any(CashOperationRequest.class), any(UUID.class)))
                 .thenReturn(new CashOperationResponse(
                         new BigDecimal("900.00"),
                         "RUB",

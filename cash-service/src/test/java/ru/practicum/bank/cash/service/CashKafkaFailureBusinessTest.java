@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,7 +56,8 @@ class CashKafkaFailureBusinessTest {
 
         var response = service.deposit(
                 "ivan",
-                new CashOperationRequest(new BigDecimal("250.00"), Currency.RUB)
+                new CashOperationRequest(new BigDecimal("250.00"), Currency.RUB),
+                UUID.fromString("cccccccc-cccc-cccc-cccc-cccccccccccc")
         );
 
         assertThat(response.balance()).isEqualByComparingTo("1250.00");

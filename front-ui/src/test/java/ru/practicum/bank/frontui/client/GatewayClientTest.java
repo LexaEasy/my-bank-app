@@ -25,6 +25,8 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 class GatewayClientTest {
 
+    private static final String IDEMPOTENCY_KEY = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
@@ -43,6 +45,7 @@ class GatewayClientTest {
 
         server.expect(once(), requestTo("http://transfer-service:8083/api/transfers"))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
+                .andExpect(header("Idempotency-Key", IDEMPOTENCY_KEY))
                 .andExpect(content().json("""
                         {
                           "recipientLogin": "petr",
@@ -65,7 +68,8 @@ class GatewayClientTest {
                 "petr",
                 new BigDecimal("1.00"),
                 "USD",
-                "RUB"
+                "RUB",
+                IDEMPOTENCY_KEY
         ));
 
         assertThat(response.senderBalance()).isEqualByComparingTo("908.50");
@@ -129,6 +133,7 @@ class GatewayClientTest {
 
         server.expect(once(), requestTo("http://cash-service:8082/api/cash/withdraw"))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
+                .andExpect(header("Idempotency-Key", IDEMPOTENCY_KEY))
                 .andRespond(withStatus(HttpStatus.BAD_GATEWAY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("""
@@ -138,7 +143,10 @@ class GatewayClientTest {
                                 }
                                 """));
 
-        assertThatThrownBy(() -> client.withdraw("user-token", new CashForm(new BigDecimal("999999.00"), "RUB")))
+        assertThatThrownBy(() -> client.withdraw(
+                "user-token",
+                new CashForm(new BigDecimal("999999.00"), "RUB", IDEMPOTENCY_KEY)
+        ))
                 .isInstanceOf(GatewayClientException.class)
                 .hasMessage("Недостаточно средств");
 

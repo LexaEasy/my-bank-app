@@ -81,7 +81,10 @@ public class GatewayClient {
         try {
             return transferClient.post()
                     .uri("/api/transfers")
-                    .headers(headers -> headers.setBearerAuth(accessToken))
+                    .headers(headers -> {
+                        headers.setBearerAuth(accessToken);
+                        headers.set("Idempotency-Key", form.idempotencyKey());
+                    })
                     .body(new TransferRequest(
                             form.recipientLogin(),
                             form.amount(),
@@ -183,7 +186,10 @@ public class GatewayClient {
         try {
             return cashClient.post()
                     .uri(uri)
-                    .headers(headers -> headers.setBearerAuth(accessToken))
+                    .headers(headers -> {
+                        headers.setBearerAuth(accessToken);
+                        headers.set("Idempotency-Key", form.idempotencyKey());
+                    })
                     .body(new CashOperationRequest(form.amount(), form.currency()))
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, (request, response) -> handleError(response))
