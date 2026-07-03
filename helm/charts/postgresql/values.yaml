@@ -20,3 +20,20 @@ persistence:
   storageClass: ""
 
 resources: {}
+
+probes:
+  startup:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 30
+  readiness:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  liveness:
+    initialDelaySeconds: 30
+    periodSeconds: 20
+    timeoutSeconds: 3
+    failureThreshold: 3

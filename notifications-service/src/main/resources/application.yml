@@ -2,7 +2,7 @@ spring:
   application:
     name: notifications-service
   main:
-    web-application-type: none
+    web-application-type: ${SPRING_MAIN_WEB_APPLICATION_TYPE:servlet}
   jackson:
     default-property-inclusion: non_null
   kafka:
@@ -30,3 +30,14 @@ bank:
     notifications-dlt-partitions: ${BANK_KAFKA_NOTIFICATIONS_DLT_PARTITIONS:3}
     notifications-replication-factor: ${BANK_KAFKA_NOTIFICATIONS_REPLICATION_FACTOR:1}
     notifications-dlt-retention-ms: ${BANK_KAFKA_NOTIFICATIONS_DLT_RETENTION_MS:604800000}
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: ${MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED:true}
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+server:
+  port: ${SERVER_PORT:8089}

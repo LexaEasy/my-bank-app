@@ -16,7 +16,7 @@ class NotificationsServiceApplicationTests {
     @Test
     void contextLoads() {
         assertThat(environment.getProperty("spring.main.web-application-type"))
-                .isEqualTo("none");
+                .isEqualTo("servlet");
         assertThat(environment.getProperty("spring.kafka.bootstrap-servers"))
                 .isEqualTo("localhost:9092");
         assertThat(environment.getProperty("spring.kafka.consumer.group-id"))
@@ -39,5 +39,7 @@ class NotificationsServiceApplicationTests {
                 .isEqualTo("1");
         assertThat(environment.getProperty("bank.kafka.notifications-dlt-retention-ms"))
                 .isEqualTo("604800000");
+        assertThat(environment.getProperty("management.endpoint.health.probes.enabled"))
+                .isEqualTo("true");
     }
 }

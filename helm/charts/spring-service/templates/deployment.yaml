@@ -40,11 +40,44 @@ spec:
                   key: {{ .key }}
             {{- end }}
           {{- end }}
-          {{- if .Values.service.enabled }}
+          {{- if or .Values.service.enabled .Values.management.enabled }}
           ports:
+            {{- if .Values.service.enabled }}
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+            {{- end }}
+            {{- if .Values.management.enabled }}
+            - name: management
+              containerPort: {{ .Values.management.port }}
+              protocol: TCP
+            {{- end }}
+          {{- end }}
+          {{- if .Values.probes.enabled }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.probes.startup.path | quote }}
+              port: {{ .Values.probes.port }}
+            initialDelaySeconds: {{ .Values.probes.startup.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path | quote }}
+              port: {{ .Values.probes.port }}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path | quote }}
+              port: {{ .Values.probes.port }}
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

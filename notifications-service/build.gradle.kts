@@ -10,8 +10,10 @@ contracts {
 
 dependencies {
     implementation(project(":shared"))
+    implementation(libs.spring.boot.starter.actuator)
     implementation(libs.spring.boot.starter.json)
     implementation(libs.spring.boot.starter.validation)
+    implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.kafka)
 
     "contractTestImplementation"(libs.spring.boot.starter.test)

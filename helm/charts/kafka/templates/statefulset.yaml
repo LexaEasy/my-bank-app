@@ -65,6 +65,36 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/kafka/data
+          startupProbe:
+            exec:
+              command:
+                - /opt/kafka/bin/kafka-broker-api-versions.sh
+                - --bootstrap-server
+                - localhost:{{ .Values.service.brokerPort }}
+            initialDelaySeconds: {{ .Values.probes.startup.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+          readinessProbe:
+            exec:
+              command:
+                - /opt/kafka/bin/kafka-broker-api-versions.sh
+                - --bootstrap-server
+                - localhost:{{ .Values.service.brokerPort }}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          livenessProbe:
+            exec:
+              command:
+                - /opt/kafka/bin/kafka-broker-api-versions.sh
+                - --bootstrap-server
+                - localhost:{{ .Values.service.brokerPort }}
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:

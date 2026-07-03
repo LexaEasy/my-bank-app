@@ -1,6 +1,6 @@
 ﻿spring:
   main:
-    web-application-type: none
+    web-application-type: servlet
   kafka:
     admin:
       fail-fast: false
@@ -26,3 +26,14 @@ bank:
     notifications-dlt-partitions: 3
     notifications-replication-factor: 1
     notifications-dlt-retention-ms: 604800000
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+server:
+  port: 0

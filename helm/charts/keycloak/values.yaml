@@ -37,3 +37,23 @@ realmImport:
 extraEnv: []
 
 resources: {}
+
+probes:
+  startup:
+    path: /health/started
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 30
+  readiness:
+    path: /health/ready
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  liveness:
+    path: /health/live
+    initialDelaySeconds: 30
+    periodSeconds: 20
+    timeoutSeconds: 3
+    failureThreshold: 3
