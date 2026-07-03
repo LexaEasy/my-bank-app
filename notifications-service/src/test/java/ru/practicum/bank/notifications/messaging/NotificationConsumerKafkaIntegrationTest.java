@@ -23,6 +23,8 @@ import static org.mockito.Mockito.after;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static ru.practicum.bank.common.notification.NotificationTopicsProperties.DEFAULT_DLT_RETENTION_MS;
+import static ru.practicum.bank.common.notification.NotificationTopicsProperties.DEFAULT_PARTITION_COUNT;
 
 @SpringBootTest(properties = {
         "spring.kafka.admin.fail-fast=true",
@@ -30,7 +32,7 @@ import static org.mockito.Mockito.verify;
 })
 @EmbeddedKafka(
         kraft = true,
-        partitions = 3,
+        partitions = DEFAULT_PARTITION_COUNT,
         topics = {KafkaIntegrationTestSupport.TOPIC, KafkaIntegrationTestSupport.DLT_TOPIC},
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
@@ -51,8 +53,8 @@ class NotificationConsumerKafkaIntegrationTest extends KafkaIntegrationTestSuppo
             var descriptions = admin.describeTopics(java.util.List.of(TOPIC, DLT_TOPIC))
                     .allTopicNames()
                     .get(10, TimeUnit.SECONDS);
-            assertThat(descriptions.get(TOPIC).partitions()).hasSize(3);
-            assertThat(descriptions.get(DLT_TOPIC).partitions()).hasSize(3);
+            assertThat(descriptions.get(TOPIC).partitions()).hasSize(DEFAULT_PARTITION_COUNT);
+            assertThat(descriptions.get(DLT_TOPIC).partitions()).hasSize(DEFAULT_PARTITION_COUNT);
 
             var dltResource = new ConfigResource(ConfigResource.Type.TOPIC, DLT_TOPIC);
             var dltConfig = admin.describeConfigs(java.util.List.of(dltResource))
@@ -60,7 +62,7 @@ class NotificationConsumerKafkaIntegrationTest extends KafkaIntegrationTestSuppo
                     .get(10, TimeUnit.SECONDS)
                     .get(dltResource);
             assertThat(dltConfig.get(TopicConfig.RETENTION_MS_CONFIG).value())
-                    .isEqualTo("604800000");
+                    .isEqualTo(Long.toString(DEFAULT_DLT_RETENTION_MS));
         }
     }
 

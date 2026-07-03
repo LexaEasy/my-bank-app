@@ -22,3 +22,7 @@ bank:
   kafka:
     notifications-topic: bank.notifications
     notifications-dlt-topic: bank.notifications.dlt
+    notifications-partitions: 3
+    notifications-dlt-partitions: 3
+    notifications-replication-factor: 1
+    notifications-dlt-retention-ms: 604800000

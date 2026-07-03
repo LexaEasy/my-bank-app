@@ -3,10 +3,20 @@
 {{- $kafka := index .Values "kafka" -}}
 {{- $accounts := index .Values "accounts-service" -}}
 {{- $notifications := index .Values "notifications-service" -}}
+{{- $globalEnv := default dict .Values.global.env -}}
+{{- $accountsEnv := mergeOverwrite (deepCopy $globalEnv) (default dict $accounts.env) -}}
+{{- $notificationsEnv := mergeOverwrite (deepCopy $globalEnv) (default dict $notifications.env) -}}
 {{- $kafkaName := default "kafka" $kafka.fullnameOverride -}}
-{{- $mainTopic := required "accounts-service.env.BANK_KAFKA_NOTIFICATIONS_TOPIC is required" (get $accounts.env "BANK_KAFKA_NOTIFICATIONS_TOPIC") -}}
-{{- $dltTopic := required "notifications-service.env.BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC is required" (get $notifications.env "BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC") -}}
-{{- $consumerGroup := required "notifications-service.env.SPRING_KAFKA_CONSUMER_GROUP_ID is required" (get $notifications.env "SPRING_KAFKA_CONSUMER_GROUP_ID") -}}
+{{- $mainTopic := required "BANK_KAFKA_NOTIFICATIONS_TOPIC is required" (get $accountsEnv "BANK_KAFKA_NOTIFICATIONS_TOPIC") -}}
+{{- $dltTopic := required "BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC is required" (get $notificationsEnv "BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC") -}}
+{{- $partitions := required "BANK_KAFKA_NOTIFICATIONS_PARTITIONS is required" (get $accountsEnv "BANK_KAFKA_NOTIFICATIONS_PARTITIONS") -}}
+{{- $dltPartitions := required "BANK_KAFKA_NOTIFICATIONS_DLT_PARTITIONS is required" (get $notificationsEnv "BANK_KAFKA_NOTIFICATIONS_DLT_PARTITIONS") -}}
+{{- $replicationFactor := required "BANK_KAFKA_NOTIFICATIONS_REPLICATION_FACTOR is required" (get $accountsEnv "BANK_KAFKA_NOTIFICATIONS_REPLICATION_FACTOR") -}}
+{{- $dltRetentionMs := required "BANK_KAFKA_NOTIFICATIONS_DLT_RETENTION_MS is required" (get $notificationsEnv "BANK_KAFKA_NOTIFICATIONS_DLT_RETENTION_MS") -}}
+{{- $consumerGroup := required "notifications-service.env.SPRING_KAFKA_CONSUMER_GROUP_ID is required" (get $notificationsEnv "SPRING_KAFKA_CONSUMER_GROUP_ID") -}}
+{{- if lt (int $dltPartitions) (int $partitions) -}}
+{{- fail "notifications-service.env.BANK_KAFKA_NOTIFICATIONS_DLT_PARTITIONS must be greater than or equal to accounts-service.env.BANK_KAFKA_NOTIFICATIONS_PARTITIONS" -}}
+{{- end -}}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -42,22 +52,22 @@ spec:
                 --bootstrap-server "$bootstrap" \
                 --describe \
                 --topic "{{ $mainTopic }}")"
-              echo "$main_description" | grep -q "PartitionCount: 3"
-              echo "$main_description" | grep -q "ReplicationFactor: 1"
+              echo "$main_description" | grep -q "PartitionCount: {{ $partitions }}"
+              echo "$main_description" | grep -q "ReplicationFactor: {{ $replicationFactor }}"
 
               dlt_description="$(/opt/kafka/bin/kafka-topics.sh \
                 --bootstrap-server "$bootstrap" \
                 --describe \
                 --topic "{{ $dltTopic }}")"
-              echo "$dlt_description" | grep -q "PartitionCount: 3"
-              echo "$dlt_description" | grep -q "ReplicationFactor: 1"
+              echo "$dlt_description" | grep -q "PartitionCount: {{ $dltPartitions }}"
+              echo "$dlt_description" | grep -q "ReplicationFactor: {{ $replicationFactor }}"
 
               dlt_config="$(/opt/kafka/bin/kafka-configs.sh \
                 --bootstrap-server "$bootstrap" \
                 --entity-type topics \
                 --entity-name "{{ $dltTopic }}" \
                 --describe)"
-              echo "$dlt_config" | grep -q "retention.ms=604800000"
+              echo "$dlt_config" | grep -q "retention.ms={{ $dltRetentionMs }}"
 
               /opt/kafka/bin/kafka-consumer-groups.sh \
                 --bootstrap-server "$bootstrap" \

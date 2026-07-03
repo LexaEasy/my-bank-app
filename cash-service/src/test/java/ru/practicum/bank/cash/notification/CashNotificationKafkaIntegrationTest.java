@@ -35,11 +35,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static ru.practicum.bank.common.notification.NotificationTopicsProperties.DEFAULT_PARTITION_COUNT;
 
 @SpringBootTest(properties = "spring.kafka.admin.fail-fast=true")
 @EmbeddedKafka(
         kraft = true,
-        partitions = 3,
+        partitions = DEFAULT_PARTITION_COUNT,
         topics = CashNotificationKafkaIntegrationTest.TOPIC,
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )

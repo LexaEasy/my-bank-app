@@ -31,5 +31,13 @@ class NotificationsServiceApplicationTests {
                 .isEqualTo("bank.notifications");
         assertThat(environment.getProperty("bank.kafka.notifications-dlt-topic"))
                 .isEqualTo("bank.notifications.dlt");
+        assertThat(environment.getProperty("bank.kafka.notifications-partitions"))
+                .isEqualTo("3");
+        assertThat(environment.getProperty("bank.kafka.notifications-dlt-partitions"))
+                .isEqualTo("3");
+        assertThat(environment.getProperty("bank.kafka.notifications-replication-factor"))
+                .isEqualTo("1");
+        assertThat(environment.getProperty("bank.kafka.notifications-dlt-retention-ms"))
+                .isEqualTo("604800000");
     }
 }

@@ -398,6 +398,24 @@ helm upgrade --install bank helm/bank --namespace test --create-namespace -f hel
 helm upgrade --install bank helm/bank --namespace prod --create-namespace -f helm/bank/values-prod.yaml --set global.imageRegistry=registry.example.com/my-bank --set global.imageTag=ci-prod --rollback-on-failure --timeout 5m --dry-run=client
 ```
 
+## Конфигурация Kafka topology
+
+Kafka topology для событий уведомлений управляется из одной модели конфигурации:
+
+- Java-код привязывает `bank.kafka.*` к `NotificationTopicsProperties`;
+- `NotificationTopicsConfiguration` использует те же properties для объявлений `NewTopic` через `KafkaAdmin`;
+- Helm хранит общие env-переменные topology уведомлений в `global.env`, поэтому producer-сервисы и `notifications-service` получают одинаковые значения;
+- Helm tests читают rendered env values и сравнивают фактические partitions, replication factor и DLT retention топиков с ними.
+
+Значения по умолчанию:
+
+- `BANK_KAFKA_NOTIFICATIONS_PARTITIONS`: `3`;
+- `BANK_KAFKA_NOTIFICATIONS_DLT_PARTITIONS`: `3`;
+- `BANK_KAFKA_NOTIFICATIONS_REPLICATION_FACTOR`: `1`;
+- `BANK_KAFKA_NOTIFICATIONS_DLT_RETENTION_MS`: `604800000`.
+
+`BANK_KAFKA_NOTIFICATIONS_DLT_PARTITIONS` должен быть больше или равен `BANK_KAFKA_NOTIFICATIONS_PARTITIONS`. Некорректная topology отклоняется при старте Spring и при Helm render.
+
 ## Jenkins CI/CD
 
 В репозитории есть root `Jenkinsfile` для umbrella pipeline и Jenkinsfile рядом с каждым микросервисом. Pipeline покрывает validate, unit/integration/contract tests, `bootJar` и Helm lint/template. Docker build, image push и deploy отключены по умолчанию и выполняются только при явном включении соответствующих параметров.

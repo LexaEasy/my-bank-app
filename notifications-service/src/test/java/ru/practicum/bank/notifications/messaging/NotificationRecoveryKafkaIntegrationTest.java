@@ -18,6 +18,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static ru.practicum.bank.common.notification.NotificationTopicsProperties.DEFAULT_PARTITION_COUNT;
 
 @SpringBootTest(properties = {
         "spring.kafka.admin.fail-fast=true",
@@ -25,7 +26,7 @@ import static org.mockito.Mockito.verify;
 })
 @EmbeddedKafka(
         kraft = true,
-        partitions = 3,
+        partitions = DEFAULT_PARTITION_COUNT,
         topics = {KafkaIntegrationTestSupport.TOPIC, KafkaIntegrationTestSupport.DLT_TOPIC},
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
