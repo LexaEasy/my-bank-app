@@ -32,6 +32,10 @@ spring:
           jwk-set-uri: ${BANK_KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs}
 
 bank:
+  balance:
+    retry:
+      max-attempts: ${BANK_BALANCE_RETRY_MAX_ATTEMPTS:3}
+      backoff-ms: ${BANK_BALANCE_RETRY_BACKOFF_MS:50}
   kafka:
     notifications-dlt-topic: ${BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC:bank.notifications.dlt}
     notifications-dlt-partitions: ${BANK_KAFKA_NOTIFICATIONS_DLT_PARTITIONS:3}

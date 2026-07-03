@@ -210,6 +210,31 @@ class IdempotencyServiceTest {
     }
 
     @Test
+    void shouldChangeBalanceOnlyOnceForRepeatedOperationId() {
+        String operationId = "repeat-balance-operation";
+        BigDecimal initialBalance = accountRepository.findByLogin("ivan").orElseThrow().getBalance();
+        var request = request(operationId, "ivan", "25.00");
+
+        idempotencyService.execute(
+                operationId,
+                "DEPOSIT",
+                request,
+                BalanceResponse.class,
+                () -> deposit("ivan", "25.00")
+        );
+        idempotencyService.execute(
+                operationId,
+                "DEPOSIT",
+                request,
+                BalanceResponse.class,
+                () -> deposit("ivan", "25.00")
+        );
+
+        assertThat(accountRepository.findByLogin("ivan").orElseThrow().getBalance())
+                .isEqualByComparingTo(initialBalance.add(new BigDecimal("25.00")));
+    }
+
+    @Test
     void shouldRollbackBalanceAndReleaseOperationWhenTransactionFails() {
         String operationId = "balance-rollback";
         BigDecimal initialBalance = accountRepository.findByLogin("ivan").orElseThrow().getBalance();
@@ -234,6 +259,13 @@ class IdempotencyServiceTest {
 
     private BalanceOperationRequest request(String operationId, String login, String amount) {
         return new BalanceOperationRequest(login, new BigDecimal(amount), Currency.RUB, operationId);
+    }
+
+    private BalanceResponse deposit(String login, String amount) {
+        var account = accountRepository.findByLogin(login).orElseThrow();
+        account.setBalance(account.getBalance().add(new BigDecimal(amount)));
+        var saved = accountRepository.save(account);
+        return new BalanceResponse(saved.getLogin(), saved.getBalance(), saved.getCurrency().name());
     }
 
 }

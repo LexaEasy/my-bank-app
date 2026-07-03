@@ -25,6 +25,11 @@ import java.util.Comparator;
 import java.util.List;
 
 @Service
+@Retryable(
+        retryFor = {OptimisticLockException.class, ObjectOptimisticLockingFailureException.class},
+        maxAttemptsExpression = "${bank.balance.retry.max-attempts:3}",
+        backoff = @Backoff(delayExpression = "${bank.balance.retry.backoff-ms:50}")
+)
 public class BalanceOperationExecutor {
 
     private final AccountRepository accountRepository;
@@ -53,11 +58,6 @@ public class BalanceOperationExecutor {
         return toBalanceResponse(accountRepository.save(account));
     }
 
-    @Retryable(
-            retryFor = {OptimisticLockException.class, ObjectOptimisticLockingFailureException.class},
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 50)
-    )
     @Transactional(propagation = Propagation.REQUIRED)
     public TransferBalanceResponse transfer(TransferBalanceRequest request) {
         if (request.senderLogin().equals(request.recipientLogin())) {

@@ -65,6 +65,8 @@ accounts-service:
   service:
     port: 8081
   env:
+    BANK_BALANCE_RETRY_BACKOFF_MS: "50"
+    BANK_BALANCE_RETRY_MAX_ATTEMPTS: "3"
     SERVER_PORT: "8081"
     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     SPRING_DATASOURCE_URL: jdbc:postgresql://postgresql:5432/bank

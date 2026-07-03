@@ -28,6 +28,10 @@
           jwk-set-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
 
 bank:
+  balance:
+    retry:
+      max-attempts: 3
+      backoff-ms: 0
   kafka:
     notifications-dlt-topic: bank.notifications.dlt
     notifications-dlt-partitions: 3
