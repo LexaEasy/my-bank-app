@@ -26,10 +26,61 @@ class BlockerServiceTest {
 
     @Test
     void shouldBlockOperationAboveLimit() {
-        var response = blockerService.check(cashRequest(new BigDecimal("100000.01")));
+        var request = new OperationCheckRequest(
+                "op-1",
+                OperationType.DEPOSIT,
+                "ivan",
+                null,
+                null,
+                new BigDecimal("1000.00"),
+                Currency.USD,
+                new BigDecimal("100000.01"),
+                Currency.RUB
+        );
+
+        var response = blockerService.check(request);
 
         assertThat(response.allowed()).isFalse();
         assertThat(response.reason()).isEqualTo("Operation amount exceeds blocker limit");
+    }
+
+    @Test
+    void shouldUseNormalizedAmountForLimitCheck() {
+        var request = new OperationCheckRequest(
+                "op-1",
+                OperationType.DEPOSIT,
+                "ivan",
+                null,
+                null,
+                new BigDecimal("1000000.00"),
+                Currency.USD,
+                new BigDecimal("1000.00"),
+                Currency.RUB
+        );
+
+        var response = blockerService.check(request);
+
+        assertThat(response.allowed()).isTrue();
+        assertThat(response.reason()).isNull();
+    }
+
+    @Test
+    void shouldRequireRubBaseCurrency() {
+        var request = new OperationCheckRequest(
+                "op-1",
+                OperationType.DEPOSIT,
+                "ivan",
+                null,
+                null,
+                new BigDecimal("1000.00"),
+                Currency.USD,
+                new BigDecimal("1000.00"),
+                Currency.USD
+        );
+
+        assertThatThrownBy(() -> blockerService.check(request))
+                .isInstanceOf(InvalidOperationRequestException.class)
+                .hasMessage("baseCurrency must be RUB");
     }
 
     @Test
@@ -40,6 +91,8 @@ class BlockerServiceTest {
                 null,
                 null,
                 null,
+                new BigDecimal("1000.00"),
+                Currency.RUB,
                 new BigDecimal("1000.00"),
                 Currency.RUB
         );
@@ -58,7 +111,9 @@ class BlockerServiceTest {
                 "ivan",
                 null,
                 new BigDecimal("1000.00"),
-                Currency.USD
+                Currency.USD,
+                new BigDecimal("1000.00"),
+                Currency.RUB
         );
 
         assertThatThrownBy(() -> blockerService.check(request))
@@ -73,6 +128,8 @@ class BlockerServiceTest {
                 "ivan",
                 null,
                 null,
+                amount,
+                Currency.RUB,
                 amount,
                 Currency.RUB
         );

@@ -97,6 +97,8 @@ class HttpBlockerClientTest {
                 null,
                 null,
                 new BigDecimal("250.00"),
+                Currency.RUB,
+                new BigDecimal("250.00"),
                 Currency.RUB
         );
     }

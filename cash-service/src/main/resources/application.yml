@@ -52,6 +52,8 @@ bank:
       base-url: ${BANK_ACCOUNTS_BASE_URL:http://accounts-service:8081}
     blocker:
       base-url: ${BANK_BLOCKER_BASE_URL:http://blocker-service:8088}
+    exchange:
+      base-url: ${BANK_EXCHANGE_BASE_URL:http://exchange-service:8086}
 
 management:
   endpoints:

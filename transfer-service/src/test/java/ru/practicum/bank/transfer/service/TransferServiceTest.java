@@ -87,6 +87,10 @@ class TransferServiceTest {
         assertThat(blockerCaptor.getValue().operationType()).isEqualTo(OperationType.TRANSFER);
         assertThat(blockerCaptor.getValue().sender()).isEqualTo("ivan");
         assertThat(blockerCaptor.getValue().recipient()).isEqualTo("olga");
+        assertThat(blockerCaptor.getValue().amount()).isEqualByComparingTo("200.00");
+        assertThat(blockerCaptor.getValue().currency()).isEqualTo(Currency.RUB);
+        assertThat(blockerCaptor.getValue().normalizedAmount()).isEqualByComparingTo("200.00");
+        assertThat(blockerCaptor.getValue().baseCurrency()).isEqualTo(Currency.RUB);
         verify(exchangeClient, never()).convert(any(), any(), any());
 
         var notificationCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
@@ -118,6 +122,15 @@ class TransferServiceTest {
     @Test
     void shouldConvertTransferForDifferentTargetCurrency() {
         when(blockerClient.check(any())).thenReturn(new OperationCheckResponse(true, null));
+        when(exchangeClient.convert(Currency.USD, Currency.RUB, new BigDecimal("100.00")))
+                .thenReturn(new ConversionResponse(
+                        Currency.USD,
+                        Currency.RUB,
+                        new BigDecimal("100.00"),
+                        new BigDecimal("9000.00"),
+                        new BigDecimal("90.00"),
+                        Instant.parse("2026-06-25T10:00:00Z")
+                ));
         when(exchangeClient.convert(Currency.USD, Currency.CNY, new BigDecimal("100.00")))
                 .thenReturn(new ConversionResponse(
                         Currency.USD,
@@ -147,6 +160,15 @@ class TransferServiceTest {
         assertThat(captor.getValue().currency()).isEqualTo(Currency.USD);
         assertThat(captor.getValue().recipientAmount()).isEqualByComparingTo("741.94");
         assertThat(captor.getValue().recipientCurrency()).isEqualTo(Currency.CNY);
+
+        var blockerCaptor = ArgumentCaptor.forClass(OperationCheckRequest.class);
+        verify(blockerClient).check(blockerCaptor.capture());
+        assertThat(blockerCaptor.getValue().amount()).isEqualByComparingTo("100.00");
+        assertThat(blockerCaptor.getValue().currency()).isEqualTo(Currency.USD);
+        assertThat(blockerCaptor.getValue().normalizedAmount()).isEqualByComparingTo("9000.00");
+        assertThat(blockerCaptor.getValue().baseCurrency()).isEqualTo(Currency.RUB);
+        verify(exchangeClient).convert(Currency.USD, Currency.RUB, new BigDecimal("100.00"));
+        verify(exchangeClient).convert(Currency.USD, Currency.CNY, new BigDecimal("100.00"));
 
         var notificationCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
         verify(notificationEventPublisher, times(2)).publish(notificationCaptor.capture());

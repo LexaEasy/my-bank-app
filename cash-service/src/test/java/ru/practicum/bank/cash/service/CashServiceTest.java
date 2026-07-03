@@ -7,12 +7,14 @@ import ru.practicum.bank.cash.client.AccountsBalanceResponse;
 import ru.practicum.bank.cash.client.AccountsClient;
 import ru.practicum.bank.cash.client.AccountsClientException;
 import ru.practicum.bank.cash.client.BlockerClient;
+import ru.practicum.bank.cash.client.ExchangeClient;
 import ru.practicum.bank.cash.dto.CashOperationRequest;
 import ru.practicum.bank.cash.exception.InvalidAmountException;
 import ru.practicum.bank.cash.exception.InvalidAmountScaleException;
 import ru.practicum.bank.cash.exception.OperationBlockedException;
 import ru.practicum.bank.common.dto.blocker.OperationCheckRequest;
 import ru.practicum.bank.common.dto.blocker.OperationCheckResponse;
+import ru.practicum.bank.common.dto.exchange.ConversionResponse;
 import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.common.model.OperationType;
 import ru.practicum.bank.common.notification.NotificationEvent;
@@ -41,10 +43,11 @@ class CashServiceTest {
 
     private final AccountsClient accountsClient = mock(AccountsClient.class);
     private final BlockerClient blockerClient = mock(BlockerClient.class);
+    private final ExchangeClient exchangeClient = mock(ExchangeClient.class);
     private final NotificationEventPublisher notificationEventPublisher = mock(NotificationEventPublisher.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-06-30T05:00:00Z"), ZoneOffset.UTC);
     private final CashService cashService =
-            new CashService(accountsClient, blockerClient, notificationEventPublisher, clock);
+            new CashService(accountsClient, blockerClient, exchangeClient, notificationEventPublisher, clock);
 
     @Test
     void shouldDepositMoneyThroughAccountsService() {
@@ -74,6 +77,10 @@ class CashServiceTest {
         assertThat(blockerCaptor.getValue().operationType()).isEqualTo(OperationType.DEPOSIT);
         assertThat(blockerCaptor.getValue().login()).isEqualTo("ivan");
         assertThat(blockerCaptor.getValue().amount()).isEqualByComparingTo(new BigDecimal("250.00"));
+        assertThat(blockerCaptor.getValue().currency()).isEqualTo(Currency.RUB);
+        assertThat(blockerCaptor.getValue().normalizedAmount()).isEqualByComparingTo(new BigDecimal("250.00"));
+        assertThat(blockerCaptor.getValue().baseCurrency()).isEqualTo(Currency.RUB);
+        verify(exchangeClient, never()).convert(any(), any(), any());
 
         var notificationCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
         verify(notificationEventPublisher).publish(notificationCaptor.capture());
@@ -108,6 +115,8 @@ class CashServiceTest {
         verify(blockerClient).check(blockerCaptor.capture());
         assertThat(blockerCaptor.getValue().operationId()).isEqualTo(accountsCaptor.getValue().operationId());
         assertThat(blockerCaptor.getValue().operationType()).isEqualTo(OperationType.WITHDRAW);
+        assertThat(blockerCaptor.getValue().normalizedAmount()).isEqualByComparingTo(new BigDecimal("100.00"));
+        assertThat(blockerCaptor.getValue().baseCurrency()).isEqualTo(Currency.RUB);
 
         var notificationCaptor = ArgumentCaptor.forClass(NotificationEvent.class);
         verify(notificationEventPublisher).publish(notificationCaptor.capture());
@@ -142,6 +151,34 @@ class CashServiceTest {
         assertThatThrownBy(() -> cashService.withdraw("ivan", request("100.00"), OPERATION_ID))
                 .isInstanceOf(AccountsClientException.class);
         verify(notificationEventPublisher, never()).publish(any());
+    }
+
+    @Test
+    void shouldNormalizeNonRubDepositBeforeBlockerCheck() {
+        when(exchangeClient.convert(Currency.USD, Currency.RUB, new BigDecimal("100.00")))
+                .thenReturn(new ConversionResponse(
+                        Currency.USD,
+                        Currency.RUB,
+                        new BigDecimal("100.00"),
+                        new BigDecimal("9000.00"),
+                        new BigDecimal("90.00"),
+                        Instant.parse("2026-06-25T10:00:00Z")
+                ));
+        when(blockerClient.check(any())).thenReturn(new OperationCheckResponse(true, null));
+        when(accountsClient.deposit(any())).thenReturn(new AccountsBalanceResponse(
+                "ivan",
+                new BigDecimal("100.00"),
+                "USD"
+        ));
+
+        cashService.deposit("ivan", new CashOperationRequest(new BigDecimal("100.00"), Currency.USD), OPERATION_ID);
+
+        var blockerCaptor = ArgumentCaptor.forClass(OperationCheckRequest.class);
+        verify(blockerClient).check(blockerCaptor.capture());
+        assertThat(blockerCaptor.getValue().amount()).isEqualByComparingTo("100.00");
+        assertThat(blockerCaptor.getValue().currency()).isEqualTo(Currency.USD);
+        assertThat(blockerCaptor.getValue().normalizedAmount()).isEqualByComparingTo("9000.00");
+        assertThat(blockerCaptor.getValue().baseCurrency()).isEqualTo(Currency.RUB);
     }
 
     @Test

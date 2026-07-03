@@ -3,6 +3,7 @@ package ru.practicum.bank.transfer.service;
 import org.springframework.stereotype.Service;
 import ru.practicum.bank.common.dto.blocker.OperationCheckRequest;
 import ru.practicum.bank.common.dto.exchange.ConversionResponse;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.common.model.OperationType;
 import ru.practicum.bank.common.notification.NotificationEvent;
 import ru.practicum.bank.common.notification.NotificationEventPublisher;
@@ -51,7 +52,8 @@ public class TransferService {
             throw new SelfTransferForbiddenException();
         }
 
-        checkOperation(senderLogin, request, operationId);
+        var normalizedAmount = normalizeForBlocker(request);
+        checkOperation(senderLogin, request, operationId, normalizedAmount);
         var conversion = convert(request);
         var result = transferExecutor.execute(new TransferOperation(
                 senderLogin,
@@ -82,7 +84,12 @@ public class TransferService {
         }
     }
 
-    private void checkOperation(String senderLogin, TransferRequest request, UUID operationId) {
+    private void checkOperation(
+            String senderLogin,
+            TransferRequest request,
+            UUID operationId,
+            BigDecimal normalizedAmount
+    ) {
         var response = blockerClient.check(new OperationCheckRequest(
                 operationId.toString(),
                 OperationType.TRANSFER,
@@ -90,11 +97,22 @@ public class TransferService {
                 senderLogin,
                 request.recipientLogin(),
                 request.amount(),
-                request.currency()
+                request.currency(),
+                normalizedAmount,
+                Currency.RUB
         ));
         if (!response.allowed()) {
             throw new OperationBlockedException(response.reason());
         }
+    }
+
+    private BigDecimal normalizeForBlocker(TransferRequest request) {
+        if (request.currency() == Currency.RUB) {
+            return request.amount();
+        }
+
+        ConversionResponse conversion = exchangeClient.convert(request.currency(), Currency.RUB, request.amount());
+        return conversion.targetAmount();
     }
 
     private ConversionResponse convert(TransferRequest request) {

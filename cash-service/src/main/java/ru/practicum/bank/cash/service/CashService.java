@@ -4,12 +4,15 @@ import org.springframework.stereotype.Service;
 import ru.practicum.bank.cash.client.AccountsBalanceOperationRequest;
 import ru.practicum.bank.cash.client.AccountsClient;
 import ru.practicum.bank.cash.client.BlockerClient;
+import ru.practicum.bank.cash.client.ExchangeClient;
 import ru.practicum.bank.cash.dto.CashOperationRequest;
 import ru.practicum.bank.cash.dto.CashOperationResponse;
 import ru.practicum.bank.cash.exception.InvalidAmountException;
 import ru.practicum.bank.cash.exception.InvalidAmountScaleException;
 import ru.practicum.bank.cash.exception.OperationBlockedException;
 import ru.practicum.bank.common.dto.blocker.OperationCheckRequest;
+import ru.practicum.bank.common.dto.exchange.ConversionResponse;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.common.model.OperationType;
 import ru.practicum.bank.common.notification.NotificationEvent;
 import ru.practicum.bank.common.notification.NotificationEventPublisher;
@@ -26,17 +29,20 @@ public class CashService {
 
     private final AccountsClient accountsClient;
     private final BlockerClient blockerClient;
+    private final ExchangeClient exchangeClient;
     private final NotificationEventPublisher notificationEventPublisher;
     private final Clock clock;
 
     public CashService(
             AccountsClient accountsClient,
             BlockerClient blockerClient,
+            ExchangeClient exchangeClient,
             NotificationEventPublisher notificationEventPublisher,
             Clock clock
     ) {
         this.accountsClient = accountsClient;
         this.blockerClient = blockerClient;
+        this.exchangeClient = exchangeClient;
         this.notificationEventPublisher = notificationEventPublisher;
         this.clock = clock;
     }
@@ -87,6 +93,7 @@ public class CashService {
             UUID operationId,
             OperationType operationType
     ) {
+        var normalizedAmount = normalizeForBlocker(request);
         var response = blockerClient.check(new OperationCheckRequest(
                 operationId.toString(),
                 operationType,
@@ -94,11 +101,22 @@ public class CashService {
                 null,
                 null,
                 request.amount(),
-                request.currency()
+                request.currency(),
+                normalizedAmount,
+                Currency.RUB
         ));
         if (!response.allowed()) {
             throw new OperationBlockedException(response.reason());
         }
+    }
+
+    private BigDecimal normalizeForBlocker(CashOperationRequest request) {
+        if (request.currency() == Currency.RUB) {
+            return request.amount();
+        }
+
+        ConversionResponse conversion = exchangeClient.convert(request.currency(), Currency.RUB, request.amount());
+        return conversion.targetAmount();
     }
 
     private void publishNotification(

@@ -10,6 +10,7 @@ import org.springframework.kafka.support.SendResult;
 import ru.practicum.bank.cash.client.AccountsBalanceResponse;
 import ru.practicum.bank.cash.client.AccountsClient;
 import ru.practicum.bank.cash.client.BlockerClient;
+import ru.practicum.bank.cash.client.ExchangeClient;
 import ru.practicum.bank.cash.dto.CashOperationRequest;
 import ru.practicum.bank.common.dto.blocker.OperationCheckResponse;
 import ru.practicum.bank.common.model.Currency;
@@ -40,6 +41,7 @@ class CashKafkaFailureBusinessTest {
     void shouldKeepSuccessfulDepositWhenKafkaSendFails(KafkaFailureMode failureMode, CapturedOutput output) {
         var accountsClient = mock(AccountsClient.class);
         var blockerClient = mock(BlockerClient.class);
+        var exchangeClient = mock(ExchangeClient.class);
         var kafkaTemplate = kafkaTemplate(failureMode);
         when(blockerClient.check(any())).thenReturn(new OperationCheckResponse(true, null));
         when(accountsClient.deposit(any())).thenReturn(new AccountsBalanceResponse(
@@ -50,6 +52,7 @@ class CashKafkaFailureBusinessTest {
         var service = new CashService(
                 accountsClient,
                 blockerClient,
+                exchangeClient,
                 new KafkaNotificationEventPublisher(kafkaTemplate, TOPIC),
                 Clock.fixed(Instant.parse("2026-06-30T05:00:00Z"), ZoneOffset.UTC)
         );

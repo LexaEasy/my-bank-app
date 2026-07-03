@@ -1,4 +1,4 @@
-package ru.practicum.bank.transfer.client;
+package ru.practicum.bank.cash.client;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -7,9 +7,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import ru.practicum.bank.common.client.ResilientClientExecutor;
-import ru.practicum.bank.common.dto.blocker.OperationCheckRequest;
 import ru.practicum.bank.common.model.Currency;
-import ru.practicum.bank.common.model.OperationType;
 
 import java.math.BigDecimal;
 
@@ -24,74 +22,70 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-class HttpBlockerClientTest {
+class HttpExchangeClientTest {
 
     private final ServiceTokenProvider serviceTokenProvider = mock(ServiceTokenProvider.class);
 
     @Test
-    void shouldSendServiceTokenToBlockerService() {
+    void shouldSendServiceTokenToExchangeService() {
         var restClientBuilder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(restClientBuilder).build();
-        var client = new HttpBlockerClient(restClientBuilder, "http://blocker-service", serviceTokenProvider);
+        var client = new HttpExchangeClient(restClientBuilder, "http://exchange-service", serviceTokenProvider);
         when(serviceTokenProvider.getAccessToken()).thenReturn("service-token");
 
-        server.expect(once(), requestTo("http://blocker-service/api/blocker/check"))
+        server.expect(once(), requestTo(
+                        "http://exchange-service/api/exchange/conversion?sourceCurrency=USD&targetCurrency=RUB&amount=100.00"
+                ))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer service-token"))
                 .andRespond(withSuccess("""
                         {
-                          "allowed": true
+                          "sourceCurrency": "USD",
+                          "targetCurrency": "RUB",
+                          "sourceAmount": "100.00",
+                          "targetAmount": "9000.00",
+                          "rate": "90.00",
+                          "updatedAt": "2026-06-25T10:00:00Z"
                         }
                         """, MediaType.APPLICATION_JSON));
 
-        var response = client.check(request());
+        var response = client.convert(Currency.USD, Currency.RUB, new BigDecimal("100.00"));
 
-        assertThat(response.allowed()).isTrue();
-        assertThat(response.reason()).isNull();
+        assertThat(response.sourceCurrency()).isEqualTo(Currency.USD);
+        assertThat(response.targetCurrency()).isEqualTo(Currency.RUB);
+        assertThat(response.targetAmount()).isEqualByComparingTo("9000.00");
         server.verify();
     }
 
     @Test
-    void shouldThrowWhenBlockerServiceFails() {
+    void shouldThrowWhenExchangeServiceFails() {
         var restClientBuilder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(restClientBuilder).build();
-        var client = new HttpBlockerClient(restClientBuilder, "http://blocker-service", serviceTokenProvider);
+        var client = new HttpExchangeClient(restClientBuilder, "http://exchange-service", serviceTokenProvider);
         when(serviceTokenProvider.getAccessToken()).thenReturn("service-token");
 
-        server.expect(times(2), requestTo("http://blocker-service/api/blocker/check"))
+        server.expect(times(2), requestTo(
+                        "http://exchange-service/api/exchange/conversion?sourceCurrency=USD&targetCurrency=RUB&amount=100.00"
+                ))
                 .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
 
-        assertThatThrownBy(() -> client.check(request()))
-                .isInstanceOf(BlockerClientException.class)
-                .hasMessage("Blocker service request failed");
+        assertThatThrownBy(() -> client.convert(Currency.USD, Currency.RUB, new BigDecimal("100.00")))
+                .isInstanceOf(ExchangeClientException.class)
+                .hasMessage("Exchange service request failed");
         server.verify();
     }
 
     @Test
     void shouldReturnCircuitBreakerFallbackMessage() {
         var restClientBuilder = RestClient.builder();
-        var client = new HttpBlockerClient(
+        var client = new HttpExchangeClient(
                 restClientBuilder,
-                "http://blocker-service",
+                "http://exchange-service",
                 serviceTokenProvider,
-                ResilientClientExecutor.opened("blockerService")
+                ResilientClientExecutor.opened("exchangeService")
         );
 
-        assertThatThrownBy(() -> client.check(request()))
-                .isInstanceOf(BlockerClientException.class)
-                .hasMessage("Сервис проверки операций временно недоступен");
-    }
-
-    private OperationCheckRequest request() {
-        return new OperationCheckRequest(
-                "operation-1",
-                OperationType.TRANSFER,
-                null,
-                "ivan",
-                "olga",
-                new BigDecimal("200.00"),
-                Currency.RUB,
-                new BigDecimal("200.00"),
-                Currency.RUB
-        );
+        assertThatThrownBy(() -> client.convert(Currency.USD, Currency.RUB, new BigDecimal("100.00")))
+                .isInstanceOf(ExchangeClientException.class)
+                .hasMessage("Exchange service is temporarily unavailable");
     }
 }
