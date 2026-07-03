@@ -53,7 +53,7 @@ class CashKafkaFailureBusinessTest {
                 accountsClient,
                 blockerClient,
                 exchangeClient,
-                new KafkaNotificationEventPublisher(kafkaTemplate, TOPIC),
+                new KafkaNotificationEventPublisher(kafkaTemplate, new io.micrometer.core.instrument.simple.SimpleMeterRegistry(), TOPIC),
                 Clock.fixed(Instant.parse("2026-06-30T05:00:00Z"), ZoneOffset.UTC)
         );
 

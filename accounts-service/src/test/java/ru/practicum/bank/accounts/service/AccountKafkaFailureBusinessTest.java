@@ -47,7 +47,7 @@ class AccountKafkaFailureBusinessTest {
         var applicationEvents = mock(ApplicationEventPublisher.class);
         var kafkaTemplate = kafkaTemplate(failureMode);
         var listener = new AccountProfileUpdatedNotificationListener(
-                new KafkaNotificationEventPublisher(kafkaTemplate, TOPIC),
+                new KafkaNotificationEventPublisher(kafkaTemplate, new io.micrometer.core.instrument.simple.SimpleMeterRegistry(), TOPIC),
                 new AccountUpdatedNotificationFactory()
         );
         doAnswer(invocation -> {

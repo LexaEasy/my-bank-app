@@ -25,6 +25,7 @@ dependencies {
     implementation(libs.spring.kafka)
 
     runtimeOnly(libs.flyway.database.postgresql)
+    runtimeOnly(libs.micrometer.registry.prometheus)
     runtimeOnly(libs.postgresql)
     "contractTestImplementation"(libs.spring.boot.starter.test)
     "contractTestImplementation"(libs.spring.cloud.starter.contract.verifier)

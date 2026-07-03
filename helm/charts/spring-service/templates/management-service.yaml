@@ -1,0 +1,18 @@
+{{- if .Values.management.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "spring-service.fullname" . }}-management
+  labels:
+    {{- include "spring-service.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: management
+      port: {{ .Values.management.port }}
+      targetPort: management
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: {{ include "spring-service.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

@@ -1,0 +1,20 @@
+{{- if and .Values.management.enabled .Values.management.monitoring.enabled .Values.management.monitoring.alert.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "spring-service.fullname" . }}-kafka-publication
+  labels:
+    {{- include "spring-service.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: {{ include "spring-service.fullname" . }}.kafka
+      rules:
+        - alert: KafkaNotificationPublicationFailures
+          expr: sum(increase(bank_kafka_publication_failures_total{application="{{ include "spring-service.name" . }}"}[5m])) > {{ .Values.management.monitoring.alert.threshold }}
+          for: {{ .Values.management.monitoring.alert.for }}
+          labels:
+            severity: warning
+          annotations:
+            summary: Kafka notification publication failures detected
+            description: {{ include "spring-service.fullname" . }} has final Kafka publication failures.
+{{- end }}

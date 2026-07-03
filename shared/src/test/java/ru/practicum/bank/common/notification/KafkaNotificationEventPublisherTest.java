@@ -1,5 +1,6 @@
 package ru.practicum.bank.common.notification;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -14,6 +15,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,8 +26,9 @@ class KafkaNotificationEventPublisherTest {
     private static final String TOPIC = "bank.notifications";
 
     private final KafkaTemplate<String, NotificationEvent> kafkaTemplate = mock(KafkaTemplate.class);
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     private final KafkaNotificationEventPublisher publisher =
-            new KafkaNotificationEventPublisher(kafkaTemplate, TOPIC);
+            new KafkaNotificationEventPublisher(kafkaTemplate, meterRegistry, TOPIC);
 
     @Test
     void shouldSendEventWithRecipientLoginAsMessageKey() {
@@ -51,6 +54,7 @@ class KafkaNotificationEventPublisherTest {
             publisher.publish(event);
             future.completeExceptionally(new IllegalStateException("Kafka unavailable"));
         }).doesNotThrowAnyException();
+        assertThat(failureCount()).isEqualTo(1);
     }
 
     @Test
@@ -61,6 +65,16 @@ class KafkaNotificationEventPublisherTest {
 
         assertThatCode(() -> publisher.publish(event))
                 .doesNotThrowAnyException();
+        assertThat(failureCount()).isEqualTo(1);
+    }
+
+    private double failureCount() {
+        return meterRegistry.get("bank.kafka.publication.failures")
+                .tag("source", NotificationSource.CASH.name())
+                .tag("topic", TOPIC)
+                .tag("error_category", "other")
+                .counter()
+                .count();
     }
 
     private NotificationEvent event() {

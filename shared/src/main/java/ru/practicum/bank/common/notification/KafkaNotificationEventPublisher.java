@@ -1,5 +1,6 @@
 package ru.practicum.bank.common.notification;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -9,13 +10,16 @@ public class KafkaNotificationEventPublisher implements NotificationEventPublish
     private static final Logger log = LoggerFactory.getLogger(KafkaNotificationEventPublisher.class);
 
     private final KafkaTemplate<String, NotificationEvent> kafkaTemplate;
+    private final MeterRegistry meterRegistry;
     private final String topic;
 
     public KafkaNotificationEventPublisher(
             KafkaTemplate<String, NotificationEvent> kafkaTemplate,
+            MeterRegistry meterRegistry,
             String topic
     ) {
         this.kafkaTemplate = kafkaTemplate;
+        this.meterRegistry = meterRegistry;
         this.topic = topic;
     }
 
@@ -46,14 +50,38 @@ public class KafkaNotificationEventPublisher implements NotificationEventPublish
     }
 
     private void logFailure(NotificationEvent event, Throwable exception) {
+        var errorCategory = errorCategory(exception);
+        meterRegistry.counter(
+                "bank.kafka.publication.failures",
+                "source", event.source().name(),
+                "topic", topic,
+                "error_category", errorCategory
+        ).increment();
         log.error(
-                "Notification event send failed: eventId={}, operationId={}, source={}, topic={}, reason={}",
+                "Notification event send failed: eventId={}, operationId={}, source={}, topic={}, errorCategory={}",
                 event.eventId(),
                 event.operationId(),
                 event.source(),
                 topic,
-                exception.getMessage(),
-                exception
+                errorCategory
         );
+    }
+
+    private String errorCategory(Throwable exception) {
+        var cause = exception;
+        while (cause.getCause() != null && cause.getCause() != cause) {
+            cause = cause.getCause();
+        }
+        var type = cause.getClass().getSimpleName().toLowerCase();
+        if (type.contains("timeout")) {
+            return "timeout";
+        }
+        if (type.contains("serializ")) {
+            return "serialization";
+        }
+        if (type.contains("authoriz") || type.contains("authenticat")) {
+            return "security";
+        }
+        return "other";
     }
 }

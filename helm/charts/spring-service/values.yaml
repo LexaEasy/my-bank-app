@@ -15,6 +15,13 @@ service:
 management:
   enabled: false
   port: 8089
+  monitoring:
+    enabled: false
+    interval: 30s
+    alert:
+      enabled: false
+      threshold: 0
+      for: 5m
 
 env: {}
 secretEnv: []

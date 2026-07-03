@@ -60,10 +60,15 @@ bank:
       base-url: ${BANK_EXCHANGE_BASE_URL:http://exchange-service:8086}
 
 management:
+  server:
+    port: ${MANAGEMENT_SERVER_PORT:8093}
+  metrics:
+    tags:
+      application: ${spring.application.name}
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
 
 server:
   port: 8083

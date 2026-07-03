@@ -1,5 +1,6 @@
 package ru.practicum.bank.common.notification;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,8 +16,9 @@ public class NotificationProducerConfiguration {
     @Lazy
     NotificationEventPublisher notificationEventPublisher(
             KafkaTemplate<String, NotificationEvent> kafkaTemplate,
+            MeterRegistry meterRegistry,
             @Value("${bank.kafka.notifications-topic}") String topic
     ) {
-        return new KafkaNotificationEventPublisher(kafkaTemplate, topic);
+        return new KafkaNotificationEventPublisher(kafkaTemplate, meterRegistry, topic);
     }
 }

@@ -21,6 +21,8 @@ spring-kafka = { module = "org.springframework.kafka:spring-kafka" }
 spring-kafka-test = { module = "org.springframework.kafka:spring-kafka-test" }
 spring-integration-core = { module = "org.springframework.integration:spring-integration-core" }
 spring-retry = { module = "org.springframework.retry:spring-retry" }
+micrometer-core = { module = "io.micrometer:micrometer-core" }
+micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
 spring-cloud-starter-contract-verifier = { module = "org.springframework.cloud:spring-cloud-starter-contract-verifier" }
 spring-cloud-starter-gateway-server-webflux = { module = "org.springframework.cloud:spring-cloud-starter-gateway-server-webflux" }
 resilience4j-spring-boot3 = { module = "io.github.resilience4j:resilience4j-spring-boot3", version.ref = "resilience4j" }

@@ -22,6 +22,7 @@ dependencies {
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.kafka)
 
+    runtimeOnly(libs.micrometer.registry.prometheus)
     "contractTestImplementation"(libs.spring.boot.starter.test)
     "contractTestImplementation"(libs.spring.cloud.starter.contract.verifier)
     "contractTestImplementation"(libs.spring.integration.core)
