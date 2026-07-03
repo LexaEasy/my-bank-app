@@ -161,7 +161,7 @@ Remove-Item -LiteralPath envs/dev/runtime/bank-realm.json
 Сначала собрать executable JAR:
 
 ```powershell
-.\gradlew.bat --no-daemon --console=plain bootJar
+.\gradlew.bat --no-daemon --console=plain clean bootJar
 ```
 
 Проверить compose-файл:
@@ -280,7 +280,7 @@ Integration-тесты Kafka не требуют Docker или Testcontainers: b
 Сборка JAR всех приложений:
 
 ```powershell
-.\gradlew.bat --no-daemon --console=plain bootJar
+.\gradlew.bat --no-daemon --console=plain clean bootJar
 ```
 
 Запуск одного приложения:
@@ -295,7 +295,7 @@ Integration-тесты Kafka не требуют Docker или Testcontainers: b
 Перед сборкой образов нужно собрать executable JAR:
 
 ```powershell
-.\gradlew.bat --no-daemon --console=plain bootJar
+.\gradlew.bat --no-daemon --console=plain clean bootJar
 ```
 
 Сборка всех образов через Docker Compose:
@@ -307,9 +307,13 @@ docker compose build
 Сборка отдельного образа:
 
 ```powershell
-docker build --build-arg JAR_FILE=build/libs/*.jar -t my-bank-front-ui:local front-ui
-docker build --build-arg JAR_FILE=build/libs/*.jar -t my-bank-accounts-service:local accounts-service
+docker build -t my-bank-front-ui:local front-ui
+docker build -t my-bank-accounts-service:local accounts-service
 ```
+
+Каждый Spring Boot модуль создаёт один исполняемый артефакт с именем
+`<module>.jar`. Plain JAR отключён, а Dockerfile копирует точный путь к
+артефакту и завершает сборку ошибкой при его отсутствии.
 
 ## Запуск через Helm
 
@@ -416,9 +420,54 @@ Kafka topology для событий уведомлений управляетс
 
 `BANK_KAFKA_NOTIFICATIONS_DLT_PARTITIONS` должен быть больше или равен `BANK_KAFKA_NOTIFICATIONS_PARTITIONS`. Некорректная topology отклоняется при старте Spring и при Helm render.
 
+## Диагностика ошибок публикации Kafka
+
+Accounts, Cash и Transfer сохраняют best-effort модель публикации уведомлений.
+Банковская операция и отправка Kafka-события не образуют общую транзакцию:
+успешно зафиксированная операция остаётся успешной даже при окончательной
+ошибке producer. Это означает dual-write gap — уведомление может быть потеряно
+между фиксацией данных в PostgreSQL и успешной публикацией в Kafka.
+
+Окончательная ошибка публикации:
+
+- записывается в `ERROR` с `eventId`, `operationId`, source, topic и
+  низкокардинальной категорией ошибки;
+- увеличивает counter `bank.kafka.publication.failures`;
+- не изменяет HTTP-результат банковской операции;
+- не запускает дополнительный in-memory или durable retry.
+
+Метрика экспортируется как
+`bank_kafka_publication_failures_total`. Допустимые теги: `source`, `topic`,
+`error_category` и общий тег `application`. Идентификаторы операций,
+пользовательские данные, JWT, credentials и тексты исключений в теги не
+добавляются.
+
+Порядок диагностики:
+
+1. Проверить сработавший alert `KafkaNotificationPublicationFailures`.
+2. Определить сервис, topic и категорию по метке серии Prometheus.
+3. Найти `ERROR` соответствующего сервиса по времени, `eventId` или
+   `operationId`.
+4. Проверить доступность Kafka, состояние producer и конфигурацию topic.
+5. Проверить, была ли банковская операция успешно сохранена.
+6. При необходимости восстановить утраченное уведомление отдельной
+   согласованной процедурой, не повторяя денежную операцию.
+
+Prometheus endpoint доступен только через внутренний management Service:
+
+- `accounts-service-management:8091/actuator/prometheus`;
+- `cash-service-management:8092/actuator/prometheus`;
+- `transfer-service-management:8093/actuator/prometheus`.
+
+Gateway не публикует management endpoints. Helm создаёт для producer-сервисов
+внутренние `Service`, `ServiceMonitor` и `PrometheusRule`.
+
+Transactional Outbox, CDC и durable retry остаются отдельным архитектурным
+backlog и не входят в Sprint 11.
+
 ## Jenkins CI/CD
 
-В репозитории есть root `Jenkinsfile` для umbrella pipeline и Jenkinsfile рядом с каждым микросервисом. Pipeline покрывает validate, unit/integration/contract tests, `bootJar` и Helm lint/template. Docker build, image push и deploy отключены по умолчанию и выполняются только при явном включении соответствующих параметров.
+В репозитории есть root `Jenkinsfile` для umbrella pipeline и Jenkinsfile рядом с каждым микросервисом. Pipeline покрывает validate, unit/integration/contract tests, `clean bootJar` и Helm lint/template. Docker build, image push и deploy отключены по умолчанию и выполняются только при явном включении соответствующих параметров.
 
 Ожидаемые Jenkins credentials:
 
@@ -464,8 +513,8 @@ docker compose up -d --wait
 В рамках Sprint 11 намеренно не реализуются:
 
 - ELK или другое централизованное хранение и анализ логов;
-- новые health checks и production-grade monitoring;
-- аудит, distributed tracing, Prometheus или Grafana;
+- полный production-grade monitoring stack и Grafana;
+- аудит и distributed tracing;
 - Kafka Exactly Once Semantics и сквозная гарантия между PostgreSQL commit и Kafka send;
 - глобальный порядок сообщений и multi-node Kafka;
 - ZooKeeper, внешний Gateway/Ingress для Kafka и REST fallback Notifications;
@@ -478,4 +527,9 @@ docker compose up -d --wait
 - хранение credentials в Compose, Helm values, Java config или README;
 - изменение истории Git и push без явного подтверждения.
 
-Существующие actuator и health checks предыдущего спринта сохраняются, но не расширяются. В клиентских модулях остаётся учебная локальная защита `SimpleCircuitBreaker`; полноценный Circuit Breaker и Transactional Outbox требуют отдельного решения.
+Технические health endpoints, Kubernetes probes, Micrometer counter,
+внутренние management Service, ServiceMonitor и PrometheusRule добавлены как
+узкие исключения для закрытия требований Sprint 11. Они не означают
+production readiness. В клиентских модулях остаётся учебная локальная защита
+`SimpleCircuitBreaker`; полноценный Circuit Breaker и Transactional Outbox
+требуют отдельного решения.
