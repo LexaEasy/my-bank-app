@@ -73,6 +73,55 @@ class ExchangeServiceTest {
     }
 
     @Test
+    void shouldKeepPreviousRatesWhenBatchContainsInvalidRate() {
+        var request = new ExchangeRatesUpdateRequest(List.of(
+                new ExchangeRateUpdateRequest(Currency.USD, new BigDecimal("91.1234"), new BigDecimal("93.1234")),
+                new ExchangeRateUpdateRequest(Currency.CNY, new BigDecimal("12.12345"), new BigDecimal("12.8000"))
+        ));
+
+        assertThatThrownBy(() -> exchangeService.updateRates(request))
+                .isInstanceOf(InvalidRateException.class);
+
+        var rates = exchangeService.getRates();
+        var usd = rates.stream()
+                .filter(rate -> rate.currency() == Currency.USD)
+                .findFirst()
+                .orElseThrow();
+        var cny = rates.stream()
+                .filter(rate -> rate.currency() == Currency.CNY)
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(usd.buyRate()).isEqualByComparingTo("90.0000");
+        assertThat(usd.sellRate()).isEqualByComparingTo("92.0000");
+        assertThat(cny.buyRate()).isEqualByComparingTo("12.4000");
+        assertThat(cny.sellRate()).isEqualByComparingTo("12.8000");
+    }
+
+    @Test
+    void shouldApplyValidBatchAsSingleSnapshot() {
+        exchangeService.updateRates(new ExchangeRatesUpdateRequest(List.of(
+                new ExchangeRateUpdateRequest(Currency.USD, new BigDecimal("91.0000"), new BigDecimal("93.0000")),
+                new ExchangeRateUpdateRequest(Currency.CNY, new BigDecimal("13.0000"), new BigDecimal("14.0000"))
+        )));
+
+        var rates = exchangeService.getRates();
+        var usd = rates.stream()
+                .filter(rate -> rate.currency() == Currency.USD)
+                .findFirst()
+                .orElseThrow();
+        var cny = rates.stream()
+                .filter(rate -> rate.currency() == Currency.CNY)
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(usd.buyRate()).isEqualByComparingTo("91.0000");
+        assertThat(usd.sellRate()).isEqualByComparingTo("93.0000");
+        assertThat(cny.buyRate()).isEqualByComparingTo("13.0000");
+        assertThat(cny.sellRate()).isEqualByComparingTo("14.0000");
+    }
+
+    @Test
     void shouldRejectInvalidAmount() {
         assertThatThrownBy(() -> exchangeService.convert(Currency.USD, Currency.CNY, new BigDecimal("100.001")))
                 .isInstanceOf(InvalidAmountException.class);
