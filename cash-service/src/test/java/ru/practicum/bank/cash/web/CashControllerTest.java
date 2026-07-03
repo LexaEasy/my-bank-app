@@ -4,12 +4,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import ru.practicum.bank.cash.client.AccountsClientException;
 import ru.practicum.bank.cash.exception.OperationBlockedException;
 import ru.practicum.bank.cash.dto.CashOperationRequest;
 import ru.practicum.bank.cash.dto.CashOperationResponse;
@@ -155,6 +157,28 @@ class CashControllerTest {
                                 }
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnConflictForReusedKeyWithDifferentPayload() throws Exception {
+        when(cashService.deposit("ivan", request("20.00"), IDEMPOTENCY_KEY))
+                .thenThrow(new AccountsClientException(
+                        "Idempotency key was already used with another request",
+                        HttpStatus.CONFLICT,
+                        null
+                ));
+
+        mockMvc.perform(postWithIdempotencyKey("/api/cash/deposit")
+                        .principal(jwtAuthentication("ivan"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "amount": "20.00",
+                                  "currency": "RUB"
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("IDEMPOTENCY_CONFLICT"));
     }
 
     private JwtAuthenticationToken jwtAuthentication(String login) {

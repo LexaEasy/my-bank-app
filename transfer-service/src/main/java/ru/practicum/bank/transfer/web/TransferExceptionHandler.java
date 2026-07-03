@@ -1,6 +1,7 @@
 package ru.practicum.bank.transfer.web;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -55,9 +56,12 @@ public class TransferExceptionHandler {
     }
 
     @ExceptionHandler(AccountsClientException.class)
-    @ResponseStatus(HttpStatus.BAD_GATEWAY)
-    public ApiErrorResponse handleAccountsClient(AccountsClientException exception) {
-        return new ApiErrorResponse("ACCOUNTS_SERVICE_UNAVAILABLE", exception.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleAccountsClient(AccountsClientException exception) {
+        boolean conflict = exception.getStatusCode().value() == HttpStatus.CONFLICT.value();
+        String code = conflict ? "IDEMPOTENCY_CONFLICT" : "ACCOUNTS_SERVICE_UNAVAILABLE";
+        HttpStatus status = conflict ? HttpStatus.CONFLICT : HttpStatus.BAD_GATEWAY;
+        return ResponseEntity.status(status)
+                .body(new ApiErrorResponse(code, exception.getMessage()));
     }
 
     @ExceptionHandler(BlockerClientException.class)

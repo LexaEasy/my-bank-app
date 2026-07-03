@@ -77,7 +77,7 @@ public class HttpAccountsClient implements TransferExecutor {
                     response.currency()
             );
         } catch (RestClientResponseException exception) {
-            throw new AccountsClientException(extractMessage(exception), exception);
+            throw new AccountsClientException(extractMessage(exception), exception.getStatusCode(), exception);
         } catch (RestClientException exception) {
             throw new AccountsClientException("Accounts service request failed", exception);
         }
