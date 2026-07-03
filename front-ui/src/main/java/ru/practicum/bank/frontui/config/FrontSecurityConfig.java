@@ -30,7 +30,12 @@ public class FrontSecurityConfig {
 
         return http
                 .authorizeHttpRequests(requests -> requests
-                        .requestMatchers("/css/**", "/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers(
+                                "/css/**",
+                                "/actuator/health",
+                                "/actuator/health/**",
+                                "/actuator/info"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(loginEntryPoint))

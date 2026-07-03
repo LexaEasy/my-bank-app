@@ -100,6 +100,16 @@ class ExchangeSecurityConfigTest {
     }
 
     @Test
+    void shouldRejectRateUpdateWithoutExchangeGeneratorRole() throws Exception {
+        mockMvc.perform(put("/api/exchange/rates")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_SERVICE")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateRequest()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
     void shouldAllowRateUpdateForExchangeGeneratorService() throws Exception {
         when(exchangeService.updateRates(any())).thenReturn(List.of(rate(Currency.USD, "91.0000", "93.0000")));
 

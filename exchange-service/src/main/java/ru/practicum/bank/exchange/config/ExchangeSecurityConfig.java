@@ -45,7 +45,7 @@ public class ExchangeSecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(requests -> requests
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/exchange/rates").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/exchange/conversion").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/exchange/rates")

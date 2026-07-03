@@ -151,6 +151,26 @@ class AccountsSecurityConfigTest {
     }
 
     @Test
+    void shouldRejectInternalEndpointForRegularUser() throws Exception {
+        mockMvc.perform(post("/api/accounts/internal/balance/deposit")
+                        .with(jwt().authorities(
+                                new SimpleGrantedAuthority("ROLE_USER"),
+                                new SimpleGrantedAuthority("ROLE_ACCOUNTS_WRITE")
+                        ))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "login": "ivan",
+                                  "amount": "250.00",
+                                  "currency": "RUB",
+                                  "operationId": "operation-1"
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
     void shouldConvertRealmRolesToAuthorities() {
         var jwt = Jwt.withTokenValue("token")
                 .header("alg", "none")

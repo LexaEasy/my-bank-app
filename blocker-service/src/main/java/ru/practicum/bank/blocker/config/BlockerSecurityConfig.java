@@ -1,4 +1,4 @@
-package ru.practicum.bank.cash.config;
+package ru.practicum.bank.blocker.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
@@ -19,7 +19,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
-import ru.practicum.bank.cash.dto.ApiErrorResponse;
+import ru.practicum.bank.blocker.dto.ApiErrorResponse;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -27,12 +27,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static org.springframework.security.authorization.AuthorizationManagers.allOf;
-import static org.springframework.security.authorization.AuthorityAuthorizationManager.hasRole;
-
 @Configuration
 @EnableWebSecurity
-public class CashSecurityConfig {
+public class BlockerSecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(
@@ -42,14 +39,11 @@ public class CashSecurityConfig {
             AccessDeniedHandler accessDeniedHandler
     ) throws Exception {
         return http
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/cash/deposit")
-                        .access(allOf(hasRole("USER"), hasRole("CASH_WRITE")))
-                        .requestMatchers(HttpMethod.POST, "/api/cash/withdraw")
-                        .access(allOf(hasRole("USER"), hasRole("CASH_WRITE")))
+                        .requestMatchers(HttpMethod.POST, "/api/blocker/check").hasRole("SERVICE")
                         .anyRequest().denyAll()
                 )
                 .exceptionHandling(exceptions -> exceptions
