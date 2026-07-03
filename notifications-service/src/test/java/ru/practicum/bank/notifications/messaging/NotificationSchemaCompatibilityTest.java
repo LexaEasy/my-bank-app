@@ -22,7 +22,7 @@ class NotificationSchemaCompatibilityTest {
                   "source": "ACCOUNTS",
                   "type": "ACCOUNT_UPDATED",
                   "recipientLogin": "ivan",
-                  "message": "Р”Р°РЅРЅС‹Рµ РїСЂРѕС„РёР»СЏ РѕР±РЅРѕРІР»РµРЅС‹",
+                  "message": "Данные профиля обновлены",
                   "occurredAt": "2026-07-01T05:01:00Z"
                 }
                 """;

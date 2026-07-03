@@ -11,7 +11,7 @@ import java.util.UUID;
 @Component
 public class AccountUpdatedNotificationFactory {
 
-    public static final String NOTIFICATION_MESSAGE = "Р”Р°РЅРЅС‹Рµ РїСЂРѕС„РёР»СЏ РѕР±РЅРѕРІР»РµРЅС‹";
+    public static final String NOTIFICATION_MESSAGE = "Данные профиля обновлены";
 
     public NotificationEvent create(AccountProfileUpdatedEvent event) {
         return create(UUID.randomUUID(), event.operationId(), event.recipientLogin(), event.occurredAt());
