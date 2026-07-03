@@ -8,6 +8,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import ru.practicum.bank.notifications.service.NotificationService;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,6 +67,34 @@ class NotificationRecoveryKafkaIntegrationTest extends KafkaIntegrationTestSuppo
             verify(notificationService, after(2_000).never()).notify(
                     argThat(event -> key.equals(event.recipientLogin()))
             );
+        }
+    }
+
+    @Test
+    void shouldPublishInvalidMoneyEventToDltWithoutRetryAndCommitSourceOffset() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        String key = "invalid-money-" + eventId;
+        var event = new ru.practicum.bank.common.notification.NotificationEvent(
+                eventId,
+                UUID.randomUUID(),
+                ru.practicum.bank.common.notification.NotificationSource.CASH,
+                ru.practicum.bank.common.notification.NotificationType.CASH_DEPOSITED,
+                key,
+                "Account replenished",
+                Instant.parse("2026-06-30T05:00:00Z"),
+                null,
+                null
+        );
+
+        try (var dltConsumer = dltConsumer("invalid-money-dlt-" + eventId)) {
+            var result = eventTemplate().send(TOPIC, key, event).get();
+            var dltRecord = awaitRecord(dltConsumer, record -> key.equals(record.key()));
+
+            assertThat(dltRecord.value()).isNotEmpty();
+            verify(notificationService, after(2_000).never())
+                    .notify(argThat(notification -> notification.eventId().equals(eventId)));
+            assertThat(committedOffset(result.getRecordMetadata().partition()))
+                    .isGreaterThanOrEqualTo(result.getRecordMetadata().offset() + 1);
         }
     }
 }

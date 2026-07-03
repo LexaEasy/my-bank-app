@@ -73,6 +73,41 @@ class NotificationEventTest {
     }
 
     @Test
+    void shouldRejectMoneyEventWithoutAmountAndCurrency() {
+        var event = event(NotificationType.CASH_DEPOSITED, null, null);
+
+        try (var validatorFactory = Validation.buildDefaultValidatorFactory()) {
+            var violations = validatorFactory.getValidator().validate(event);
+
+            assertThat(violations)
+                    .extracting(violation -> violation.getPropertyPath().toString())
+                    .contains("amount", "currency");
+        }
+    }
+
+    @Test
+    void shouldAllowAccountUpdatedWithoutAmountAndCurrency() {
+        var event = event(NotificationType.ACCOUNT_UPDATED, null, null);
+
+        try (var validatorFactory = Validation.buildDefaultValidatorFactory()) {
+            var violations = validatorFactory.getValidator().validate(event);
+
+            assertThat(violations).isEmpty();
+        }
+    }
+
+    @Test
+    void shouldAllowValidMoneyEvent() {
+        var event = event(NotificationType.TRANSFER_INCOMING, new BigDecimal("100.00"), Currency.RUB);
+
+        try (var validatorFactory = Validation.buildDefaultValidatorFactory()) {
+            var violations = validatorFactory.getValidator().validate(event);
+
+            assertThat(violations).isEmpty();
+        }
+    }
+
+    @Test
     void shouldRejectUnknownEventType() {
         String json = """
                 {
@@ -88,5 +123,19 @@ class NotificationEventTest {
 
         assertThatThrownBy(() -> objectMapper.readValue(json, NotificationEvent.class))
                 .hasMessageContaining("UNKNOWN_TYPE");
+    }
+
+    private NotificationEvent event(NotificationType type, BigDecimal amount, Currency currency) {
+        return new NotificationEvent(
+                UUID.fromString("10cb8eb2-b488-4f62-b139-a07314cc3ef4"),
+                UUID.fromString("3e3a3fec-843e-44e2-bcf5-3bea12845327"),
+                NotificationSource.CASH,
+                type,
+                "ivan",
+                "Событие",
+                Instant.parse("2026-06-30T05:00:00Z"),
+                amount,
+                currency
+        );
     }
 }

@@ -45,6 +45,25 @@ class NotificationEventListenerTest {
         verify(notificationService, never()).notify(event);
     }
 
+    @Test
+    void shouldRejectMoneyEventWithoutAmountAndCurrency() {
+        var event = new NotificationEvent(
+                UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                NotificationSource.CASH,
+                NotificationType.CASH_DEPOSITED,
+                "ivan",
+                "Пополнение счёта",
+                Instant.parse("2026-06-30T05:00:00Z"),
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> listener.listen(record(event)))
+                .isInstanceOf(ConstraintViolationException.class);
+        verify(notificationService, never()).notify(event);
+    }
+
     private ConsumerRecord<String, NotificationEvent> record(NotificationEvent event) {
         return new ConsumerRecord<>("bank.notifications", 1, 42L, event.recipientLogin(), event);
     }
