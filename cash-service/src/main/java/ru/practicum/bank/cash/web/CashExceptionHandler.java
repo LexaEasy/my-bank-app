@@ -49,11 +49,13 @@ public class CashExceptionHandler {
 
     @ExceptionHandler(AccountsClientException.class)
     public ResponseEntity<ApiErrorResponse> handleAccountsClient(AccountsClientException exception) {
-        boolean conflict = exception.getStatusCode().value() == HttpStatus.CONFLICT.value();
-        String code = conflict ? "IDEMPOTENCY_CONFLICT" : "ACCOUNTS_SERVICE_UNAVAILABLE";
-        HttpStatus status = conflict ? HttpStatus.CONFLICT : HttpStatus.BAD_GATEWAY;
-        return ResponseEntity.status(status)
-                .body(new ApiErrorResponse(code, exception.getMessage()));
+        if (exception.getStatusCode().is4xxClientError()) {
+            return ResponseEntity.status(exception.getStatusCode())
+                    .body(new ApiErrorResponse(exception.getCode(), exception.getMessage()));
+        }
+
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(new ApiErrorResponse("ACCOUNTS_SERVICE_UNAVAILABLE", exception.getMessage()));
     }
 
     @ExceptionHandler(BlockerClientException.class)

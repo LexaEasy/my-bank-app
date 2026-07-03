@@ -181,6 +181,30 @@ class CashControllerTest {
                 .andExpect(jsonPath("$.code").value("IDEMPOTENCY_CONFLICT"));
     }
 
+    @Test
+    void shouldPreserveAccountsBusinessErrorStatusAndCode() throws Exception {
+        when(cashService.withdraw("ivan", request("999999.00"), IDEMPOTENCY_KEY))
+                .thenThrow(new AccountsClientException(
+                        "Недостаточно средств",
+                        HttpStatus.UNPROCESSABLE_ENTITY,
+                        "INSUFFICIENT_FUNDS",
+                        null
+                ));
+
+        mockMvc.perform(postWithIdempotencyKey("/api/cash/withdraw")
+                        .principal(jwtAuthentication("ivan"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "amount": "999999.00",
+                                  "currency": "RUB"
+                                }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("INSUFFICIENT_FUNDS"))
+                .andExpect(jsonPath("$.message").value("Недостаточно средств"));
+    }
+
     private JwtAuthenticationToken jwtAuthentication(String login) {
         var jwt = Jwt.withTokenValue("token")
                 .header("alg", "none")

@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.ExpectedCount.once;
@@ -85,15 +86,64 @@ class HttpAccountsClientTest {
                                 }
                                 """));
 
-        assertThatThrownBy(() -> client.withdraw(new AccountsBalanceOperationRequest(
+        Throwable throwable = catchThrowable(() -> client.withdraw(new AccountsBalanceOperationRequest(
                 "ivan",
                 new BigDecimal("999999.00"),
                 Currency.RUB,
                 "operation-1"
-        )))
+        )));
+
+        assertThat(throwable)
                 .isInstanceOf(AccountsClientException.class)
                 .hasMessage("Недостаточно средств");
+        assertThat((AccountsClientException) throwable)
+                .extracting(AccountsClientException::getStatusCode, AccountsClientException::getCode)
+                .containsExactly(HttpStatus.UNPROCESSABLE_ENTITY, "INSUFFICIENT_FUNDS");
 
+        server.verify();
+    }
+
+    @Test
+    void shouldNotOpenCircuitBreakerAfterBusinessErrors() {
+        var restClientBuilder = RestClient.builder();
+        var server = MockRestServiceServer.bindTo(restClientBuilder).build();
+        var client = new HttpAccountsClient(
+                restClientBuilder,
+                "http://accounts-service",
+                serviceTokenProvider,
+                objectMapper
+        );
+        when(serviceTokenProvider.getAccessToken()).thenReturn("service-token");
+
+        for (int attempt = 0; attempt < 3; attempt++) {
+            server.expect(once(), requestTo("http://accounts-service/api/accounts/internal/balance/withdraw"))
+                    .andRespond(withStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body("""
+                                    {
+                                      "code": "INSUFFICIENT_FUNDS",
+                                      "message": "Недостаточно средств"
+                                    }
+                                    """));
+        }
+        server.expect(once(), requestTo("http://accounts-service/api/accounts/internal/balance/withdraw"))
+                .andRespond(withSuccess("""
+                        {
+                          "login": "ivan",
+                          "balance": "500.00",
+                          "currency": "RUB"
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        for (int attempt = 0; attempt < 3; attempt++) {
+            assertThatThrownBy(() -> client.withdraw(balanceRequest("999999.00")))
+                    .isInstanceOf(AccountsClientException.class)
+                    .hasMessage("Недостаточно средств");
+        }
+
+        var response = client.withdraw(balanceRequest("100.00"));
+
+        assertThat(response.balance()).isEqualByComparingTo(new BigDecimal("500.00"));
         server.verify();
     }
 
@@ -116,5 +166,14 @@ class HttpAccountsClientTest {
         )))
                 .isInstanceOf(AccountsClientException.class)
                 .hasMessage("Сервис счетов временно недоступен");
+    }
+
+    private AccountsBalanceOperationRequest balanceRequest(String amount) {
+        return new AccountsBalanceOperationRequest(
+                "ivan",
+                new BigDecimal(amount),
+                Currency.RUB,
+                "operation-1"
+        );
     }
 }

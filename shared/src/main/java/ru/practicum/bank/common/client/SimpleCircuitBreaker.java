@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class SimpleCircuitBreaker {
@@ -38,6 +39,14 @@ public class SimpleCircuitBreaker {
     }
 
     public synchronized <T> T execute(Supplier<T> action, Function<Throwable, T> fallback) {
+        return execute(action, fallback, exception -> true);
+    }
+
+    public synchronized <T> T execute(
+            Supplier<T> action,
+            Function<Throwable, T> fallback,
+            Predicate<Throwable> recordFailure
+    ) {
         if (state == State.OPEN && !isReadyForRetry()) {
             return fallback.apply(new IllegalStateException("Circuit breaker is open: " + name));
         }
@@ -50,7 +59,9 @@ public class SimpleCircuitBreaker {
             close();
             return result;
         } catch (Throwable exception) {
-            recordFailure();
+            if (recordFailure.test(exception)) {
+                recordFailure();
+            }
             return fallback.apply(exception);
         }
     }

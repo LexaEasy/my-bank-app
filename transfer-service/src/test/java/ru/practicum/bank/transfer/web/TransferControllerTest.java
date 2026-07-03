@@ -219,6 +219,31 @@ class TransferControllerTest {
                 .andExpect(jsonPath("$.code").value("IDEMPOTENCY_CONFLICT"));
     }
 
+    @Test
+    void shouldPreserveAccountsBusinessErrorStatusAndCode() throws Exception {
+        when(transferService.transfer("ivan", request("olga", "999999.00"), IDEMPOTENCY_KEY))
+                .thenThrow(new AccountsClientException(
+                        "Недостаточно средств",
+                        HttpStatus.UNPROCESSABLE_ENTITY,
+                        "INSUFFICIENT_FUNDS",
+                        null
+                ));
+
+        mockMvc.perform(postWithIdempotencyKey("/api/transfers")
+                        .principal(jwtAuthentication("ivan"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "recipientLogin": "olga",
+                                  "amount": "999999.00",
+                                  "currency": "RUB"
+                                }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("INSUFFICIENT_FUNDS"))
+                .andExpect(jsonPath("$.message").value("Недостаточно средств"));
+    }
+
     private JwtAuthenticationToken jwtAuthentication(String login) {
         var jwt = Jwt.withTokenValue("token")
                 .header("alg", "none")

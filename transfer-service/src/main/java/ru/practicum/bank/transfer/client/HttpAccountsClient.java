@@ -57,7 +57,8 @@ public class HttpAccountsClient implements TransferExecutor {
     public TransferResult execute(TransferOperation operation) {
         return circuitBreaker.execute(
                 () -> executeWithoutCircuitBreaker(operation),
-                this::accountsFallback
+                this::accountsFallback,
+                this::shouldRecordFailure
         );
     }
 
@@ -77,10 +78,23 @@ public class HttpAccountsClient implements TransferExecutor {
                     response.currency()
             );
         } catch (RestClientResponseException exception) {
-            throw new AccountsClientException(extractMessage(exception), exception.getStatusCode(), exception);
+            var error = extractError(exception);
+            throw new AccountsClientException(
+                    error.message(),
+                    exception.getStatusCode(),
+                    error.code(),
+                    exception
+            );
         } catch (RestClientException exception) {
             throw new AccountsClientException("Accounts service request failed", exception);
         }
+    }
+
+    private boolean shouldRecordFailure(Throwable exception) {
+        if (exception instanceof AccountsClientException accountsClientException) {
+            return accountsClientException.getStatusCode().is5xxServerError();
+        }
+        return true;
     }
 
     private TransferResult accountsFallback(Throwable exception) {
@@ -90,16 +104,20 @@ public class HttpAccountsClient implements TransferExecutor {
         throw new AccountsClientException("Сервис счетов временно недоступен", exception);
     }
 
-    private String extractMessage(RestClientResponseException exception) {
+    private ApiErrorResponse extractError(RestClientResponseException exception) {
         try {
             var error = objectMapper.readValue(exception.getResponseBodyAsString(), ApiErrorResponse.class);
-            if (error.message() != null && !error.message().isBlank()) {
-                return error.message();
+            if (isNotBlank(error.code()) && isNotBlank(error.message())) {
+                return error;
             }
         } catch (JsonProcessingException ignored) {
             // Use a stable fallback when downstream does not return the expected error body.
         }
-        return "Accounts service request failed";
+        return new ApiErrorResponse("ACCOUNTS_SERVICE_ERROR", "Accounts service request failed");
+    }
+
+    private boolean isNotBlank(String value) {
+        return value != null && !value.isBlank();
     }
 
     private AccountsTransferRequest toAccountsRequest(TransferOperation operation) {

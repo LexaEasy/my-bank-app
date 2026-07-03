@@ -8,8 +8,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
-import ru.practicum.bank.common.client.SimpleCircuitBreaker;
 import ru.practicum.bank.cash.dto.ApiErrorResponse;
+import ru.practicum.bank.common.client.SimpleCircuitBreaker;
 
 @Component
 public class HttpAccountsClient implements AccountsClient {
@@ -63,7 +63,8 @@ public class HttpAccountsClient implements AccountsClient {
     private AccountsBalanceResponse post(String uri, AccountsBalanceOperationRequest request) {
         return circuitBreaker.execute(
                 () -> postWithoutCircuitBreaker(uri, request),
-                this::accountsFallback
+                this::accountsFallback,
+                this::shouldRecordFailure
         );
     }
 
@@ -76,10 +77,23 @@ public class HttpAccountsClient implements AccountsClient {
                     .retrieve()
                     .body(AccountsBalanceResponse.class);
         } catch (RestClientResponseException exception) {
-            throw new AccountsClientException(extractMessage(exception), exception.getStatusCode(), exception);
+            var error = extractError(exception);
+            throw new AccountsClientException(
+                    error.message(),
+                    exception.getStatusCode(),
+                    error.code(),
+                    exception
+            );
         } catch (RestClientException exception) {
             throw new AccountsClientException("Accounts service request failed", exception);
         }
+    }
+
+    private boolean shouldRecordFailure(Throwable exception) {
+        if (exception instanceof AccountsClientException accountsClientException) {
+            return accountsClientException.getStatusCode().is5xxServerError();
+        }
+        return true;
     }
 
     private AccountsBalanceResponse accountsFallback(Throwable exception) {
@@ -89,15 +103,19 @@ public class HttpAccountsClient implements AccountsClient {
         throw new AccountsClientException("Сервис счетов временно недоступен", exception);
     }
 
-    private String extractMessage(RestClientResponseException exception) {
+    private ApiErrorResponse extractError(RestClientResponseException exception) {
         try {
             var error = objectMapper.readValue(exception.getResponseBodyAsString(), ApiErrorResponse.class);
-            if (error.message() != null && !error.message().isBlank()) {
-                return error.message();
+            if (isNotBlank(error.code()) && isNotBlank(error.message())) {
+                return error;
             }
         } catch (JsonProcessingException ignored) {
             // Use a stable fallback when downstream does not return the expected error body.
         }
-        return "Accounts service request failed";
+        return new ApiErrorResponse("ACCOUNTS_SERVICE_ERROR", "Accounts service request failed");
+    }
+
+    private boolean isNotBlank(String value) {
+        return value != null && !value.isBlank();
     }
 }
