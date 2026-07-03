@@ -5,9 +5,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 
+import java.util.Locale;
+import java.util.regex.Pattern;
+
 public class KafkaNotificationEventPublisher implements NotificationEventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaNotificationEventPublisher.class);
+    private static final Pattern SENSITIVE_REASON = Pattern.compile(
+            "(?i).*(authorization|bearer|credential|password|secret|token|eyJ[a-zA-Z0-9_-]*\\.).*"
+    );
 
     private final KafkaTemplate<String, NotificationEvent> kafkaTemplate;
     private final MeterRegistry meterRegistry;
@@ -58,21 +64,19 @@ public class KafkaNotificationEventPublisher implements NotificationEventPublish
                 "error_category", errorCategory
         ).increment();
         log.error(
-                "Notification event send failed: eventId={}, operationId={}, source={}, topic={}, errorCategory={}",
+                "Notification event send failed: eventId={}, operationId={}, source={}, topic={}, errorCategory={}, reason={}",
                 event.eventId(),
                 event.operationId(),
                 event.source(),
                 topic,
-                errorCategory
+                errorCategory,
+                safeReason(exception)
         );
     }
 
     private String errorCategory(Throwable exception) {
-        var cause = exception;
-        while (cause.getCause() != null && cause.getCause() != cause) {
-            cause = cause.getCause();
-        }
-        var type = cause.getClass().getSimpleName().toLowerCase();
+        var cause = rootCause(exception);
+        var type = cause.getClass().getSimpleName().toLowerCase(Locale.ROOT);
         if (type.contains("timeout")) {
             return "timeout";
         }
@@ -83,5 +87,26 @@ public class KafkaNotificationEventPublisher implements NotificationEventPublish
             return "security";
         }
         return "other";
+    }
+
+    private String safeReason(Throwable exception) {
+        var message = rootCause(exception).getMessage();
+        if (message == null || message.isBlank()) {
+            return "unknown";
+        }
+        var normalized = message.replaceAll("[\\r\\n\\t]+", " ").trim();
+        if (SENSITIVE_REASON.matcher(normalized).matches()) {
+            return "redacted";
+        }
+        return normalized.substring(0, Math.min(normalized.length(), 200))
+                .toLowerCase(Locale.ROOT);
+    }
+
+    private Throwable rootCause(Throwable exception) {
+        var cause = exception;
+        while (cause.getCause() != null && cause.getCause() != cause) {
+            cause = cause.getCause();
+        }
+        return cause;
     }
 }

@@ -43,4 +43,6 @@ bank:
       base-url: http://accounts-service:8081
     blocker:
       base-url: http://blocker-service:8088
+    exchange:
+      base-url: http://exchange-service:8086
 
