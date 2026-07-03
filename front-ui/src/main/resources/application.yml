@@ -23,6 +23,15 @@ spring:
             user-name-attribute: preferred_username
 
 bank:
+  http-client:
+    connect-timeout: ${BANK_HTTP_CLIENT_CONNECT_TIMEOUT:2s}
+    read-timeout: ${BANK_HTTP_CLIENT_READ_TIMEOUT:5s}
+    circuit-breaker:
+      failure-threshold: ${BANK_HTTP_CLIENT_CIRCUIT_BREAKER_FAILURE_THRESHOLD:3}
+      open-duration: ${BANK_HTTP_CLIENT_CIRCUIT_BREAKER_OPEN_DURATION:5s}
+    retry:
+      max-attempts: ${BANK_HTTP_CLIENT_RETRY_MAX_ATTEMPTS:2}
+      backoff: ${BANK_HTTP_CLIENT_RETRY_BACKOFF:100ms}
   services:
     accounts:
       base-url: ${BANK_ACCOUNTS_BASE_URL:http://accounts-service:8081}

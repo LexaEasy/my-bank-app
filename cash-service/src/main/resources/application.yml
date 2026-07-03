@@ -35,6 +35,15 @@ spring:
           jwk-set-uri: ${BANK_KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs}
 
 bank:
+  http-client:
+    connect-timeout: ${BANK_HTTP_CLIENT_CONNECT_TIMEOUT:2s}
+    read-timeout: ${BANK_HTTP_CLIENT_READ_TIMEOUT:5s}
+    circuit-breaker:
+      failure-threshold: ${BANK_HTTP_CLIENT_CIRCUIT_BREAKER_FAILURE_THRESHOLD:3}
+      open-duration: ${BANK_HTTP_CLIENT_CIRCUIT_BREAKER_OPEN_DURATION:5s}
+    retry:
+      max-attempts: ${BANK_HTTP_CLIENT_RETRY_MAX_ATTEMPTS:2}
+      backoff: ${BANK_HTTP_CLIENT_RETRY_BACKOFF:100ms}
   kafka:
     notifications-dlt-topic: ${BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC:bank.notifications.dlt}
     notifications-topic: ${BANK_KAFKA_NOTIFICATIONS_TOPIC:bank.notifications}

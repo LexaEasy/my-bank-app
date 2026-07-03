@@ -3,6 +3,7 @@ spring-boot = "3.5.15"
 spring-cloud = "2025.0.2"
 scc = "4.3.3"
 spring-dependency-management = "1.1.7"
+resilience4j = "2.4.0"
 
 [libraries]
 spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
@@ -22,6 +23,7 @@ spring-integration-core = { module = "org.springframework.integration:spring-int
 spring-retry = { module = "org.springframework.retry:spring-retry" }
 spring-cloud-starter-contract-verifier = { module = "org.springframework.cloud:spring-cloud-starter-contract-verifier" }
 spring-cloud-starter-gateway-server-webflux = { module = "org.springframework.cloud:spring-cloud-starter-gateway-server-webflux" }
+resilience4j-spring-boot3 = { module = "io.github.resilience4j:resilience4j-spring-boot3", version.ref = "resilience4j" }
 flyway-core = { module = "org.flywaydb:flyway-core" }
 flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 h2 = { module = "com.h2database:h2" }

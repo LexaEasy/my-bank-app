@@ -1,4 +1,4 @@
-package ru.practicum.bank.cash.config;
+package ru.practicum.bank.frontui.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

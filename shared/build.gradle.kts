@@ -1,6 +1,8 @@
 import org.springframework.boot.gradle.tasks.bundling.BootJar
 
 dependencies {
+    implementation(libs.resilience4j.spring.boot3)
+
     compileOnly(libs.spring.boot.starter.web)
     compileOnly(libs.spring.boot.starter.validation)
     compileOnly(libs.spring.kafka)
