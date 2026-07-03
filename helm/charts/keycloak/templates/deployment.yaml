@@ -57,10 +57,13 @@ spec:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+            - name: management
+              containerPort: {{ .Values.management.port }}
+              protocol: TCP
           startupProbe:
             httpGet:
               path: {{ .Values.probes.startup.path | quote }}
-              port: http
+              port: {{ .Values.probes.port }}
             initialDelaySeconds: {{ .Values.probes.startup.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.startup.periodSeconds }}
             timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
@@ -68,7 +71,7 @@ spec:
           readinessProbe:
             httpGet:
               path: {{ .Values.probes.readiness.path | quote }}
-              port: http
+              port: {{ .Values.probes.port }}
             initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
             timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
@@ -76,7 +79,7 @@ spec:
           livenessProbe:
             httpGet:
               path: {{ .Values.probes.liveness.path | quote }}
-              port: http
+              port: {{ .Values.probes.port }}
             initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
             timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}

@@ -8,6 +8,9 @@ image:
 service:
   port: 8080
 
+management:
+  port: 9000
+
 admin:
   existingSecret: keycloak-credentials
   usernameKey: admin-username
@@ -37,6 +40,7 @@ extraEnv: []
 resources: {}
 
 probes:
+  port: management
   startup:
     path: /health/started
     initialDelaySeconds: 20
