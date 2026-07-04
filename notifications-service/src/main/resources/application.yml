@@ -22,6 +22,7 @@ spring:
         spring.json.trusted.packages: ru.practicum.bank.common.notification
     listener:
       ack-mode: record
+      observation-enabled: true
 bank:
   kafka:
     notifications-topic: ${BANK_KAFKA_NOTIFICATIONS_TOPIC:bank.notifications}

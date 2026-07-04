@@ -57,7 +57,9 @@ public class KafkaConsumerConfiguration {
 
     @Bean
     KafkaTemplate<Object, Object> dltKafkaTemplate(ProducerFactory<Object, Object> dltProducerFactory) {
-        return new KafkaTemplate<>(dltProducerFactory);
+        var kafkaTemplate = new KafkaTemplate<>(dltProducerFactory);
+        kafkaTemplate.setObservationEnabled(true);
+        return kafkaTemplate;
     }
 
     @Bean

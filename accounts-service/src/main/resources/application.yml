@@ -24,6 +24,8 @@ spring:
         "[delivery.timeout.ms]": 120000
         "[request.timeout.ms]": 30000
         "[max.in.flight.requests.per.connection]": 5
+    template:
+      observation-enabled: true
   security:
     oauth2:
       resourceserver:
