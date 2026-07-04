@@ -44,6 +44,18 @@ bank:
     notifications-replication-factor: ${BANK_KAFKA_NOTIFICATIONS_REPLICATION_FACTOR:1}
     notifications-topic: ${BANK_KAFKA_NOTIFICATIONS_TOPIC:bank.notifications}
 
+jdbc:
+  datasource-proxy:
+    enabled: true
+    include-parameter-values: false
+    query:
+      enable-logging: false
+  includes:
+    - CONNECTION
+    - QUERY
+  resultset-operations:
+    enabled: false
+
 management:
   server:
     port: ${MANAGEMENT_SERVER_PORT:8091}
