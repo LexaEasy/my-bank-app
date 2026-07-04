@@ -1,10 +1,10 @@
 package ru.practicum.bank.transfer.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestClientCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.web.client.RestClient;
 import ru.practicum.bank.common.client.ResilientClientFactory;
 
 import java.time.Duration;
@@ -13,15 +13,14 @@ import java.time.Duration;
 public class RestClientConfig {
 
     @Bean
-    RestClient.Builder restClientBuilder(
+    RestClientCustomizer restClientCustomizer(
             @Value("${bank.http-client.connect-timeout:2s}") Duration connectTimeout,
             @Value("${bank.http-client.read-timeout:5s}") Duration readTimeout
     ) {
         var requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(connectTimeout);
         requestFactory.setReadTimeout(readTimeout);
-        return RestClient.builder()
-                .requestFactory(requestFactory);
+        return builder -> builder.requestFactory(requestFactory);
     }
 
     @Bean
