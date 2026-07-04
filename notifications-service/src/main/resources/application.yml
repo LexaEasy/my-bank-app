@@ -31,13 +31,24 @@ bank:
     notifications-replication-factor: ${BANK_KAFKA_NOTIFICATIONS_REPLICATION_FACTOR:1}
     notifications-dlt-retention-ms: ${BANK_KAFKA_NOTIFICATIONS_DLT_RETENTION_MS:604800000}
 management:
+  server:
+    port: ${MANAGEMENT_SERVER_PORT:8089}
   endpoint:
     health:
       probes:
-        enabled: ${MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED:true}
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      namespace: ${MANAGEMENT_METRICS_TAGS_NAMESPACE:dev}
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
 server:
   port: ${SERVER_PORT:8089}

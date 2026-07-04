@@ -62,9 +62,19 @@ bank:
 management:
   server:
     port: ${MANAGEMENT_SERVER_PORT:8093}
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState
   metrics:
     tags:
       application: ${spring.application.name}
+      namespace: ${MANAGEMENT_METRICS_TAGS_NAMESPACE:dev}
   endpoints:
     web:
       exposure:

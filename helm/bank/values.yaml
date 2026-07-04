@@ -42,6 +42,11 @@ front-ui:
     repository: my-bank-front-ui
   service:
     port: 8085
+  management:
+    enabled: true
+    port: 8095
+  probes:
+    port: management
   env:
     BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
     BANK_CASH_BASE_URL: http://cash-service:8082
@@ -51,6 +56,7 @@ front-ui:
     BANK_KEYCLOAK_REDIRECT_URI: http://localhost/login/oauth2/code/{registrationId}
     BANK_KEYCLOAK_USER_INFO_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo
     BANK_TRANSFER_BASE_URL: http://transfer-service:8083
+    MANAGEMENT_SERVER_PORT: "8095"
     SERVER_PORT: "8085"
   secretEnv:
     - name: FRONT_UI_CLIENT_SECRET
@@ -150,7 +156,13 @@ exchange-service:
     repository: my-bank-exchange-service
   service:
     port: 8086
+  management:
+    enabled: true
+    port: 8096
+  probes:
+    port: management
   env:
+    MANAGEMENT_SERVER_PORT: "8096"
     SERVER_PORT: "8086"
 
 exchange-generator:
@@ -160,9 +172,15 @@ exchange-generator:
     repository: my-bank-exchange-generator
   service:
     port: 8087
+  management:
+    enabled: true
+    port: 8097
+  probes:
+    port: management
   env:
     BANK_EXCHANGE_GENERATOR_FIXED_DELAY_MS: "1000"
     BANK_EXCHANGE_BASE_URL: http://exchange-service:8086
+    MANAGEMENT_SERVER_PORT: "8097"
     SERVER_PORT: "8087"
   secretEnv:
     - name: EXCHANGE_GENERATOR_CLIENT_SECRET
@@ -176,8 +194,14 @@ blocker-service:
     repository: my-bank-blocker-service
   service:
     port: 8088
+  management:
+    enabled: true
+    port: 8098
+  probes:
+    port: management
   env:
     BANK_BLOCKER_MAX_AMOUNT: "100000.00"
+    MANAGEMENT_SERVER_PORT: "8098"
     SERVER_PORT: "8088"
 
 notifications-service:
@@ -196,6 +220,7 @@ notifications-service:
   test:
     enabled: false
   env:
+    MANAGEMENT_SERVER_PORT: "8089"
     SERVER_PORT: "8089"
     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     SPRING_KAFKA_CONSUMER_GROUP_ID: bank-notifications
@@ -207,7 +232,13 @@ bank-gateway:
     repository: my-bank-gateway
   service:
     port: 8080
+  management:
+    enabled: true
+    port: 8090
+  probes:
+    port: management
   env:
+    MANAGEMENT_SERVER_PORT: "8090"
     SERVER_PORT: "8080"
     SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_FILTERS_0: SetStatus=404
     SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_ID: block-accounts-internal-api
