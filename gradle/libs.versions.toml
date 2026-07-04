@@ -4,6 +4,8 @@ spring-cloud = "2025.0.2"
 scc = "4.3.3"
 spring-dependency-management = "1.1.7"
 resilience4j = "2.4.0"
+logstash-logback-encoder = "9.0"
+datasource-micrometer = "1.4.1"
 
 [libraries]
 spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
@@ -23,6 +25,10 @@ spring-integration-core = { module = "org.springframework.integration:spring-int
 spring-retry = { module = "org.springframework.retry:spring-retry" }
 micrometer-core = { module = "io.micrometer:micrometer-core" }
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
+micrometer-tracing-bridge-brave = { module = "io.micrometer:micrometer-tracing-bridge-brave" }
+zipkin-reporter-brave = { module = "io.zipkin.reporter2:zipkin-reporter-brave" }
+logstash-logback-encoder = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstash-logback-encoder" }
+datasource-micrometer-spring-boot = { module = "net.ttddyy.observation:datasource-micrometer-spring-boot", version.ref = "datasource-micrometer" }
 spring-cloud-starter-contract-verifier = { module = "org.springframework.cloud:spring-cloud-starter-contract-verifier" }
 spring-cloud-starter-gateway-server-webflux = { module = "org.springframework.cloud:spring-cloud-starter-gateway-server-webflux" }
 resilience4j-spring-boot3 = { module = "io.github.resilience4j:resilience4j-spring-boot3", version.ref = "resilience4j" }

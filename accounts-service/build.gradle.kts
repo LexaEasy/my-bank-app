@@ -15,6 +15,9 @@ contracts {
 dependencies {
     implementation(project(":shared"))
     implementation(libs.flyway.core)
+    implementation(libs.datasource.micrometer.spring.boot)
+    implementation(libs.logstash.logback.encoder)
+    implementation(libs.micrometer.tracing.bridge.brave)
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.spring.boot.starter.aop)
     implementation(libs.spring.boot.starter.data.jpa)
@@ -23,6 +26,7 @@ dependencies {
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.kafka)
+    implementation(libs.zipkin.reporter.brave)
 
     runtimeOnly(libs.flyway.database.postgresql)
     runtimeOnly(libs.micrometer.registry.prometheus)
