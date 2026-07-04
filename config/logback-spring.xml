@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <springProperty
+            scope="context"
+            name="applicationName"
+            source="spring.application.name"
+            defaultValue="unknown"/>
+    <springProperty
+            scope="context"
+            name="logstashDestination"
+            source="bank.logging.logstash.destination"
+            defaultValue="localhost:5000"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [%X{traceId:-}/%X{spanId:-}] %logger{36} - %msg%n%ex</pattern>
+        </encoder>
+    </appender>
+
+    <springProfile name="!test">
+        <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+            <destination>${logstashDestination}</destination>
+            <connectionTimeout>2 seconds</connectionTimeout>
+            <reconnectionDelay>5 seconds</reconnectionDelay>
+            <ringBufferSize>8192</ringBufferSize>
+            <appendTimeout>0</appendTimeout>
+            <droppedWarnFrequency>1000</droppedWarnFrequency>
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp>
+                        <fieldName>@timestamp</fieldName>
+                    </timestamp>
+                    <pattern>
+                        <pattern>
+                            {
+                              "level": "%level",
+                              "application": "${applicationName}",
+                              "logger_name": "%logger",
+                              "thread_name": "%thread",
+                              "message": "%message",
+                              "traceId": "%X{traceId:-}",
+                              "spanId": "%X{spanId:-}",
+                              "stack_trace": "%ex"
+                            }
+                        </pattern>
+                    </pattern>
+                </providers>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <springProfile name="test">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!test">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="LOGSTASH"/>
+        </root>
+    </springProfile>
+</configuration>

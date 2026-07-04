@@ -1,5 +1,6 @@
 import io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension
 import org.springframework.boot.gradle.tasks.bundling.BootJar
+import org.gradle.language.jvm.tasks.ProcessResources
 
 plugins {
     java
@@ -30,6 +31,13 @@ subprojects {
 
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
+        systemProperty("spring.profiles.active", "test")
+    }
+
+    if (name != "shared") {
+        tasks.named<ProcessResources>("processResources") {
+            from(rootProject.file("config/logback-spring.xml"))
+        }
     }
 
     tasks.named<BootJar>("bootJar") {
