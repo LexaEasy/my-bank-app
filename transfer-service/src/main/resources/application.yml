@@ -3,6 +3,20 @@ spring:
     name: transfer-service
   jackson:
     default-property-inclusion: non_null
+  kafka:
+    admin:
+      fail-fast: true
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      retries: 2147483647
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        "[enable.idempotence]": true
+        "[delivery.timeout.ms]": 120000
+        "[request.timeout.ms]": 30000
+        "[max.in.flight.requests.per.connection]": 5
   security:
     oauth2:
       client:
@@ -21,21 +35,40 @@ spring:
           jwk-set-uri: ${BANK_KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs}
 
 bank:
+  http-client:
+    connect-timeout: ${BANK_HTTP_CLIENT_CONNECT_TIMEOUT:2s}
+    read-timeout: ${BANK_HTTP_CLIENT_READ_TIMEOUT:5s}
+    circuit-breaker:
+      failure-threshold: ${BANK_HTTP_CLIENT_CIRCUIT_BREAKER_FAILURE_THRESHOLD:3}
+      open-duration: ${BANK_HTTP_CLIENT_CIRCUIT_BREAKER_OPEN_DURATION:5s}
+    retry:
+      max-attempts: ${BANK_HTTP_CLIENT_RETRY_MAX_ATTEMPTS:2}
+      backoff: ${BANK_HTTP_CLIENT_RETRY_BACKOFF:100ms}
+  kafka:
+    notifications-dlt-topic: ${BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC:bank.notifications.dlt}
+    notifications-dlt-partitions: ${BANK_KAFKA_NOTIFICATIONS_DLT_PARTITIONS:3}
+    notifications-dlt-retention-ms: ${BANK_KAFKA_NOTIFICATIONS_DLT_RETENTION_MS:604800000}
+    notifications-partitions: ${BANK_KAFKA_NOTIFICATIONS_PARTITIONS:3}
+    notifications-replication-factor: ${BANK_KAFKA_NOTIFICATIONS_REPLICATION_FACTOR:1}
+    notifications-topic: ${BANK_KAFKA_NOTIFICATIONS_TOPIC:bank.notifications}
   services:
     accounts:
       base-url: ${BANK_ACCOUNTS_BASE_URL:http://accounts-service:8081}
-    notifications:
-      base-url: ${BANK_NOTIFICATIONS_BASE_URL:http://notifications-service:8084}
     blocker:
       base-url: ${BANK_BLOCKER_BASE_URL:http://blocker-service:8088}
     exchange:
       base-url: ${BANK_EXCHANGE_BASE_URL:http://exchange-service:8086}
 
 management:
+  server:
+    port: ${MANAGEMENT_SERVER_PORT:8093}
+  metrics:
+    tags:
+      application: ${spring.application.name}
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
 
 server:
   port: 8083

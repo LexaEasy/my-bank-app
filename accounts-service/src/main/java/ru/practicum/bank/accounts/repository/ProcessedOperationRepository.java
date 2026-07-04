@@ -15,4 +15,13 @@ public interface ProcessedOperationRepository extends JpaRepository<ProcessedOpe
             values (:operationId, :operationType, :requestHash, 'PROCESSING', :now, :now)
             """, nativeQuery = true)
     void insertProcessing(String operationId, String operationType, String requestHash, LocalDateTime now);
+
+    @Modifying
+    @Query("""
+            delete from ProcessedOperation operation
+            where operation.operationId = :operationId
+              and operation.status = ru.practicum.bank.accounts.model.ProcessedOperationStatus.PROCESSING
+              and operation.updatedAt <= :staleBefore
+            """)
+    int deleteStaleProcessing(String operationId, LocalDateTime staleBefore);
 }

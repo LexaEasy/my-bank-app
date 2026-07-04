@@ -3,11 +3,14 @@ package ru.practicum.bank.transfer.service;
 import org.springframework.stereotype.Service;
 import ru.practicum.bank.common.dto.blocker.OperationCheckRequest;
 import ru.practicum.bank.common.dto.exchange.ConversionResponse;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.common.model.OperationType;
+import ru.practicum.bank.common.notification.NotificationEvent;
+import ru.practicum.bank.common.notification.NotificationEventPublisher;
+import ru.practicum.bank.common.notification.NotificationSource;
+import ru.practicum.bank.common.notification.NotificationType;
 import ru.practicum.bank.transfer.client.BlockerClient;
 import ru.practicum.bank.transfer.client.ExchangeClient;
-import ru.practicum.bank.transfer.client.NotificationRequest;
-import ru.practicum.bank.transfer.client.NotificationsClient;
 import ru.practicum.bank.transfer.dto.TransferRequest;
 import ru.practicum.bank.transfer.dto.TransferResponse;
 import ru.practicum.bank.transfer.exception.InvalidAmountException;
@@ -16,6 +19,8 @@ import ru.practicum.bank.transfer.exception.OperationBlockedException;
 import ru.practicum.bank.transfer.exception.SelfTransferForbiddenException;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.UUID;
 
 @Service
@@ -24,28 +29,31 @@ public class TransferService {
     private final TransferExecutor transferExecutor;
     private final BlockerClient blockerClient;
     private final ExchangeClient exchangeClient;
-    private final NotificationsClient notificationsClient;
+    private final NotificationEventPublisher notificationEventPublisher;
+    private final Clock clock;
 
     public TransferService(
             TransferExecutor transferExecutor,
             BlockerClient blockerClient,
             ExchangeClient exchangeClient,
-            NotificationsClient notificationsClient
+            NotificationEventPublisher notificationEventPublisher,
+            Clock clock
     ) {
         this.transferExecutor = transferExecutor;
         this.blockerClient = blockerClient;
         this.exchangeClient = exchangeClient;
-        this.notificationsClient = notificationsClient;
+        this.notificationEventPublisher = notificationEventPublisher;
+        this.clock = clock;
     }
 
-    public TransferResponse transfer(String senderLogin, TransferRequest request) {
+    public TransferResponse transfer(String senderLogin, TransferRequest request, UUID operationId) {
         validateAmount(request.amount());
         if (senderLogin.equals(request.recipientLogin())) {
             throw new SelfTransferForbiddenException();
         }
 
-        var operationId = UUID.randomUUID().toString();
-        checkOperation(senderLogin, request, operationId);
+        var normalizedAmount = normalizeForBlocker(request);
+        checkOperation(senderLogin, request, operationId, normalizedAmount);
         var conversion = convert(request);
         var result = transferExecutor.execute(new TransferOperation(
                 senderLogin,
@@ -54,14 +62,9 @@ public class TransferService {
                 request.currency(),
                 conversion.targetAmount(),
                 conversion.targetCurrency(),
-                operationId
+                operationId.toString()
         ));
-        notificationsClient.notify(new NotificationRequest(
-                senderLogin,
-                "TRANSFER_COMPLETED",
-                notificationMessage(request, conversion),
-                operationId
-        ));
+        publishNotifications(senderLogin, request, conversion, operationId);
 
         return new TransferResponse(
                 result.senderLogin(),
@@ -81,19 +84,35 @@ public class TransferService {
         }
     }
 
-    private void checkOperation(String senderLogin, TransferRequest request, String operationId) {
+    private void checkOperation(
+            String senderLogin,
+            TransferRequest request,
+            UUID operationId,
+            BigDecimal normalizedAmount
+    ) {
         var response = blockerClient.check(new OperationCheckRequest(
-                operationId,
+                operationId.toString(),
                 OperationType.TRANSFER,
                 null,
                 senderLogin,
                 request.recipientLogin(),
                 request.amount(),
-                request.currency()
+                request.currency(),
+                normalizedAmount,
+                Currency.RUB
         ));
         if (!response.allowed()) {
             throw new OperationBlockedException(response.reason());
         }
+    }
+
+    private BigDecimal normalizeForBlocker(TransferRequest request) {
+        if (request.currency() == Currency.RUB) {
+            return request.amount();
+        }
+
+        ConversionResponse conversion = exchangeClient.convert(request.currency(), Currency.RUB, request.amount());
+        return conversion.targetAmount();
     }
 
     private ConversionResponse convert(TransferRequest request) {
@@ -111,13 +130,37 @@ public class TransferService {
         return exchangeClient.convert(request.currency(), request.resolvedTargetCurrency(), request.amount());
     }
 
-    private String notificationMessage(TransferRequest request, ConversionResponse conversion) {
-        if (conversion.sourceCurrency() == conversion.targetCurrency()) {
-            return "Transfer completed to " + request.recipientLogin() + ": "
-                    + request.amount() + " " + request.currency();
-        }
-        return "Transfer completed to " + request.recipientLogin() + ": "
-                + conversion.sourceAmount() + " " + conversion.sourceCurrency()
-                + " -> " + conversion.targetAmount() + " " + conversion.targetCurrency();
+    private void publishNotifications(
+            String senderLogin,
+            TransferRequest request,
+            ConversionResponse conversion,
+            UUID operationId
+    ) {
+        Instant occurredAt = Instant.now(clock);
+
+        notificationEventPublisher.publish(new NotificationEvent(
+                UUID.randomUUID(),
+                operationId,
+                NotificationSource.TRANSFER,
+                NotificationType.TRANSFER_OUTGOING,
+                senderLogin,
+                "Перевод пользователю " + request.recipientLogin() + ": "
+                        + conversion.sourceAmount() + " " + conversion.sourceCurrency(),
+                occurredAt,
+                conversion.sourceAmount(),
+                conversion.sourceCurrency()
+        ));
+        notificationEventPublisher.publish(new NotificationEvent(
+                UUID.randomUUID(),
+                operationId,
+                NotificationSource.TRANSFER,
+                NotificationType.TRANSFER_INCOMING,
+                request.recipientLogin(),
+                "Получен перевод от " + senderLogin + ": "
+                        + conversion.targetAmount() + " " + conversion.targetCurrency(),
+                occurredAt,
+                conversion.targetAmount(),
+                conversion.targetCurrency()
+        ));
     }
 }

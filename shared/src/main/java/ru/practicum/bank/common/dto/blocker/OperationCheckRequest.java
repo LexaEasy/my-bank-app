@@ -26,6 +26,13 @@ public record OperationCheckRequest(
         BigDecimal amount,
 
         @NotNull
-        Currency currency
+        Currency currency,
+
+        @NotNull
+        @Positive
+        BigDecimal normalizedAmount,
+
+        @NotNull
+        Currency baseCurrency
 ) {
 }

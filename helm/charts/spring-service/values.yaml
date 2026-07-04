@@ -1,17 +1,53 @@
 replicaCount: 1
 
+inheritGlobalEnv: true
+
 image:
   repository: ""
   tag: local
   pullPolicy: IfNotPresent
 
 service:
+  enabled: true
   port: 8080
   type: ClusterIP
+
+management:
+  enabled: false
+  port: 8089
+  monitoring:
+    enabled: false
+    interval: 30s
+    alert:
+      enabled: false
+      threshold: 0
+      for: 1m
 
 env: {}
 secretEnv: []
 resources: {}
+
+probes:
+  enabled: true
+  port: http
+  startup:
+    path: /actuator/health
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 30
+  readiness:
+    path: /actuator/health/readiness
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  liveness:
+    path: /actuator/health/liveness
+    initialDelaySeconds: 30
+    periodSeconds: 20
+    timeoutSeconds: 3
+    failureThreshold: 3
 
 test:
   enabled: true

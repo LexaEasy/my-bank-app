@@ -4,17 +4,24 @@ import org.springframework.stereotype.Service;
 import ru.practicum.bank.cash.client.AccountsBalanceOperationRequest;
 import ru.practicum.bank.cash.client.AccountsClient;
 import ru.practicum.bank.cash.client.BlockerClient;
-import ru.practicum.bank.cash.client.NotificationRequest;
-import ru.practicum.bank.cash.client.NotificationsClient;
+import ru.practicum.bank.cash.client.ExchangeClient;
 import ru.practicum.bank.cash.dto.CashOperationRequest;
 import ru.practicum.bank.cash.dto.CashOperationResponse;
 import ru.practicum.bank.cash.exception.InvalidAmountException;
 import ru.practicum.bank.cash.exception.InvalidAmountScaleException;
 import ru.practicum.bank.cash.exception.OperationBlockedException;
 import ru.practicum.bank.common.dto.blocker.OperationCheckRequest;
+import ru.practicum.bank.common.dto.exchange.ConversionResponse;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.common.model.OperationType;
+import ru.practicum.bank.common.notification.NotificationEvent;
+import ru.practicum.bank.common.notification.NotificationEventPublisher;
+import ru.practicum.bank.common.notification.NotificationSource;
+import ru.practicum.bank.common.notification.NotificationType;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.UUID;
 
 @Service
@@ -22,40 +29,38 @@ public class CashService {
 
     private final AccountsClient accountsClient;
     private final BlockerClient blockerClient;
-    private final NotificationsClient notificationsClient;
+    private final ExchangeClient exchangeClient;
+    private final NotificationEventPublisher notificationEventPublisher;
+    private final Clock clock;
 
-    public CashService(AccountsClient accountsClient, BlockerClient blockerClient, NotificationsClient notificationsClient) {
+    public CashService(
+            AccountsClient accountsClient,
+            BlockerClient blockerClient,
+            ExchangeClient exchangeClient,
+            NotificationEventPublisher notificationEventPublisher,
+            Clock clock
+    ) {
         this.accountsClient = accountsClient;
         this.blockerClient = blockerClient;
-        this.notificationsClient = notificationsClient;
+        this.exchangeClient = exchangeClient;
+        this.notificationEventPublisher = notificationEventPublisher;
+        this.clock = clock;
     }
 
-    public CashOperationResponse deposit(String login, CashOperationRequest request) {
+    public CashOperationResponse deposit(String login, CashOperationRequest request, UUID operationId) {
         validateAmount(request.amount());
-        var operationId = UUID.randomUUID().toString();
         checkOperation(login, request, operationId, OperationType.DEPOSIT);
         var balance = accountsClient.deposit(toAccountsRequest(login, request, operationId));
-        notificationsClient.notify(new NotificationRequest(
-                login,
-                "CASH_DEPOSIT",
-                "Счёт пополнен на " + request.amount() + " " + request.currency(),
-                operationId
-        ));
+        publishNotification(login, request, operationId, NotificationType.CASH_DEPOSITED);
 
         return new CashOperationResponse(balance.balance(), balance.currency(), "Счёт пополнен");
     }
 
-    public CashOperationResponse withdraw(String login, CashOperationRequest request) {
+    public CashOperationResponse withdraw(String login, CashOperationRequest request, UUID operationId) {
         validateAmount(request.amount());
-        var operationId = UUID.randomUUID().toString();
         checkOperation(login, request, operationId, OperationType.WITHDRAW);
         var balance = accountsClient.withdraw(toAccountsRequest(login, request, operationId));
-        notificationsClient.notify(new NotificationRequest(
-                login,
-                "CASH_WITHDRAW",
-                "Со счёта снято " + request.amount() + " " + request.currency(),
-                operationId
-        ));
+        publishNotification(login, request, operationId, NotificationType.CASH_WITHDRAWN);
 
         return new CashOperationResponse(balance.balance(), balance.currency(), "Деньги сняты со счёта");
     }
@@ -72,33 +77,68 @@ public class CashService {
     private AccountsBalanceOperationRequest toAccountsRequest(
             String login,
             CashOperationRequest request,
-            String operationId
+            UUID operationId
     ) {
         return new AccountsBalanceOperationRequest(
                 login,
                 request.amount(),
                 request.currency(),
-                operationId
+                operationId.toString()
         );
     }
 
     private void checkOperation(
             String login,
             CashOperationRequest request,
-            String operationId,
+            UUID operationId,
             OperationType operationType
     ) {
+        var normalizedAmount = normalizeForBlocker(request);
         var response = blockerClient.check(new OperationCheckRequest(
-                operationId,
+                operationId.toString(),
                 operationType,
                 login,
                 null,
                 null,
                 request.amount(),
-                request.currency()
+                request.currency(),
+                normalizedAmount,
+                Currency.RUB
         ));
         if (!response.allowed()) {
             throw new OperationBlockedException(response.reason());
         }
+    }
+
+    private BigDecimal normalizeForBlocker(CashOperationRequest request) {
+        if (request.currency() == Currency.RUB) {
+            return request.amount();
+        }
+
+        ConversionResponse conversion = exchangeClient.convert(request.currency(), Currency.RUB, request.amount());
+        return conversion.targetAmount();
+    }
+
+    private void publishNotification(
+            String login,
+            CashOperationRequest request,
+            UUID operationId,
+            NotificationType type
+    ) {
+        String message = type == NotificationType.CASH_DEPOSITED
+                ? "Счёт пополнен на " + request.amount() + " " + request.currency()
+                : "Со счёта снято " + request.amount() + " " + request.currency();
+
+        notificationEventPublisher.publish(new NotificationEvent(
+                UUID.randomUUID(),
+                operationId,
+                NotificationSource.CASH,
+                type,
+                login,
+                message,
+                Instant.now(clock),
+                request.amount(),
+                request.currency()
+        ));
     }
 }

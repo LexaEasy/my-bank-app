@@ -1,0 +1,187 @@
+{{- $test := .Values.helmTest | default dict -}}
+{{- if ($test.enabled | default true) }}
+{{- $kafka := index .Values "kafka" -}}
+{{- $accounts := index .Values "accounts-service" -}}
+{{- $notifications := index .Values "notifications-service" -}}
+{{- $globalEnv := default dict .Values.global.env -}}
+{{- $accountsEnv := mergeOverwrite (deepCopy $globalEnv) (default dict $accounts.env) -}}
+{{- $notificationsEnv := mergeOverwrite (deepCopy $globalEnv) (default dict $notifications.env) -}}
+{{- $kafkaName := default "kafka" $kafka.fullnameOverride -}}
+{{- $mainTopic := required "BANK_KAFKA_NOTIFICATIONS_TOPIC is required" (get $accountsEnv "BANK_KAFKA_NOTIFICATIONS_TOPIC") -}}
+{{- $consumerGroup := required "notifications-service.env.SPRING_KAFKA_CONSUMER_GROUP_ID is required" (get $notificationsEnv "SPRING_KAFKA_CONSUMER_GROUP_ID") -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "bank.fullname" . }}-kafka-persistence-test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "bank.fullname" . }}-kafka-persistence-test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "bank.fullname" . }}-kafka-persistence-test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "bank.fullname" . }}-kafka-persistence-test
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "bank.fullname" . }}-kafka-persistence-test
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "bank.fullname" . }}-kafka-persistence-test
+  labels:
+    {{- include "bank.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-weight": "20"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        {{- include "bank.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "bank.fullname" . }}-kafka-persistence-test
+      restartPolicy: Never
+      volumes:
+        - name: state
+          emptyDir: {}
+      initContainers:
+        - name: capture-kafka-state
+          image: "{{ $kafka.image.repository }}:{{ $kafka.image.tag }}"
+          imagePullPolicy: {{ $kafka.image.pullPolicy }}
+          volumeMounts:
+            - name: state
+              mountPath: /state
+          command:
+            - bash
+            - -ec
+            - |
+              bootstrap="{{ $kafkaName }}:{{ $kafka.service.brokerPort }}"
+
+              topic_id() {
+                /opt/kafka/bin/kafka-topics.sh \
+                  --bootstrap-server "$bootstrap" \
+                  --describe \
+                  --topic "{{ $mainTopic }}" |
+                  sed -n 's/.*TopicId: \([^[:space:]]*\).*/\1/p' |
+                  head -n 1
+              }
+
+              group_offsets() {
+                /opt/kafka/bin/kafka-consumer-groups.sh \
+                  --bootstrap-server "$bootstrap" \
+                  --describe \
+                  --group "{{ $consumerGroup }}" 2>/dev/null |
+                  awk '$2 == "{{ $mainTopic }}" {print $3 ":" $4}' |
+                  sort
+              }
+
+              event_id="$(cat /proc/sys/kernel/random/uuid)"
+              operation_id="$(cat /proc/sys/kernel/random/uuid)"
+              occurred_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              event="{\"eventId\":\"$event_id\",\"operationId\":\"$operation_id\",\"source\":\"ACCOUNTS\",\"type\":\"ACCOUNT_UPDATED\",\"recipientLogin\":\"helm-persistence-test\",\"message\":\"Helm persistence test\",\"occurredAt\":\"$occurred_at\",\"amount\":null,\"currency\":null}"
+              printf 'helm-persistence-test|%s\n' "$event" |
+                /opt/kafka/bin/kafka-console-producer.sh \
+                  --bootstrap-server "$bootstrap" \
+                  --topic "{{ $mainTopic }}" \
+                  --property parse.key=true \
+                  --property key.separator='|'
+
+              before_offsets=""
+              for attempt in $(seq 1 60); do
+                before_offsets="$(group_offsets)"
+                test -n "$before_offsets" && break
+                sleep 1
+              done
+              test -n "$before_offsets"
+              before_topic_id="$(topic_id)"
+              test -n "$before_topic_id"
+              printf '%s\n' "$before_topic_id" > /state/topic-id
+              printf '%s\n' "$before_offsets" > /state/offsets
+        - name: delete-kafka
+          image: {{ required "helmTest.kubectlImage is required" $test.kubectlImage | quote }}
+          imagePullPolicy: {{ $test.imagePullPolicy | default "IfNotPresent" }}
+          command:
+            - kubectl
+          args:
+            - delete
+            - pod
+            - "{{ $kafkaName }}-0"
+            - --wait=true
+            - --timeout=120s
+        - name: wait-kafka
+          image: {{ required "helmTest.kubectlImage is required" $test.kubectlImage | quote }}
+          imagePullPolicy: {{ $test.imagePullPolicy | default "IfNotPresent" }}
+          command:
+            - kubectl
+          args:
+            - wait
+            - --for=condition=Ready
+            - pod/{{ $kafkaName }}-0
+            - --timeout=180s
+        - name: verify-kafka-pvc
+          image: {{ required "helmTest.kubectlImage is required" $test.kubectlImage | quote }}
+          imagePullPolicy: {{ $test.imagePullPolicy | default "IfNotPresent" }}
+          command:
+            - kubectl
+          args:
+            - wait
+            - --for=jsonpath={.status.phase}=Bound
+            - pvc/{{ $kafkaName }}-data
+            - --timeout=30s
+      containers:
+        - name: verify-kafka-state
+          image: "{{ $kafka.image.repository }}:{{ $kafka.image.tag }}"
+          imagePullPolicy: {{ $kafka.image.pullPolicy }}
+          volumeMounts:
+            - name: state
+              mountPath: /state
+          command:
+            - bash
+            - -ec
+            - |
+              bootstrap="{{ $kafkaName }}:{{ $kafka.service.brokerPort }}"
+
+              after_topic_id="$(/opt/kafka/bin/kafka-topics.sh \
+                --bootstrap-server "$bootstrap" \
+                --describe \
+                --topic "{{ $mainTopic }}" |
+                sed -n 's/.*TopicId: \([^[:space:]]*\).*/\1/p' |
+                head -n 1)"
+              after_offsets="$(/opt/kafka/bin/kafka-consumer-groups.sh \
+                --bootstrap-server "$bootstrap" \
+                --describe \
+                --group "{{ $consumerGroup }}" 2>/dev/null |
+                awk '$2 == "{{ $mainTopic }}" {print $3 ":" $4}' |
+                sort)"
+
+              test "$after_topic_id" = "$(cat /state/topic-id)"
+              test "$after_offsets" = "$(cat /state/offsets)"
+{{- end }}

@@ -5,6 +5,7 @@ import ru.practicum.bank.blocker.config.BlockerProperties;
 import ru.practicum.bank.blocker.exception.InvalidOperationRequestException;
 import ru.practicum.bank.common.dto.blocker.OperationCheckRequest;
 import ru.practicum.bank.common.dto.blocker.OperationCheckResponse;
+import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.common.model.OperationType;
 
 @Service
@@ -18,7 +19,8 @@ public class BlockerService {
 
     public OperationCheckResponse check(OperationCheckRequest request) {
         validateParticipants(request);
-        if (request.amount().compareTo(properties.maxAmount()) > 0) {
+        validateBaseCurrency(request);
+        if (request.normalizedAmount().compareTo(properties.maxAmount()) > 0) {
             return new OperationCheckResponse(false, "Operation amount exceeds blocker limit");
         }
 
@@ -33,6 +35,12 @@ public class BlockerService {
         }
 
         requireText(request.login(), "login is required for cash operation");
+    }
+
+    private void validateBaseCurrency(OperationCheckRequest request) {
+        if (request.baseCurrency() != Currency.RUB) {
+            throw new InvalidOperationRequestException("baseCurrency must be RUB");
+        }
     }
 
     private void requireText(String value, String message) {

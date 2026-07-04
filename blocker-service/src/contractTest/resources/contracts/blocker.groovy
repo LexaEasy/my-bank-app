@@ -14,7 +14,9 @@ import org.springframework.cloud.contract.spec.Contract
                         operationType: "DEPOSIT",
                         login        : "ivan",
                         amount       : "1000.00",
-                        currency     : "RUB"
+                        currency     : "RUB",
+                        normalizedAmount: "1000.00",
+                        baseCurrency : "RUB"
                 )
             }
             response {
@@ -42,7 +44,9 @@ import org.springframework.cloud.contract.spec.Contract
                         sender       : "ivan",
                         recipient    : "olga",
                         amount       : "100000.01",
-                        currency     : "USD"
+                        currency     : "USD",
+                        normalizedAmount: "9000000.90",
+                        baseCurrency : "RUB"
                 )
             }
             response {
@@ -68,7 +72,9 @@ import org.springframework.cloud.contract.spec.Contract
                         operationId  : "op-3",
                         operationType: "WITHDRAW",
                         amount       : "1000.00",
-                        currency     : "RUB"
+                        currency     : "RUB",
+                        normalizedAmount: "1000.00",
+                        baseCurrency : "RUB"
                 )
             }
             response {

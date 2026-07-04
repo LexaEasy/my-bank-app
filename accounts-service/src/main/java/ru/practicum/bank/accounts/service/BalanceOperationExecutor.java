@@ -1,9 +1,5 @@
 package ru.practicum.bank.accounts.service;
 
-import jakarta.persistence.OptimisticLockException;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +29,7 @@ public class BalanceOperationExecutor {
         this.accountRepository = accountRepository;
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRED)
     public BalanceResponse deposit(BalanceOperationRequest request) {
         validateAmount(request.amount());
         Account account = findAccount(request.login());
@@ -43,7 +39,7 @@ public class BalanceOperationExecutor {
         return toBalanceResponse(accountRepository.save(account));
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRED)
     public BalanceResponse withdraw(BalanceOperationRequest request) {
         validateAmount(request.amount());
         Account account = findAccount(request.login());
@@ -53,12 +49,7 @@ public class BalanceOperationExecutor {
         return toBalanceResponse(accountRepository.save(account));
     }
 
-    @Retryable(
-            retryFor = {OptimisticLockException.class, ObjectOptimisticLockingFailureException.class},
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 50)
-    )
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRED)
     public TransferBalanceResponse transfer(TransferBalanceRequest request) {
         if (request.senderLogin().equals(request.recipientLogin())) {
             throw new SelfTransferForbiddenException();

@@ -1,0 +1,16 @@
+rule_files:
+  - kafka-publication-alert.rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'bank_kafka_publication_failures_total{application="accounts-service"}'
+        values: '0 1 1 1'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: KafkaNotificationPublicationFailures
+        exp_alerts:
+          - exp_labels:
+              severity: warning

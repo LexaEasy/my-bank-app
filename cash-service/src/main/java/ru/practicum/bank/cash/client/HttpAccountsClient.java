@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
-import ru.practicum.bank.common.client.SimpleCircuitBreaker;
 import ru.practicum.bank.cash.dto.ApiErrorResponse;
+import ru.practicum.bank.common.client.ResilientClientExecutor;
+import ru.practicum.bank.common.client.ResilientClientFactory;
 
 @Component
 public class HttpAccountsClient implements AccountsClient {
 
     private final RestClient restClient;
     private final ServiceTokenProvider serviceTokenProvider;
-    private final SimpleCircuitBreaker circuitBreaker;
+    private final ResilientClientExecutor clientExecutor;
     private final ObjectMapper objectMapper;
 
     @Autowired
@@ -24,13 +25,14 @@ public class HttpAccountsClient implements AccountsClient {
             RestClient.Builder restClientBuilder,
             @Value("${bank.services.accounts.base-url}") String accountsBaseUrl,
             ServiceTokenProvider serviceTokenProvider,
+            ResilientClientFactory resilientClientFactory,
             ObjectMapper objectMapper
     ) {
         this(
                 restClientBuilder,
                 accountsBaseUrl,
                 serviceTokenProvider,
-                SimpleCircuitBreaker.withDefaults("accountsService"),
+                resilientClientFactory.create("accountsService", HttpAccountsClient::isRecoverable),
                 objectMapper
         );
     }
@@ -39,11 +41,26 @@ public class HttpAccountsClient implements AccountsClient {
             RestClient.Builder restClientBuilder,
             String accountsBaseUrl,
             ServiceTokenProvider serviceTokenProvider,
-            SimpleCircuitBreaker circuitBreaker,
+            ObjectMapper objectMapper
+    ) {
+        this(
+                restClientBuilder,
+                accountsBaseUrl,
+                serviceTokenProvider,
+                ResilientClientFactory.withDefaults(),
+                objectMapper
+        );
+    }
+
+    HttpAccountsClient(
+            RestClient.Builder restClientBuilder,
+            String accountsBaseUrl,
+            ServiceTokenProvider serviceTokenProvider,
+            ResilientClientExecutor clientExecutor,
             ObjectMapper objectMapper
     ) {
         this.serviceTokenProvider = serviceTokenProvider;
-        this.circuitBreaker = circuitBreaker;
+        this.clientExecutor = clientExecutor;
         this.objectMapper = objectMapper;
         this.restClient = restClientBuilder
                 .baseUrl(accountsBaseUrl)
@@ -61,7 +78,7 @@ public class HttpAccountsClient implements AccountsClient {
     }
 
     private AccountsBalanceResponse post(String uri, AccountsBalanceOperationRequest request) {
-        return circuitBreaker.execute(
+        return clientExecutor.execute(
                 () -> postWithoutCircuitBreaker(uri, request),
                 this::accountsFallback
         );
@@ -76,10 +93,23 @@ public class HttpAccountsClient implements AccountsClient {
                     .retrieve()
                     .body(AccountsBalanceResponse.class);
         } catch (RestClientResponseException exception) {
-            throw new AccountsClientException(extractMessage(exception), exception);
+            var error = extractError(exception);
+            throw new AccountsClientException(
+                    error.message(),
+                    exception.getStatusCode(),
+                    error.code(),
+                    exception
+            );
         } catch (RestClientException exception) {
             throw new AccountsClientException("Accounts service request failed", exception);
         }
+    }
+
+    private static boolean isRecoverable(Throwable exception) {
+        if (exception instanceof AccountsClientException accountsClientException) {
+            return accountsClientException.getStatusCode().is5xxServerError();
+        }
+        return true;
     }
 
     private AccountsBalanceResponse accountsFallback(Throwable exception) {
@@ -89,15 +119,19 @@ public class HttpAccountsClient implements AccountsClient {
         throw new AccountsClientException("Сервис счетов временно недоступен", exception);
     }
 
-    private String extractMessage(RestClientResponseException exception) {
+    private ApiErrorResponse extractError(RestClientResponseException exception) {
         try {
             var error = objectMapper.readValue(exception.getResponseBodyAsString(), ApiErrorResponse.class);
-            if (error.message() != null && !error.message().isBlank()) {
-                return error.message();
+            if (isNotBlank(error.code()) && isNotBlank(error.message())) {
+                return error;
             }
         } catch (JsonProcessingException ignored) {
             // Use a stable fallback when downstream does not return the expected error body.
         }
-        return "Accounts service request failed";
+        return new ApiErrorResponse("ACCOUNTS_SERVICE_ERROR", "Accounts service request failed");
+    }
+
+    private boolean isNotBlank(String value) {
+        return value != null && !value.isBlank();
     }
 }

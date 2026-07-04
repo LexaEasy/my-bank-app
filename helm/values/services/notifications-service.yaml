@@ -4,4 +4,7 @@ image:
   repository: my-bank-notifications-service
 
 service:
-  port: 8084
+  enabled: false
+
+test:
+  enabled: false

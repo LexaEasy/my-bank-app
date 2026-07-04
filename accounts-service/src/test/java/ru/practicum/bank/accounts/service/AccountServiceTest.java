@@ -2,13 +2,16 @@ package ru.practicum.bank.accounts.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 import ru.practicum.bank.accounts.dto.UpdateAccountRequest;
 import ru.practicum.bank.accounts.exception.AccountNotFoundException;
 import ru.practicum.bank.accounts.exception.InvalidBirthdateException;
 import ru.practicum.bank.accounts.mapper.AccountMapper;
 import ru.practicum.bank.accounts.model.Account;
-import ru.practicum.bank.common.model.Currency;
+import ru.practicum.bank.accounts.notification.AccountProfileUpdatedEvent;
 import ru.practicum.bank.accounts.repository.AccountRepository;
+import ru.practicum.bank.common.model.Currency;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -29,13 +32,19 @@ import static org.mockito.Mockito.when;
 class AccountServiceTest {
 
     private final AccountRepository accountRepository = mock(AccountRepository.class);
+    private final ApplicationEventPublisher applicationEventPublisher = mock(ApplicationEventPublisher.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-06-12T00:00:00Z"), ZoneOffset.UTC);
 
     private AccountService accountService;
 
     @BeforeEach
     void setUp() {
-        accountService = new AccountService(accountRepository, new AccountMapper(), clock);
+        accountService = new AccountService(
+                accountRepository,
+                new AccountMapper(),
+                clock,
+                applicationEventPublisher
+        );
     }
 
     @Test
@@ -64,6 +73,12 @@ class AccountServiceTest {
         assertThat(response.name()).isEqualTo("Иван Иванов");
         assertThat(response.birthdate()).isEqualTo(LocalDate.of(1992, 5, 10));
         verify(accountRepository).save(account);
+
+        var eventCaptor = ArgumentCaptor.forClass(AccountProfileUpdatedEvent.class);
+        verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().operationId()).isNotNull();
+        assertThat(eventCaptor.getValue().recipientLogin()).isEqualTo("ivan");
+        assertThat(eventCaptor.getValue().occurredAt()).isEqualTo(clock.instant());
     }
 
     @Test
@@ -98,6 +113,33 @@ class AccountServiceTest {
                 .hasMessage("Account owner must be at least 18 years old");
         verify(accountRepository, never()).findByLogin(any());
         verify(accountRepository, never()).save(any());
+        verify(applicationEventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void shouldNotPublishEventWhenAccountIsMissing() {
+        var request = new UpdateAccountRequest("Иван Иванов", LocalDate.of(1992, 5, 10));
+        when(accountRepository.findByLogin("unknown")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> accountService.updateCurrentAccount("unknown", request))
+                .isInstanceOf(AccountNotFoundException.class);
+
+        verify(accountRepository, never()).save(any());
+        verify(applicationEventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void shouldNotPublishEventWhenSaveFails() {
+        var account = account("ivan", "Иванов Иван", LocalDate.of(1990, 1, 15));
+        var request = new UpdateAccountRequest("Иван Иванов", LocalDate.of(1992, 5, 10));
+        when(accountRepository.findByLogin("ivan")).thenReturn(Optional.of(account));
+        when(accountRepository.save(account)).thenThrow(new IllegalStateException("Database unavailable"));
+
+        assertThatThrownBy(() -> accountService.updateCurrentAccount("ivan", request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Database unavailable");
+
+        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
     private Account account(String login, String name, LocalDate birthdate) {

@@ -17,6 +17,15 @@ spring:
             token-uri: ${BANK_KEYCLOAK_TOKEN_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/token}
 
 bank:
+  http-client:
+    connect-timeout: ${BANK_HTTP_CLIENT_CONNECT_TIMEOUT:2s}
+    read-timeout: ${BANK_HTTP_CLIENT_READ_TIMEOUT:5s}
+    circuit-breaker:
+      failure-threshold: ${BANK_HTTP_CLIENT_CIRCUIT_BREAKER_FAILURE_THRESHOLD:3}
+      open-duration: ${BANK_HTTP_CLIENT_CIRCUIT_BREAKER_OPEN_DURATION:5s}
+    retry:
+      max-attempts: ${BANK_HTTP_CLIENT_RETRY_MAX_ATTEMPTS:2}
+      backoff: ${BANK_HTTP_CLIENT_RETRY_BACKOFF:100ms}
   services:
     exchange:
       base-url: ${BANK_EXCHANGE_BASE_URL:http://exchange-service:8086}

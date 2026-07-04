@@ -76,13 +76,14 @@ class CashSecurityConfigTest {
 
     @Test
     void shouldAllowDepositWithRequiredRoles() throws Exception {
-        when(cashService.deposit(any(), any())).thenReturn(new CashOperationResponse(
+        when(cashService.deposit(any(), any(), any())).thenReturn(new CashOperationResponse(
                 new BigDecimal("1250.00"),
                 "RUB",
                 "Счёт пополнен"
         ));
 
         mockMvc.perform(post("/api/cash/deposit")
+                        .header("Idempotency-Key", "55555555-5555-5555-5555-555555555555")
                         .with(jwt()
                                 .jwt(token -> token.claim("preferred_username", "ivan"))
                                 .authorities(

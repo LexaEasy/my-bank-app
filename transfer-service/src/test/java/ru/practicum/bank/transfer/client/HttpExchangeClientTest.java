@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
-import ru.practicum.bank.common.client.SimpleCircuitBreaker;
+import ru.practicum.bank.common.client.ResilientClientExecutor;
 import ru.practicum.bank.common.model.Currency;
 
 import java.math.BigDecimal;
@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.ExpectedCount.once;
+import static org.springframework.test.web.client.ExpectedCount.times;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -62,7 +63,7 @@ class HttpExchangeClientTest {
         var client = new HttpExchangeClient(restClientBuilder, "http://exchange-service", serviceTokenProvider);
         when(serviceTokenProvider.getAccessToken()).thenReturn("service-token");
 
-        server.expect(once(), requestTo(
+        server.expect(times(2), requestTo(
                         "http://exchange-service/api/exchange/conversion?sourceCurrency=USD&targetCurrency=CNY&amount=100.00"
                 ))
                 .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
@@ -80,7 +81,7 @@ class HttpExchangeClientTest {
                 restClientBuilder,
                 "http://exchange-service",
                 serviceTokenProvider,
-                SimpleCircuitBreaker.opened("exchangeService")
+                ResilientClientExecutor.opened("exchangeService")
         );
 
         assertThatThrownBy(() -> client.convert(Currency.USD, Currency.CNY, new BigDecimal("100.00")))

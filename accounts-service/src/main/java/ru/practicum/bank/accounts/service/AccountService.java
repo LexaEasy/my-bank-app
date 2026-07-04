@@ -1,5 +1,6 @@
 package ru.practicum.bank.accounts.service;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.bank.accounts.dto.AccountResponse;
@@ -9,11 +10,14 @@ import ru.practicum.bank.accounts.exception.AccountNotFoundException;
 import ru.practicum.bank.accounts.exception.InvalidBirthdateException;
 import ru.practicum.bank.accounts.mapper.AccountMapper;
 import ru.practicum.bank.accounts.model.Account;
+import ru.practicum.bank.accounts.notification.AccountProfileUpdatedEvent;
 import ru.practicum.bank.accounts.repository.AccountRepository;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class AccountService {
@@ -21,11 +25,18 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final AccountMapper accountMapper;
     private final Clock clock;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
-    public AccountService(AccountRepository accountRepository, AccountMapper accountMapper, Clock clock) {
+    public AccountService(
+            AccountRepository accountRepository,
+            AccountMapper accountMapper,
+            Clock clock,
+            ApplicationEventPublisher applicationEventPublisher
+    ) {
         this.accountRepository = accountRepository;
         this.accountMapper = accountMapper;
         this.clock = clock;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -41,8 +52,15 @@ public class AccountService {
 
         Account account = findAccount(login);
         account.updateProfile(request.name(), request.birthdate());
+        Account savedAccount = accountRepository.save(account);
 
-        return accountMapper.toResponse(accountRepository.save(account));
+        applicationEventPublisher.publishEvent(new AccountProfileUpdatedEvent(
+                UUID.randomUUID(),
+                savedAccount.getLogin(),
+                Instant.now(clock)
+        ));
+
+        return accountMapper.toResponse(savedAccount);
     }
 
     @Transactional(readOnly = true)

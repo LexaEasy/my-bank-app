@@ -1,13 +1,14 @@
 package ru.practicum.bank.cash.web;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.practicum.bank.cash.client.AccountsClientException;
 import ru.practicum.bank.cash.client.BlockerClientException;
-import ru.practicum.bank.cash.client.NotificationsClientException;
+import ru.practicum.bank.cash.client.ExchangeClientException;
 import ru.practicum.bank.cash.dto.ApiErrorResponse;
 import ru.practicum.bank.cash.exception.InvalidAmountException;
 import ru.practicum.bank.cash.exception.InvalidAmountScaleException;
@@ -48,20 +49,25 @@ public class CashExceptionHandler {
     }
 
     @ExceptionHandler(AccountsClientException.class)
-    @ResponseStatus(HttpStatus.BAD_GATEWAY)
-    public ApiErrorResponse handleAccountsClient(AccountsClientException exception) {
-        return new ApiErrorResponse("ACCOUNTS_SERVICE_UNAVAILABLE", exception.getMessage());
-    }
+    public ResponseEntity<ApiErrorResponse> handleAccountsClient(AccountsClientException exception) {
+        if (exception.getStatusCode().is4xxClientError()) {
+            return ResponseEntity.status(exception.getStatusCode())
+                    .body(new ApiErrorResponse(exception.getCode(), exception.getMessage()));
+        }
 
-    @ExceptionHandler(NotificationsClientException.class)
-    @ResponseStatus(HttpStatus.BAD_GATEWAY)
-    public ApiErrorResponse handleNotificationsClient(NotificationsClientException exception) {
-        return new ApiErrorResponse("NOTIFICATIONS_SERVICE_UNAVAILABLE", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(new ApiErrorResponse("ACCOUNTS_SERVICE_UNAVAILABLE", exception.getMessage()));
     }
 
     @ExceptionHandler(BlockerClientException.class)
     @ResponseStatus(HttpStatus.BAD_GATEWAY)
     public ApiErrorResponse handleBlockerClient(BlockerClientException exception) {
         return new ApiErrorResponse("BLOCKER_SERVICE_UNAVAILABLE", exception.getMessage());
+    }
+
+    @ExceptionHandler(ExchangeClientException.class)
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    public ApiErrorResponse handleExchangeClient(ExchangeClientException exception) {
+        return new ApiErrorResponse("EXCHANGE_SERVICE_UNAVAILABLE", exception.getMessage());
     }
 }

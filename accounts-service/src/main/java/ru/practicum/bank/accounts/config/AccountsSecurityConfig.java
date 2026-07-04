@@ -45,7 +45,7 @@ public class AccountsSecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(requests -> requests
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/accounts/me")
                         .access(allOf(hasRole("USER"), hasRole("ACCOUNTS_READ")))
                         .requestMatchers(HttpMethod.GET, "/api/accounts/recipients")

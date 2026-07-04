@@ -1,0 +1,17 @@
+{{- if and .Values.management.enabled .Values.management.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "spring-service.fullname" . }}
+  labels:
+    {{- include "spring-service.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "spring-service.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  endpoints:
+    - port: management
+      path: /actuator/prometheus
+      interval: {{ .Values.management.monitoring.interval }}
+{{- end }}

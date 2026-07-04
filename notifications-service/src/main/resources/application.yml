@@ -1,20 +1,43 @@
 spring:
   application:
     name: notifications-service
+  main:
+    web-application-type: ${SPRING_MAIN_WEB_APPLICATION_TYPE:servlet}
   jackson:
     default-property-inclusion: non_null
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${BANK_KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/bank-realm}
-          jwk-set-uri: ${BANK_KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/bank-realm/protocol/openid-connect/certs}
-
+  kafka:
+    admin:
+      fail-fast: true
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${SPRING_KAFKA_CONSUMER_GROUP_ID:bank-notifications}
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.value.default.type: ru.practicum.bank.common.notification.NotificationEvent
+        spring.json.trusted.packages: ru.practicum.bank.common.notification
+    listener:
+      ack-mode: record
+bank:
+  kafka:
+    notifications-topic: ${BANK_KAFKA_NOTIFICATIONS_TOPIC:bank.notifications}
+    notifications-dlt-topic: ${BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC:bank.notifications.dlt}
+    notifications-partitions: ${BANK_KAFKA_NOTIFICATIONS_PARTITIONS:3}
+    notifications-dlt-partitions: ${BANK_KAFKA_NOTIFICATIONS_DLT_PARTITIONS:3}
+    notifications-replication-factor: ${BANK_KAFKA_NOTIFICATIONS_REPLICATION_FACTOR:1}
+    notifications-dlt-retention-ms: ${BANK_KAFKA_NOTIFICATIONS_DLT_RETENTION_MS:604800000}
 management:
+  endpoint:
+    health:
+      probes:
+        enabled: ${MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED:true}
   endpoints:
     web:
       exposure:
         include: health,info
-
 server:
-  port: 8084
+  port: ${SERVER_PORT:8089}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kafka
+description: Single-node Kafka chart for the bank application
+type: application
+version: 0.1.0
+appVersion: "4.3.1"

@@ -7,7 +7,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
-import ru.practicum.bank.common.client.SimpleCircuitBreaker;
+import ru.practicum.bank.common.client.ResilientClientExecutor;
+import ru.practicum.bank.common.client.ResilientClientFactory;
 import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.frontui.dto.CashForm;
 import ru.practicum.bank.frontui.dto.TransferForm;
@@ -25,6 +26,8 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 class GatewayClientTest {
 
+    private static final String IDEMPOTENCY_KEY = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
@@ -37,12 +40,13 @@ class GatewayClientTest {
                 "http://cash-service:8082",
                 "http://transfer-service:8083",
                 "http://exchange-service:8086",
-                SimpleCircuitBreaker.withDefaults("bankServices"),
+                ResilientClientFactory.withDefaults().create("bankServices", GatewayClient::isRecoverable),
                 objectMapper
         );
 
         server.expect(once(), requestTo("http://transfer-service:8083/api/transfers"))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
+                .andExpect(header("Idempotency-Key", IDEMPOTENCY_KEY))
                 .andExpect(content().json("""
                         {
                           "recipientLogin": "petr",
@@ -65,7 +69,8 @@ class GatewayClientTest {
                 "petr",
                 new BigDecimal("1.00"),
                 "USD",
-                "RUB"
+                "RUB",
+                IDEMPOTENCY_KEY
         ));
 
         assertThat(response.senderBalance()).isEqualByComparingTo("908.50");
@@ -82,7 +87,7 @@ class GatewayClientTest {
                 "http://cash-service:8082",
                 "http://transfer-service:8083",
                 "http://exchange-service:8086",
-                SimpleCircuitBreaker.withDefaults("bankServices"),
+                ResilientClientFactory.withDefaults().create("bankServices", GatewayClient::isRecoverable),
                 objectMapper
         );
 
@@ -123,13 +128,14 @@ class GatewayClientTest {
                 "http://cash-service:8082",
                 "http://transfer-service:8083",
                 "http://exchange-service:8086",
-                SimpleCircuitBreaker.withDefaults("bankServices"),
+                ResilientClientFactory.withDefaults().create("bankServices", GatewayClient::isRecoverable),
                 objectMapper
         );
 
         server.expect(once(), requestTo("http://cash-service:8082/api/cash/withdraw"))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
-                .andRespond(withStatus(HttpStatus.BAD_GATEWAY)
+                .andExpect(header("Idempotency-Key", IDEMPOTENCY_KEY))
+                .andRespond(withStatus(HttpStatus.UNPROCESSABLE_ENTITY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("""
                                 {
@@ -138,7 +144,10 @@ class GatewayClientTest {
                                 }
                                 """));
 
-        assertThatThrownBy(() -> client.withdraw("user-token", new CashForm(new BigDecimal("999999.00"), "RUB")))
+        assertThatThrownBy(() -> client.withdraw(
+                "user-token",
+                new CashForm(new BigDecimal("999999.00"), "RUB", IDEMPOTENCY_KEY)
+        ))
                 .isInstanceOf(GatewayClientException.class)
                 .hasMessage("Недостаточно средств");
 
@@ -154,7 +163,7 @@ class GatewayClientTest {
                 "http://cash-service:8082",
                 "http://transfer-service:8083",
                 "http://exchange-service:8086",
-                SimpleCircuitBreaker.opened("bankServices"),
+                ResilientClientExecutor.opened("bankServices"),
                 objectMapper
         );
 

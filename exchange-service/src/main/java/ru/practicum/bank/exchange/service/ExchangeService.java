@@ -26,18 +26,17 @@ public class ExchangeService {
     private static final int AMOUNT_SCALE = 2;
 
     private final Clock clock;
-    private final Map<Currency, ExchangeRateSnapshot> rates = new EnumMap<>(Currency.class);
+    private volatile Map<Currency, ExchangeRateSnapshot> rates;
 
     public ExchangeService(Clock clock) {
         this.clock = clock;
         Instant now = clock.instant();
-        rates.put(Currency.RUB, snapshot(Currency.RUB, RUB_RATE, RUB_RATE, now));
-        rates.put(Currency.USD, snapshot(Currency.USD, "90.0000", "92.0000", now));
-        rates.put(Currency.CNY, snapshot(Currency.CNY, "12.4000", "12.8000", now));
+        rates = initialRates(now);
     }
 
-    public synchronized List<ExchangeRateResponse> getRates() {
-        return rates.values().stream()
+    public List<ExchangeRateResponse> getRates() {
+        Map<Currency, ExchangeRateSnapshot> currentRates = rates;
+        return currentRates.values().stream()
                 .sorted(Comparator.comparing(ExchangeRateSnapshot::currency))
                 .map(this::toResponse)
                 .toList();
@@ -45,27 +44,33 @@ public class ExchangeService {
 
     public synchronized List<ExchangeRateResponse> updateRates(ExchangeRatesUpdateRequest request) {
         Instant updatedAt = clock.instant();
+        Map<Currency, ExchangeRateSnapshot> updatedRates = new EnumMap<>(rates);
         for (ExchangeRateUpdateRequest rate : request.rates()) {
             if (rate.currency() == Currency.RUB) {
-                rates.put(Currency.RUB, snapshot(Currency.RUB, RUB_RATE, RUB_RATE, updatedAt));
+                updatedRates.put(Currency.RUB, snapshot(Currency.RUB, RUB_RATE, RUB_RATE, updatedAt));
                 continue;
             }
             validateRate(rate.buyRate());
             validateRate(rate.sellRate());
-            rates.put(
+            updatedRates.put(
                     rate.currency(),
                     snapshot(rate.currency(), normalizeRate(rate.buyRate()), normalizeRate(rate.sellRate()), updatedAt)
             );
         }
 
+        rates = Map.copyOf(updatedRates);
         return getRates();
     }
 
-    public synchronized ConversionResponse convert(Currency sourceCurrency, Currency targetCurrency, BigDecimal amount) {
+    public ConversionResponse convert(Currency sourceCurrency, Currency targetCurrency, BigDecimal amount) {
         validateAmount(amount);
+        if (sourceCurrency == targetCurrency) {
+            return sameCurrencyConversion(sourceCurrency, targetCurrency, amount);
+        }
 
-        ExchangeRateSnapshot sourceRate = rates.get(sourceCurrency);
-        ExchangeRateSnapshot targetRate = rates.get(targetCurrency);
+        Map<Currency, ExchangeRateSnapshot> currentRates = rates;
+        ExchangeRateSnapshot sourceRate = currentRates.get(sourceCurrency);
+        ExchangeRateSnapshot targetRate = currentRates.get(targetCurrency);
         BigDecimal conversionRate = sourceRate.sellRate()
                 .divide(targetRate.buyRate(), 6, RoundingMode.HALF_UP);
         BigDecimal targetAmount = amount.multiply(conversionRate)
@@ -82,6 +87,29 @@ public class ExchangeService {
                 conversionRate,
                 updatedAt
         );
+    }
+
+    private ConversionResponse sameCurrencyConversion(
+            Currency sourceCurrency,
+            Currency targetCurrency,
+            BigDecimal amount
+    ) {
+        return new ConversionResponse(
+                sourceCurrency,
+                targetCurrency,
+                amount,
+                amount,
+                BigDecimal.ONE,
+                null
+        );
+    }
+
+    private Map<Currency, ExchangeRateSnapshot> initialRates(Instant now) {
+        Map<Currency, ExchangeRateSnapshot> initialRates = new EnumMap<>(Currency.class);
+        initialRates.put(Currency.RUB, snapshot(Currency.RUB, RUB_RATE, RUB_RATE, now));
+        initialRates.put(Currency.USD, snapshot(Currency.USD, "90.0000", "92.0000", now));
+        initialRates.put(Currency.CNY, snapshot(Currency.CNY, "12.4000", "12.8000", now));
+        return Map.copyOf(initialRates);
     }
 
     private ExchangeRateResponse toResponse(ExchangeRateSnapshot snapshot) {

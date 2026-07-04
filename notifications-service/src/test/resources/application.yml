@@ -1,9 +1,39 @@
 ﻿spring:
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://keycloak:8080/realms/bank-realm
-          jwk-set-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
-
-
+  main:
+    web-application-type: servlet
+  kafka:
+    admin:
+      fail-fast: false
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: bank-notifications
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.value.default.type: ru.practicum.bank.common.notification.NotificationEvent
+        spring.json.trusted.packages: ru.practicum.bank.common.notification
+    listener:
+      ack-mode: record
+bank:
+  kafka:
+    notifications-topic: bank.notifications
+    notifications-dlt-topic: bank.notifications.dlt
+    notifications-partitions: 3
+    notifications-dlt-partitions: 3
+    notifications-replication-factor: 1
+    notifications-dlt-retention-ms: 604800000
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+server:
+  port: 0

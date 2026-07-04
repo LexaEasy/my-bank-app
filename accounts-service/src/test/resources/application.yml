@@ -6,6 +6,20 @@
   jpa:
     hibernate:
       ddl-auto: validate
+  kafka:
+    admin:
+      fail-fast: false
+    bootstrap-servers: localhost:9092
+    producer:
+      acks: all
+      retries: 2147483647
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        "[enable.idempotence]": true
+        "[delivery.timeout.ms]": 120000
+        "[request.timeout.ms]": 30000
+        "[max.in.flight.requests.per.connection]": 5
   security:
     oauth2:
       resourceserver:
@@ -13,4 +27,15 @@
           issuer-uri: http://keycloak:8080/realms/bank-realm
           jwk-set-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
 
-
+bank:
+  balance:
+    retry:
+      max-attempts: 3
+      backoff-ms: 0
+  kafka:
+    notifications-dlt-topic: bank.notifications.dlt
+    notifications-dlt-partitions: 3
+    notifications-dlt-retention-ms: 604800000
+    notifications-partitions: 3
+    notifications-replication-factor: 1
+    notifications-topic: bank.notifications

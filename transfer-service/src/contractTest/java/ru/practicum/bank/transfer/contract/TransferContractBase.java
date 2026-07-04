@@ -13,6 +13,7 @@ import ru.practicum.bank.transfer.web.TransferExceptionHandler;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -25,7 +26,7 @@ public abstract class TransferContractBase {
     @BeforeEach
     void setUp() {
         var transferService = mock(TransferService.class);
-        when(transferService.transfer(eq("ivan"), any(TransferRequest.class)))
+        when(transferService.transfer(eq("ivan"), any(TransferRequest.class), any(UUID.class)))
                 .thenReturn(new TransferResponse(
                         "ivan",
                         "petr",

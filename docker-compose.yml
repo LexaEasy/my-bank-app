@@ -4,15 +4,13 @@
   retries: 12
   start_period: 30s
 
-x-platform-health: &platform-health
-  interval: 10s
-  timeout: 5s
-  retries: 12
-  start_period: 20s
-
 x-resource-server-env: &resource-server-env
   BANK_KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/bank-realm
   BANK_KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
+
+x-kafka-producer-env: &kafka-producer-env
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  BANK_KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
 
 services:
   postgres:
@@ -40,21 +38,51 @@ services:
       KC_HEALTH_ENABLED: "true"
       KC_HOSTNAME: http://localhost:8180
       KC_HTTP_PORT: 8080
+      BANK_FRONT_UI_PUBLIC_URL: http://localhost:8085
+      FRONT_UI_CLIENT_SECRET: ${FRONT_UI_CLIENT_SECRET:-__FRONT_UI_CLIENT_SECRET__}
+      CASH_SERVICE_CLIENT_SECRET: ${CASH_SERVICE_CLIENT_SECRET:-__CASH_SERVICE_CLIENT_SECRET__}
+      TRANSFER_SERVICE_CLIENT_SECRET: ${TRANSFER_SERVICE_CLIENT_SECRET:-__TRANSFER_SERVICE_CLIENT_SECRET__}
+      EXCHANGE_GENERATOR_CLIENT_SECRET: ${EXCHANGE_GENERATOR_CLIENT_SECRET:-__EXCHANGE_GENERATOR_CLIENT_SECRET__}
     ports:
       - "8180:8080"
     healthcheck:
       <<: *app-health
       test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/8080'"]
     volumes:
-      - ./keycloak/realms/bank-realm.json:/opt/keycloak/data/import/bank-realm-realm.json:ro
+      - ${BANK_KEYCLOAK_REALM_FILE:-./envs/dev/runtime/bank-realm.json}:/opt/keycloak/data/import/bank-realm-realm.json:ro
+    networks: [bank-network]
+
+  kafka:
+    image: apache/kafka:4.3.1
+    restart: unless-stopped
+    environment:
+      CLUSTER_ID: 04xAf2BWSNChNCCMmMy3CA
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka-data:/var/lib/kafka/data
     networks: [bank-network]
 
   accounts-service:
     build:
       context: ./accounts-service
     image: my-bank-accounts-service:local
+    restart: unless-stopped
     environment:
-      <<: *resource-server-env
+      <<: [*resource-server-env, *kafka-producer-env]
       BANK_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bank
       BANK_DATASOURCE_USERNAME: postgres
     depends_on:
@@ -62,6 +90,8 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
+      kafka:
+        condition: service_started
     healthcheck:
       <<: *app-health
       test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/8081'"]
@@ -71,14 +101,14 @@ services:
     build:
       context: ./notifications-service
     image: my-bank-notifications-service:local
+    restart: unless-stopped
     environment:
-      <<: *resource-server-env
+      <<: *kafka-producer-env
+      BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC: bank.notifications.dlt
+      SPRING_KAFKA_CONSUMER_GROUP_ID: bank-notifications
     depends_on:
-      keycloak:
-        condition: service_healthy
-    healthcheck:
-      <<: *app-health
-      test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/8084'"]
+      kafka:
+        condition: service_started
     networks: [bank-network]
 
   exchange-service:
@@ -130,8 +160,9 @@ services:
     build:
       context: ./cash-service
     image: my-bank-cash-service:local
+    restart: unless-stopped
     environment:
-      <<: *resource-server-env
+      <<: [*resource-server-env, *kafka-producer-env]
       CASH_SERVICE_CLIENT_SECRET: ${CASH_SERVICE_CLIENT_SECRET:-__CASH_SERVICE_CLIENT_SECRET__}
       BANK_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
     depends_on:
@@ -139,8 +170,8 @@ services:
         condition: service_healthy
       blocker-service:
         condition: service_healthy
-      notifications-service:
-        condition: service_healthy
+      kafka:
+        condition: service_started
     healthcheck:
       <<: *app-health
       test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/8082'"]
@@ -150,8 +181,9 @@ services:
     build:
       context: ./transfer-service
     image: my-bank-transfer-service:local
+    restart: unless-stopped
     environment:
-      <<: *resource-server-env
+      <<: [*resource-server-env, *kafka-producer-env]
       TRANSFER_SERVICE_CLIENT_SECRET: ${TRANSFER_SERVICE_CLIENT_SECRET:-__TRANSFER_SERVICE_CLIENT_SECRET__}
       BANK_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
     depends_on:
@@ -161,8 +193,8 @@ services:
         condition: service_healthy
       exchange-service:
         condition: service_healthy
-      notifications-service:
-        condition: service_healthy
+      kafka:
+        condition: service_started
     healthcheck:
       <<: *app-health
       test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/8083'"]
@@ -203,6 +235,7 @@ services:
 
 volumes:
   postgres-data:
+  kafka-data:
 
 networks:
   bank-network:

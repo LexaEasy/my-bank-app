@@ -8,6 +8,9 @@ image:
 service:
   port: 8080
 
+management:
+  port: 9000
+
 admin:
   existingSecret: keycloak-credentials
   usernameKey: admin-username
@@ -15,10 +18,8 @@ admin:
 
 realmImport:
   enabled: true
-  createSecret: true
   existingSecret: keycloak-realm
   key: bank-realm.json
-  file: files/bank-realm.json
   frontUiPublicUrl: http://localhost
   secretEnv:
     - name: FRONT_UI_CLIENT_SECRET
@@ -37,3 +38,24 @@ realmImport:
 extraEnv: []
 
 resources: {}
+
+probes:
+  port: management
+  startup:
+    path: /health/started
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 30
+  readiness:
+    path: /health/ready
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  liveness:
+    path: /health/live
+    initialDelaySeconds: 30
+    periodSeconds: 20
+    timeoutSeconds: 3
+    failureThreshold: 3

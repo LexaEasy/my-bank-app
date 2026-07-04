@@ -19,7 +19,7 @@
       { "name": "TRANSFER_WRITE", "description": "Permission to perform transfers" },
       { "name": "SERVICE", "description": "Generic service role for microservices" },
       { "name": "ACCOUNTS_INTERNAL", "description": "Permission to call internal accounts API" },
-      { "name": "NOTIFICATIONS_WRITE", "description": "Permission to create notifications" }
+      { "name": "EXCHANGE_GENERATOR", "description": "Permission to update exchange rates" }
     ]
   },
   "clients": [
@@ -73,16 +73,6 @@
       "serviceAccountsEnabled": true
     },
     {
-      "clientId": "notifications-service",
-      "name": "Notifications Service",
-      "protocol": "openid-connect",
-      "publicClient": false,
-      "secret": "__NOTIFICATIONS_SERVICE_CLIENT_SECRET__",
-      "standardFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": true
-    },
-    {
       "clientId": "exchange-generator",
       "name": "Exchange Generator",
       "protocol": "openid-connect",
@@ -102,7 +92,6 @@
       "lastName": "Иванов",
       "email": "ivan@example.local",
       "requiredActions": [],
-      "credentials": [{ "type": "password", "value": "ivan", "temporary": false }],
       "realmRoles": ["USER", "ACCOUNTS_READ", "ACCOUNTS_WRITE", "CASH_WRITE", "TRANSFER_WRITE"]
     },
     {
@@ -113,7 +102,6 @@
       "lastName": "Петров",
       "email": "petr@example.local",
       "requiredActions": [],
-      "credentials": [{ "type": "password", "value": "petr", "temporary": false }],
       "realmRoles": ["USER", "ACCOUNTS_READ", "ACCOUNTS_WRITE", "CASH_WRITE", "TRANSFER_WRITE"]
     },
     {
@@ -124,38 +112,31 @@
       "lastName": "Сидорова",
       "email": "anna@example.local",
       "requiredActions": [],
-      "credentials": [{ "type": "password", "value": "anna", "temporary": false }],
       "realmRoles": ["USER", "ACCOUNTS_READ", "ACCOUNTS_WRITE", "CASH_WRITE", "TRANSFER_WRITE"]
     },
     {
       "username": "service-account-cash-service",
       "enabled": true,
       "serviceAccountClientId": "cash-service",
-      "realmRoles": ["SERVICE", "ACCOUNTS_INTERNAL", "NOTIFICATIONS_WRITE"]
+      "realmRoles": ["SERVICE", "ACCOUNTS_INTERNAL"]
     },
     {
       "username": "service-account-transfer-service",
       "enabled": true,
       "serviceAccountClientId": "transfer-service",
-      "realmRoles": ["SERVICE", "ACCOUNTS_INTERNAL", "NOTIFICATIONS_WRITE"]
+      "realmRoles": ["SERVICE", "ACCOUNTS_INTERNAL"]
     },
     {
       "username": "service-account-accounts-service",
       "enabled": true,
       "serviceAccountClientId": "accounts-service",
-      "realmRoles": ["SERVICE", "NOTIFICATIONS_WRITE"]
-    },
-    {
-      "username": "service-account-notifications-service",
-      "enabled": true,
-      "serviceAccountClientId": "notifications-service",
-      "realmRoles": ["SERVICE", "NOTIFICATIONS_WRITE"]
+      "realmRoles": ["SERVICE"]
     },
     {
       "username": "service-account-exchange-generator",
       "enabled": true,
       "serviceAccountClientId": "exchange-generator",
-      "realmRoles": ["SERVICE"]
+      "realmRoles": ["SERVICE", "EXCHANGE_GENERATOR"]
     }
   ]
 }

@@ -15,6 +15,17 @@ global:
     BANK_KEYCLOAK_ISSUER_URI: http://localhost/realms/bank-realm
     BANK_KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
     BANK_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
+    BANK_KAFKA_NOTIFICATIONS_DLT_PARTITIONS: "3"
+    BANK_KAFKA_NOTIFICATIONS_DLT_RETENTION_MS: "604800000"
+    BANK_KAFKA_NOTIFICATIONS_DLT_TOPIC: bank.notifications.dlt
+    BANK_KAFKA_NOTIFICATIONS_PARTITIONS: "3"
+    BANK_KAFKA_NOTIFICATIONS_REPLICATION_FACTOR: "1"
+    BANK_KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
+    MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
+
+helmTest:
+  enabled: true
+  kubectlImage: registry.k8s.io/kubectl:v1.35.5
 
 gatewayApi:
   enabled: true
@@ -53,8 +64,21 @@ accounts-service:
     repository: my-bank-accounts-service
   service:
     port: 8081
+  management:
+    enabled: true
+    port: 8091
+    monitoring:
+      enabled: true
+      alert:
+        enabled: true
+  probes:
+    port: management
   env:
+    BANK_BALANCE_RETRY_BACKOFF_MS: "50"
+    BANK_BALANCE_RETRY_MAX_ATTEMPTS: "3"
+    MANAGEMENT_SERVER_PORT: "8091"
     SERVER_PORT: "8081"
+    SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     SPRING_DATASOURCE_URL: jdbc:postgresql://postgresql:5432/bank
     SPRING_DATASOURCE_USERNAME: postgres
     SPRING_JPA_HIBERNATE_DDLAUTO: validate
@@ -71,11 +95,21 @@ cash-service:
     repository: my-bank-cash-service
   service:
     port: 8082
+  management:
+    enabled: true
+    port: 8092
+    monitoring:
+      enabled: true
+      alert:
+        enabled: true
+  probes:
+    port: management
   env:
     BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
     BANK_BLOCKER_BASE_URL: http://blocker-service:8088
-    BANK_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
+    MANAGEMENT_SERVER_PORT: "8092"
     SERVER_PORT: "8082"
+    SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
   secretEnv:
     - name: CASH_SERVICE_CLIENT_SECRET
       secretName: bank-service-credentials
@@ -88,12 +122,22 @@ transfer-service:
     repository: my-bank-transfer-service
   service:
     port: 8083
+  management:
+    enabled: true
+    port: 8093
+    monitoring:
+      enabled: true
+      alert:
+        enabled: true
+  probes:
+    port: management
   env:
     BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
     BANK_BLOCKER_BASE_URL: http://blocker-service:8088
     BANK_EXCHANGE_BASE_URL: http://exchange-service:8086
-    BANK_NOTIFICATIONS_BASE_URL: http://notifications-service:8084
+    MANAGEMENT_SERVER_PORT: "8093"
     SERVER_PORT: "8083"
+    SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
   secretEnv:
     - name: TRANSFER_SERVICE_CLIENT_SECRET
       secretName: bank-service-credentials
@@ -138,13 +182,23 @@ blocker-service:
 
 notifications-service:
   enabled: true
+  inheritGlobalEnv: true
   fullnameOverride: notifications-service
   image:
     repository: my-bank-notifications-service
   service:
-    port: 8084
+    enabled: false
+  management:
+    enabled: true
+    port: 8089
+  probes:
+    port: management
+  test:
+    enabled: false
   env:
-    SERVER_PORT: "8084"
+    SERVER_PORT: "8089"
+    SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    SPRING_KAFKA_CONSUMER_GROUP_ID: bank-notifications
 
 bank-gateway:
   enabled: false
@@ -190,3 +244,10 @@ keycloak:
       value: "false"
   realmImport:
     frontUiPublicUrl: http://localhost
+
+kafka:
+  enabled: true
+  fullnameOverride: kafka
+  persistence:
+    size: 2Gi
+    storageClass: ""

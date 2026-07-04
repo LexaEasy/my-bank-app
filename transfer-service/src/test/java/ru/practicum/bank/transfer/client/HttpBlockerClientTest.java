@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
-import ru.practicum.bank.common.client.SimpleCircuitBreaker;
+import ru.practicum.bank.common.client.ResilientClientExecutor;
 import ru.practicum.bank.common.dto.blocker.OperationCheckRequest;
 import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.common.model.OperationType;
@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.ExpectedCount.once;
+import static org.springframework.test.web.client.ExpectedCount.times;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -56,7 +57,7 @@ class HttpBlockerClientTest {
         var client = new HttpBlockerClient(restClientBuilder, "http://blocker-service", serviceTokenProvider);
         when(serviceTokenProvider.getAccessToken()).thenReturn("service-token");
 
-        server.expect(once(), requestTo("http://blocker-service/api/blocker/check"))
+        server.expect(times(2), requestTo("http://blocker-service/api/blocker/check"))
                 .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
 
         assertThatThrownBy(() -> client.check(request()))
@@ -72,7 +73,7 @@ class HttpBlockerClientTest {
                 restClientBuilder,
                 "http://blocker-service",
                 serviceTokenProvider,
-                SimpleCircuitBreaker.opened("blockerService")
+                ResilientClientExecutor.opened("blockerService")
         );
 
         assertThatThrownBy(() -> client.check(request()))
@@ -87,6 +88,8 @@ class HttpBlockerClientTest {
                 null,
                 "ivan",
                 "olga",
+                new BigDecimal("200.00"),
+                Currency.RUB,
                 new BigDecimal("200.00"),
                 Currency.RUB
         );

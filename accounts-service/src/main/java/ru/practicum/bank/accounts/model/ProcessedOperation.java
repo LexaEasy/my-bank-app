@@ -68,6 +68,10 @@ public class ProcessedOperation {
         return responseJson;
     }
 
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
     public void complete(String responseJson, LocalDateTime now) {
         this.status = ProcessedOperationStatus.COMPLETED;
         this.responseJson = responseJson;

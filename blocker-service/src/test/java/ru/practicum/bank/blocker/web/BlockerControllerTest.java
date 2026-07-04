@@ -39,7 +39,9 @@ class BlockerControllerTest {
                                   "operationType": "DEPOSIT",
                                   "login": "ivan",
                                   "amount": "1000.00",
-                                  "currency": "RUB"
+                                  "currency": "RUB",
+                                  "normalizedAmount": "1000.00",
+                                  "baseCurrency": "RUB"
                                 }
                                 """))
                 .andExpect(status().isOk())
@@ -61,7 +63,9 @@ class BlockerControllerTest {
                                   "sender": "ivan",
                                   "recipient": "olga",
                                   "amount": "100000.01",
-                                  "currency": "USD"
+                                  "currency": "USD",
+                                  "normalizedAmount": "9000000.90",
+                                  "baseCurrency": "RUB"
                                 }
                                 """))
                 .andExpect(status().isOk())
@@ -78,7 +82,9 @@ class BlockerControllerTest {
                                   "operationType": "DEPOSIT",
                                   "login": "ivan",
                                   "amount": "1000.00",
-                                  "currency": "RUB"
+                                  "currency": "RUB",
+                                  "normalizedAmount": "1000.00",
+                                  "baseCurrency": "RUB"
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
@@ -97,7 +103,9 @@ class BlockerControllerTest {
                                   "operationId": "op-1",
                                   "operationType": "WITHDRAW",
                                   "amount": "1000.00",
-                                  "currency": "RUB"
+                                  "currency": "RUB",
+                                  "normalizedAmount": "1000.00",
+                                  "baseCurrency": "RUB"
                                 }
                                 """))
                 .andExpect(status().isBadRequest())

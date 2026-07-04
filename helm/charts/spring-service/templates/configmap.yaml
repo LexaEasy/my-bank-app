@@ -1,5 +1,8 @@
 {{- $global := default dict .Values.global -}}
-{{- $globalEnv := default dict (get $global "env") -}}
+{{- $globalEnv := dict -}}
+{{- if .Values.inheritGlobalEnv -}}
+{{- $globalEnv = default dict (get $global "env") -}}
+{{- end -}}
 {{- $serviceEnv := default dict .Values.env -}}
 {{- $env := mergeOverwrite (deepCopy $globalEnv) $serviceEnv -}}
 apiVersion: v1

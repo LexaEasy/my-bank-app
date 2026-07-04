@@ -8,7 +8,8 @@ import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import ru.practicum.bank.common.client.SimpleCircuitBreaker;
+import ru.practicum.bank.common.client.ResilientClientExecutor;
+import ru.practicum.bank.common.client.ResilientClientFactory;
 import ru.practicum.bank.common.dto.exchange.ExchangeRateResponse;
 import ru.practicum.bank.frontui.dto.ApiErrorResponse;
 import ru.practicum.bank.frontui.dto.AccountForm;
@@ -33,7 +34,7 @@ public class GatewayClient {
     private final RestClient cashClient;
     private final RestClient transferClient;
     private final RestClient exchangeClient;
-    private final SimpleCircuitBreaker circuitBreaker;
+    private final ResilientClientExecutor clientExecutor;
     private final ObjectMapper objectMapper;
 
     @Autowired
@@ -43,6 +44,7 @@ public class GatewayClient {
             @Value("${bank.services.cash.base-url}") String cashBaseUrl,
             @Value("${bank.services.transfer.base-url}") String transferBaseUrl,
             @Value("${bank.services.exchange.base-url}") String exchangeBaseUrl,
+            ResilientClientFactory resilientClientFactory,
             ObjectMapper objectMapper
     ) {
         this(
@@ -51,7 +53,7 @@ public class GatewayClient {
                 cashBaseUrl,
                 transferBaseUrl,
                 exchangeBaseUrl,
-                SimpleCircuitBreaker.withDefaults("bankServices"),
+                resilientClientFactory.create("bankServices", GatewayClient::isRecoverable),
                 objectMapper
         );
     }
@@ -62,10 +64,10 @@ public class GatewayClient {
             String cashBaseUrl,
             String transferBaseUrl,
             String exchangeBaseUrl,
-            SimpleCircuitBreaker circuitBreaker,
+            ResilientClientExecutor clientExecutor,
             ObjectMapper objectMapper
     ) {
-        this.circuitBreaker = circuitBreaker;
+        this.clientExecutor = clientExecutor;
         this.objectMapper = objectMapper;
         this.accountsClient = restClientBuilder.clone().baseUrl(accountsBaseUrl).build();
         this.cashClient = restClientBuilder.clone().baseUrl(cashBaseUrl).build();
@@ -81,7 +83,10 @@ public class GatewayClient {
         try {
             return transferClient.post()
                     .uri("/api/transfers")
-                    .headers(headers -> headers.setBearerAuth(accessToken))
+                    .headers(headers -> {
+                        headers.setBearerAuth(accessToken);
+                        headers.set("Idempotency-Key", form.idempotencyKey());
+                    })
                     .body(new TransferRequest(
                             form.recipientLogin(),
                             form.amount(),
@@ -183,7 +188,10 @@ public class GatewayClient {
         try {
             return cashClient.post()
                     .uri(uri)
-                    .headers(headers -> headers.setBearerAuth(accessToken))
+                    .headers(headers -> {
+                        headers.setBearerAuth(accessToken);
+                        headers.set("Idempotency-Key", form.idempotencyKey());
+                    })
                     .body(new CashOperationRequest(form.amount(), form.currency()))
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, (request, response) -> handleError(response))
@@ -194,7 +202,12 @@ public class GatewayClient {
     }
 
     private <T> T runWithCircuitBreaker(ClientCall<T> call) {
-        return circuitBreaker.execute(call::execute, this::gatewayFallback);
+        return clientExecutor.execute(call::execute, this::gatewayFallback);
+    }
+
+    static boolean isRecoverable(Throwable exception) {
+        return !(exception instanceof GatewayClientException gatewayClientException)
+                || gatewayClientException.isTechnical();
     }
 
     private <T> T gatewayFallback(Throwable exception) {
