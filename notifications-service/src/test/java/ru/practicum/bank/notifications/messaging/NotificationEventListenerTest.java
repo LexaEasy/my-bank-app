@@ -4,6 +4,9 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import ru.practicum.bank.common.model.Currency;
 import ru.practicum.bank.common.notification.NotificationEvent;
 import ru.practicum.bank.common.notification.NotificationSource;
@@ -19,6 +22,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+@ExtendWith(OutputCaptureExtension.class)
 class NotificationEventListenerTest {
 
     private final NotificationService notificationService = mock(NotificationService.class);
@@ -28,12 +32,16 @@ class NotificationEventListenerTest {
     );
 
     @Test
-    void shouldPassValidEventToService() {
+    void shouldPassValidEventToServiceWithoutLoggingRecipient(CapturedOutput output) {
         var event = event("ivan");
 
         listener.listen(record(event));
 
         verify(notificationService).notify(event);
+        org.assertj.core.api.Assertions.assertThat(output)
+                .contains("eventId=" + event.eventId())
+                .doesNotContain("ivan")
+                .doesNotContain(event.message());
     }
 
     @Test

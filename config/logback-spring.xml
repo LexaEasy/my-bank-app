@@ -26,6 +26,11 @@
             <appendTimeout>0</appendTimeout>
             <droppedWarnFrequency>1000</droppedWarnFrequency>
             <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <decorator class="net.logstash.logback.mask.MaskingJsonGeneratorDecorator">
+                    <defaultMask>***</defaultMask>
+                    <value>(?i)bearer\s+[a-z0-9._-]+</value>
+                    <value>(?i)(password|token|authorization|client_secret|secret)\s*[=:]\s*\S+</value>
+                </decorator>
                 <providers>
                     <timestamp>
                         <fieldName>@timestamp</fieldName>
