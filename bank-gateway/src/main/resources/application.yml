@@ -61,10 +61,18 @@ management:
     tags:
       application: ${spring.application.name}
       namespace: ${MANAGEMENT_METRICS_TAGS_NAMESPACE:dev}
+  tracing:
+    propagation:
+      type: ${MANAGEMENT_TRACING_PROPAGATION_TYPE:W3C}
   endpoints:
     web:
       exposure:
         include: health,info,prometheus
+  zipkin:
+    tracing:
+      endpoint: ${MANAGEMENT_ZIPKIN_TRACING_ENDPOINT:http://localhost:9411/api/v2/spans}
+      export:
+        enabled: ${MANAGEMENT_ZIPKIN_TRACING_EXPORT_ENABLED:true}
 
 server:
   port: 8080

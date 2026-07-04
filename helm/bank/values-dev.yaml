@@ -1,6 +1,8 @@
 global:
   namespace: dev
   imageTag: dev
+  env:
+    MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
 
 kafka:
   clusterId: PMhRLbHTjJwfXr-gB_MhyQ
