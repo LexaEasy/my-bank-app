@@ -56,7 +56,9 @@ class JdbcTracingIntegrationTest {
                 .anySatisfy(span -> {
                     assertThat(span.traceId()).isEqualTo(traceId);
                     assertThat(span.name()).containsIgnoringCase("query");
-                    assertThat(span.details()).doesNotContain("42");
+                    assertThat(span.details())
+                            .contains("\"jdbc.query[0]\":\"select ?\"")
+                            .doesNotContain("\"42\"");
                 });
     }
 

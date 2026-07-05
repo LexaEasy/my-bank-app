@@ -93,7 +93,7 @@ class TransferNotificationKafkaIntegrationTest {
 
     @Test
     void shouldNotPublishNotificationsForInvalidTransfer() {
-        try (var consumer = consumer()) {
+        try (var consumer = consumer("latest")) {
             assertThatThrownBy(() -> transferService.transfer("ivan", request("0.00"), UUID.randomUUID()))
                     .isInstanceOf(InvalidAmountException.class);
 
@@ -114,12 +114,16 @@ class TransferNotificationKafkaIntegrationTest {
     }
 
     private Consumer<String, NotificationEvent> consumer() {
+        return consumer("earliest");
+    }
+
+    private Consumer<String, NotificationEvent> consumer(String autoOffsetReset) {
         var properties = org.springframework.kafka.test.utils.KafkaTestUtils.consumerProps(
                 "transfer-notification-" + UUID.randomUUID(),
                 "true",
                 embeddedKafka
         );
-        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset);
         var consumer = new DefaultKafkaConsumerFactory<>(
                 properties,
                 new StringDeserializer(),

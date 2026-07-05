@@ -1,9 +1,14 @@
 package ru.practicum.bank.transfer.web;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -31,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(TransferController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(TransferControllerTest.MetricsTestConfiguration.class)
 class TransferControllerTest {
 
     private static final UUID IDEMPOTENCY_KEY = UUID.fromString("44444444-4444-4444-4444-444444444444");
@@ -264,5 +270,14 @@ class TransferControllerTest {
 
     private MockHttpServletRequestBuilder postWithIdempotencyKey(String uri) {
         return post(uri).header("Idempotency-Key", IDEMPOTENCY_KEY);
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class MetricsTestConfiguration {
+
+        @Bean
+        MeterRegistry meterRegistry() {
+            return new SimpleMeterRegistry();
+        }
     }
 }

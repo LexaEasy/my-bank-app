@@ -85,7 +85,7 @@ class CashNotificationKafkaIntegrationTest {
 
     @Test
     void shouldNotPublishNotificationForInvalidDeposit() {
-        try (var consumer = consumer()) {
+        try (var consumer = consumer("latest")) {
             assertThatThrownBy(() -> cashService.deposit("ivan", request("0.00"), UUID.randomUUID()))
                     .isInstanceOf(InvalidAmountException.class);
 
@@ -94,12 +94,16 @@ class CashNotificationKafkaIntegrationTest {
     }
 
     private Consumer<String, NotificationEvent> consumer() {
+        return consumer("earliest");
+    }
+
+    private Consumer<String, NotificationEvent> consumer(String autoOffsetReset) {
         var properties = KafkaTestUtils.consumerProps(
                 "cash-notification-" + UUID.randomUUID(),
                 "true",
                 embeddedKafka
         );
-        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset);
         var consumer = new DefaultKafkaConsumerFactory<>(
                 properties,
                 new StringDeserializer(),

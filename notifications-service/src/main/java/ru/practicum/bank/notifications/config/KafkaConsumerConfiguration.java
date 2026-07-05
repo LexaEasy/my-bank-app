@@ -7,6 +7,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -89,7 +90,9 @@ public class KafkaConsumerConfiguration {
     }
 
     @Bean
-    DefaultErrorHandler kafkaErrorHandler(ConsumerRecordRecoverer recoverer) {
+    DefaultErrorHandler kafkaErrorHandler(
+            @Qualifier("notificationDeliveryFailureRecoverer") ConsumerRecordRecoverer recoverer
+    ) {
         var errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(1_000L, 2L));
         errorHandler.addNotRetryableExceptions(
                 DeserializationException.class,

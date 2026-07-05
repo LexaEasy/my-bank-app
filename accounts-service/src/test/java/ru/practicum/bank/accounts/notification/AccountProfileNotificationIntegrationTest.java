@@ -89,7 +89,7 @@ class AccountProfileNotificationIntegrationTest {
 
     @Test
     void shouldNotPublishNotificationAfterInvalidUpdate() {
-        try (var consumer = consumer()) {
+        try (var consumer = consumer("latest")) {
             assertThatThrownBy(() -> accountService.updateCurrentAccount(
                     "ivan",
                     new UpdateAccountRequest("Иван Иванов", LocalDate.now().minusYears(10))
@@ -100,12 +100,16 @@ class AccountProfileNotificationIntegrationTest {
     }
 
     private Consumer<String, NotificationEvent> consumer() {
+        return consumer("earliest");
+    }
+
+    private Consumer<String, NotificationEvent> consumer(String autoOffsetReset) {
         var properties = KafkaTestUtils.consumerProps(
                 "accounts-notification-" + UUID.randomUUID(),
                 "true",
                 embeddedKafka
         );
-        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset);
         var consumer = new DefaultKafkaConsumerFactory<>(
                 properties,
                 new StringDeserializer(),
