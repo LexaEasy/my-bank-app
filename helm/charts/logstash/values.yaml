@@ -1,0 +1,27 @@
+fullnameOverride: logstash
+replicaCount: 1
+
+image:
+  repository: docker.elastic.co/logstash/logstash
+  tag: "9.4.3"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  tcpPort: 5000
+  apiPort: 9600
+
+config:
+  elasticsearchUrl: http://elasticsearch:9200
+  javaOpts: -Xms256m -Xmx256m
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+test:
+  image: curlimages/curl:8.21.0
