@@ -1,0 +1,60 @@
+{{- $test := .Values.helmTest | default dict -}}
+{{- if ($test.enabled | default true) }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "bank.fullname" . }}-observability-test
+  labels:
+    {{- include "bank.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "bank.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: observability-test
+          image: "{{ $test.imageRepository | default "curlimages/curl" }}:{{ $test.imageTag | default "8.21.0" }}"
+          imagePullPolicy: {{ $test.imagePullPolicy | default "IfNotPresent" }}
+          command: [sh, -ec]
+          args:
+            - |
+              check_url() {
+                name="$1"
+                url="$2"
+                echo "Checking ${name}: ${url}"
+                curl --fail --silent --show-error --connect-timeout 5 --max-time 15 "${url}" >/dev/null
+              }
+
+              check_url "Zipkin API" "http://zipkin:9411/api/v2/services"
+              check_url "Prometheus readiness" "http://prometheus-operated:9090/-/ready"
+              check_url "Grafana health" "http://grafana:80/api/health"
+              check_url "Elasticsearch health" "http://elasticsearch:9200/_cluster/health"
+              check_url "Logstash API" "http://logstash:9600/_node/pipelines/bank-logs"
+              check_url "Kibana status" "http://kibana:5601/api/status"
+
+              curl --silent --show-error --max-time 2 telnet://logstash:5000 </dev/null || test $? -eq 28
+
+              targets="$(curl --fail --silent --show-error http://prometheus-operated:9090/api/v1/targets)"
+              echo "${targets}" | grep -q '"activeTargets"'
+              echo "${targets}" | grep -q '"health":"up"'
+              for application in \
+                front-ui bank-gateway accounts-service cash-service \
+                transfer-service exchange-service exchange-generator \
+                blocker-service notifications-service; do
+                echo "${targets}" | grep -q "${application}"
+              done
+
+              rules="$(curl --fail --silent --show-error http://prometheus-operated:9090/api/v1/rules)"
+              for alert in \
+                BankHttp5xxRatioHigh BankHttpP95LatencyHigh \
+                BankWithdrawalFailuresHigh BankTransferFailuresHigh \
+                BankNotificationDeliveryFailed; do
+                echo "${rules}" | grep -q "\"name\":\"${alert}\""
+              done
+{{- end }}
