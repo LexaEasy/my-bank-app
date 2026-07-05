@@ -23,6 +23,9 @@ management:
         readiness:
           include: readinessState
   metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
     tags:
       application: ${spring.application.name}
       namespace: ${MANAGEMENT_METRICS_TAGS_NAMESPACE:dev}
