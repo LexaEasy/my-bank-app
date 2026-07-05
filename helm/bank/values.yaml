@@ -80,7 +80,7 @@ accounts-service:
     monitoring:
       enabled: true
       alert:
-        enabled: true
+        enabled: false
   probes:
     port: management
   env:
@@ -111,7 +111,7 @@ cash-service:
     monitoring:
       enabled: true
       alert:
-        enabled: true
+        enabled: false
   probes:
     port: management
   env:
@@ -138,7 +138,7 @@ transfer-service:
     monitoring:
       enabled: true
       alert:
-        enabled: true
+        enabled: false
   probes:
     port: management
   env:
@@ -286,3 +286,66 @@ kafka:
   persistence:
     size: 2Gi
     storageClass: ""
+
+monitoring:
+  enabled: true
+  defaultRules:
+    create: false
+  prometheusOperator:
+    enabled: true
+  prometheus:
+    enabled: true
+    prometheusSpec:
+      retention: 24h
+      serviceMonitorSelectorNilUsesHelmValues: false
+      ruleSelectorNilUsesHelmValues: false
+      serviceMonitorSelector: {}
+      serviceMonitorNamespaceSelector:
+        matchNames:
+          - dev
+      ruleSelector: {}
+      ruleNamespaceSelector:
+        matchNames:
+          - dev
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: "2"
+          memory: 2Gi
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 5Gi
+  alertmanager:
+    enabled: true
+    alertmanagerSpec:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+  grafana:
+    enabled: true
+    fullnameOverride: grafana
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    persistence:
+      enabled: true
+      size: 1Gi
+    sidecar:
+      dashboards:
+        enabled: true
+        searchNamespace: dev
