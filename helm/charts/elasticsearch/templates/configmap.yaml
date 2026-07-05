@@ -1,0 +1,16 @@
+{{- if and (not .Values.config.securityEnabled) (ne .Values.environment "dev") -}}
+{{- fail "Elasticsearch security can be disabled only for the internal dev environment" -}}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "elasticsearch.fullname" . }}
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+data:
+  ES_JAVA_OPTS: {{ .Values.config.javaOpts | quote }}
+  elasticsearch.yml: |
+    cluster.name: bank
+    network.host: 0.0.0.0
+    discovery.type: single-node
+    xpack.security.enabled: {{ .Values.config.securityEnabled }}
