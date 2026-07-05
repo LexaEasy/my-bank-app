@@ -38,5 +38,17 @@ dependencies:
 - name: kube-prometheus-stack
   repository: https://prometheus-community.github.io/helm-charts
   version: 87.4.0
-digest: sha256:53a958b3a23ef78c789bf02eb8019b2022c1399d4cb0250564ecb982596661a2
-generated: "2026-07-05T07:24:30.3673366+03:00"
+- name: zipkin
+  repository: file://../charts/zipkin
+  version: 0.1.0
+- name: elasticsearch
+  repository: file://../charts/elasticsearch
+  version: 0.1.0
+- name: logstash
+  repository: file://../charts/logstash
+  version: 0.1.0
+- name: kibana
+  repository: file://../charts/kibana
+  version: 0.1.0
+digest: sha256:5483a72fadf3576a309c1d57b9fdb4f948dfe2bda0f0fa0d7b9433d7e22cd4f9
+generated: "2026-07-05T07:36:19.4223833+03:00"

@@ -287,6 +287,27 @@ kafka:
     size: 2Gi
     storageClass: ""
 
+zipkin:
+  enabled: true
+  fullnameOverride: zipkin
+
+elasticsearch:
+  enabled: true
+  fullnameOverride: elasticsearch
+  environment: dev
+
+logstash:
+  enabled: true
+  fullnameOverride: logstash
+  config:
+    elasticsearchUrl: http://elasticsearch:9200
+
+kibana:
+  enabled: true
+  fullnameOverride: kibana
+  config:
+    elasticsearchUrl: http://elasticsearch:9200
+
 monitoring:
   enabled: true
   defaultRules:
@@ -335,6 +356,10 @@ monitoring:
   grafana:
     enabled: true
     fullnameOverride: grafana
+    admin:
+      existingSecret: grafana-admin-credentials
+      userKey: admin-user
+      passwordKey: admin-password
     resources:
       requests:
         cpu: 100m
