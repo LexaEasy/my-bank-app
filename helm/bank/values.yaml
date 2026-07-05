@@ -346,6 +346,8 @@ monitoring:
       enabled: true
       size: 1Gi
     sidecar:
+      datasources:
+        uid: prometheus
       dashboards:
         enabled: true
         searchNamespace: dev
