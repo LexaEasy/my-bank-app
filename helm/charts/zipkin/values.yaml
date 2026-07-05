@@ -1,0 +1,41 @@
+nameOverride: ""
+fullnameOverride: zipkin
+
+replicaCount: 1
+
+image:
+  repository: openzipkin/zipkin
+  tag: "3.6.1"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 9411
+
+config:
+  storageType: mem
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+probes:
+  startup:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 30
+  readiness:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  liveness:
+    initialDelaySeconds: 30
+    periodSeconds: 20
+    timeoutSeconds: 3
+    failureThreshold: 3
