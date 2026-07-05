@@ -484,6 +484,29 @@ promtool test rules helm/charts/spring-service/tests/kafka-publication-alert.tes
 Transactional Outbox, CDC и durable retry остаются отдельным архитектурным
 backlog и не входят в Sprint 11.
 
+## Runbook алертов Sprint 12
+
+### Bank HTTP 5xx ratio high
+
+Проверить приложение из label `application`, последние HTTP 5xx и связанные
+логи/трейсы. Сопоставить рост ошибок с недоступностью зависимостей.
+
+### Bank HTTP p95 latency high
+
+Проверить медленные URI, загрузку JVM и внешние HTTP/JDBC-вызовы приложения.
+
+### Bank withdrawal failures high
+
+Проверить причины отказов снятия и исключить массовые невалидные запросы.
+
+### Bank transfer failures high
+
+Проверить причины отказов переводов и доступность Accounts, Exchange и Blocker.
+
+### Bank notification delivery failed
+
+Проверить DLT, consumer lag и ошибку окончательной обработки Notifications.
+
 ## Jenkins CI/CD
 
 В репозитории есть root `Jenkinsfile` для umbrella pipeline и Jenkinsfile рядом с каждым микросервисом. Pipeline покрывает validate, unit/integration/contract tests, `clean bootJar` и Helm lint/template. Docker build, image push и deploy отключены по умолчанию и выполняются только при явном включении соответствующих параметров.

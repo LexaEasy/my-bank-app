@@ -1,0 +1,57 @@
+groups:
+  - name: bank.alerts
+    rules:
+      - alert: BankHttp5xxRatioHigh
+        expr: |
+          (
+            sum by (application) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+            /
+            clamp_min(sum by (application) (rate(http_server_requests_seconds_count[5m])), 0.001)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Bank HTTP 5xx ratio is high
+          description: More than 5% of HTTP requests return 5xx for application {{ $labels.application }}.
+          runbook_url: README.md#bank-http-5xx-ratio-high
+      - alert: BankHttpP95LatencyHigh
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, application) (rate(http_server_requests_seconds_bucket[5m]))
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Bank HTTP p95 latency is high
+          description: HTTP p95 latency exceeds one second for application {{ $labels.application }}.
+          runbook_url: README.md#bank-http-p95-latency-high
+      - alert: BankWithdrawalFailuresHigh
+        expr: sum(increase(bank_cash_withdrawal_failures_total[10m])) > 3
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Bank withdrawal failures are high
+          description: More than three withdrawal failures occurred during the last ten minutes.
+          runbook_url: README.md#bank-withdrawal-failures-high
+      - alert: BankTransferFailuresHigh
+        expr: sum(increase(bank_transfer_failures_total[10m])) > 3
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Bank transfer failures are high
+          description: More than three transfer failures occurred during the last ten minutes.
+          runbook_url: README.md#bank-transfer-failures-high
+      - alert: BankNotificationDeliveryFailed
+        expr: sum(increase(bank_notifications_delivery_failures_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Bank notification delivery failed
+          description: At least one notification reached the dead letter topic during the last five minutes.
+          runbook_url: README.md#bank-notification-delivery-failed
