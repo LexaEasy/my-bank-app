@@ -26,3 +26,9 @@ readinessProbe:
   periodSeconds: 10
   timeoutSeconds: 5
   failureThreshold: 30
+
+dataView:
+  image: curlimages/curl:8.21.0
+  id: bank-logs
+  title: bank-logs-*
+  timeFieldName: "@timestamp"

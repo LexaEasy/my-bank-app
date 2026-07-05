@@ -1,0 +1,56 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "kibana.fullname" . }}-data-view
+  labels:
+    {{- include "kibana.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "kibana.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: create-data-view
+          image: {{ .Values.dataView.image }}
+          command: [sh, -ec]
+          args:
+            - |
+              kibana_url="http://{{ include "kibana.fullname" . }}:{{ .Values.service.port }}"
+              for attempt in $(seq 1 90); do
+                if curl --fail --silent "${kibana_url}/api/status" >/dev/null; then
+                  break
+                fi
+                if [ "${attempt}" -eq 90 ]; then
+                  echo "Kibana did not become ready" >&2
+                  exit 1
+                fi
+                sleep 2
+              done
+
+              data_views="$(curl --fail --silent --show-error \
+                -H 'kbn-xsrf: true' \
+                "${kibana_url}/api/data_views")"
+              if echo "${data_views}" | grep -Eq '"id"[[:space:]]*:[[:space:]]*"{{ .Values.dataView.id }}"'; then
+                echo "Data view {{ .Values.dataView.id }} already exists"
+                exit 0
+              fi
+
+              curl --fail --silent --show-error \
+                -X POST \
+                -H 'kbn-xsrf: true' \
+                -H 'Content-Type: application/json' \
+                "${kibana_url}/api/data_views/data_view" \
+                --data-binary '{
+                  "data_view": {
+                    "id": "{{ .Values.dataView.id }}",
+                    "title": "{{ .Values.dataView.title }}",
+                    "timeFieldName": "{{ .Values.dataView.timeFieldName }}"
+                  }
+                }'
