@@ -43,6 +43,12 @@ function namedResource(kind: string, name: string): string {
   return resource;
 }
 
+function optionalNamedResource(kind: string, name: string): string | undefined {
+  return resources(kind).find((document) =>
+    new RegExp(`^  name: ${name}$`, "m").test(document),
+  );
+}
+
 function renderedDocuments(renderedManifest: string): string[] {
   return renderedManifest.split(/\r?\n---\r?\n/);
 }
@@ -128,9 +134,19 @@ describe("observability Helm render", () => {
       "notifications-service",
     ];
     for (const application of applications) {
-      expect(namedResource("ServiceMonitor", application)).toContain(
-        "path: /actuator/prometheus",
-      );
+      const serviceMonitor = namedResource("ServiceMonitor", application);
+      expect(serviceMonitor).toContain("bank/management-service: \"true\"");
+      expect(serviceMonitor).toContain("port: management");
+      expect(serviceMonitor).toContain("path: /actuator/prometheus");
+
+      const managementService = namedResource("Service", `${application}-management`);
+      expect(managementService).toContain("bank/management-service: \"true\"");
+      expect(managementService).toContain("name: management");
+
+      const applicationService = optionalNamedResource("Service", application);
+      if (applicationService) {
+        expect(applicationService).not.toContain("bank/management-service: \"true\"");
+      }
     }
     const rule = namedResource("PrometheusRule", "bank-alerts");
     expect((rule.match(/- alert: Bank/g) ?? []).length).toBe(5);
