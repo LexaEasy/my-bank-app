@@ -5,6 +5,7 @@ import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
@@ -37,6 +38,7 @@ import static ru.practicum.bank.common.notification.NotificationTopicsProperties
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@Timeout(value = 60, unit = TimeUnit.SECONDS)
 class NotificationConsumerKafkaIntegrationTest extends KafkaIntegrationTestSupport {
 
     @MockitoBean
@@ -69,7 +71,8 @@ class NotificationConsumerKafkaIntegrationTest extends KafkaIntegrationTestSuppo
     @Test
     void shouldCommitSuccessfulRecordAndNotReadItAfterRestart() throws Exception {
         UUID eventId = UUID.randomUUID();
-        var result = eventTemplate().send(TOPIC, "ivan", event(eventId, "ivan")).get();
+        var result = eventTemplate().send(TOPIC, "ivan", event(eventId, "ivan"))
+                .get(KAFKA_OPERATION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
         verify(notificationService, after(10_000))
                 .notify(argThat(event -> event.eventId().equals(eventId)));
@@ -91,7 +94,8 @@ class NotificationConsumerKafkaIntegrationTest extends KafkaIntegrationTestSuppo
     void shouldProcessRecordsCreatedWhileListenerIsStoppedAndAcceptDuplicate() throws Exception {
         registry.stop();
         UUID unreadEventId = UUID.randomUUID();
-        eventTemplate().send(TOPIC, "olga", event(unreadEventId, "olga")).get();
+        eventTemplate().send(TOPIC, "olga", event(unreadEventId, "olga"))
+                .get(KAFKA_OPERATION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         registry.start();
 
         verify(notificationService, after(10_000))
@@ -100,8 +104,10 @@ class NotificationConsumerKafkaIntegrationTest extends KafkaIntegrationTestSuppo
         UUID duplicateEventId = UUID.randomUUID();
         var duplicate = event(duplicateEventId, "petr");
         var template = eventTemplate();
-        template.send(TOPIC, "petr", duplicate).get();
-        template.send(TOPIC, "petr", duplicate).get();
+        template.send(TOPIC, "petr", duplicate)
+                .get(KAFKA_OPERATION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        template.send(TOPIC, "petr", duplicate)
+                .get(KAFKA_OPERATION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
         verify(notificationService, after(10_000).times(2))
                 .notify(argThat(event -> event.eventId().equals(duplicateEventId)));

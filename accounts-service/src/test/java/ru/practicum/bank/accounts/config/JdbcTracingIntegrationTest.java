@@ -6,6 +6,7 @@ import brave.propagation.TraceContext;
 import io.micrometer.tracing.Tracer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,6 +17,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 })
 @AutoConfigureObservability
 @Import(JdbcTracingIntegrationTest.TracingTestConfiguration.class)
+@Timeout(value = 30, unit = TimeUnit.SECONDS)
 class JdbcTracingIntegrationTest {
 
     @Autowired

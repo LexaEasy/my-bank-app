@@ -36,6 +36,7 @@ abstract class KafkaIntegrationTestSupport {
     static final String TOPIC = "bank.notifications";
     static final String DLT_TOPIC = "bank.notifications.dlt";
     static final String GROUP_ID = "bank-notifications-integration";
+    static final long KAFKA_OPERATION_TIMEOUT_SECONDS = 10L;
 
     @Autowired
     EmbeddedKafkaBroker broker;

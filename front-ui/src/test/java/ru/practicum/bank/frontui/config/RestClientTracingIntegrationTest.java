@@ -2,11 +2,14 @@ package ru.practicum.bank.frontui.config;
 
 import io.micrometer.tracing.Tracer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
@@ -16,6 +19,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
         "management.zipkin.tracing.export.enabled=false"
 })
 @AutoConfigureObservability
+@Timeout(value = 30, unit = TimeUnit.SECONDS)
 class RestClientTracingIntegrationTest {
 
     @Autowired

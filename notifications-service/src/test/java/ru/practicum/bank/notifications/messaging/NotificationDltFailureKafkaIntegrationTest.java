@@ -2,6 +2,7 @@ package ru.practicum.bank.notifications.messaging;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
@@ -13,6 +14,7 @@ import ru.practicum.bank.notifications.service.NotificationService;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -33,6 +35,7 @@ import static ru.practicum.bank.common.notification.NotificationTopicsProperties
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@Timeout(value = 60, unit = TimeUnit.SECONDS)
 class NotificationDltFailureKafkaIntegrationTest extends KafkaIntegrationTestSupport {
 
     @MockitoBean
@@ -53,7 +56,8 @@ class NotificationDltFailureKafkaIntegrationTest extends KafkaIntegrationTestSup
         when(dltKafkaTemplate.send(org.mockito.ArgumentMatchers.<ProducerRecord<Object, Object>>any()))
                 .thenReturn(CompletableFuture.failedFuture(new IllegalStateException("DLT unavailable")));
 
-        var result = eventTemplate().send(TOPIC, "dlt-failure", event(eventId, "dlt-failure")).get();
+        var result = eventTemplate().send(TOPIC, "dlt-failure", event(eventId, "dlt-failure"))
+                .get(KAFKA_OPERATION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         int partition = result.getRecordMetadata().partition();
 
         verify(dltKafkaTemplate, timeout(10_000).atLeastOnce())
