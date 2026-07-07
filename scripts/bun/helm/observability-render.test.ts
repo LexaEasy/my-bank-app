@@ -5,7 +5,7 @@ const root = fileURLToPath(new URL("../../..", import.meta.url));
 let manifest = "";
 let documents: string[] = [];
 
-function renderChart(): string {
+function renderChart(namespace = "dev", valuesFile = "helm/bank/values-dev.yaml"): string {
   const result = Bun.spawnSync({
     cmd: [
       "helm",
@@ -13,9 +13,9 @@ function renderChart(): string {
       "bank",
       "helm/bank",
       "--namespace",
-      "dev",
+      namespace,
       "-f",
-      "helm/bank/values-dev.yaml",
+      valuesFile,
     ],
     cwd: root,
     stdout: "pipe",
@@ -43,9 +43,31 @@ function namedResource(kind: string, name: string): string {
   return resource;
 }
 
+function renderedDocuments(renderedManifest: string): string[] {
+  return renderedManifest.split(/\r?\n---\r?\n/);
+}
+
+function resourceFromDocuments(renderedDocuments: string[], kind: string, name: string): string {
+  const resource = renderedDocuments
+    .filter((document) => new RegExp(`^kind: ${kind}$`, "m").test(document))
+    .find((document) => new RegExp(`^  name: ${name}$`, "m").test(document));
+  if (!resource) {
+    throw new Error(`${kind}/${name} was not rendered`);
+  }
+  return resource;
+}
+
+function observabilityTestJob(renderedManifest: string): string {
+  return resourceFromDocuments(
+    renderedDocuments(renderedManifest),
+    "Job",
+    "bank-observability-test",
+  );
+}
+
 beforeAll(() => {
   manifest = renderChart();
-  documents = manifest.split(/\r?\n---\r?\n/);
+  documents = renderedDocuments(manifest);
 });
 
 describe("observability Helm render", () => {
@@ -138,4 +160,30 @@ describe("observability Helm render", () => {
     expect(elasticImages).toHaveLength(3);
     expect(elasticImages.every((image) => image.endsWith(":9.4.3"))).toBeTrue();
   });
+
+  test.each([
+    ["dev", "helm/bank/values-dev.yaml", true],
+    ["test", "helm/bank/values-test.yaml", false],
+    ["prod", "helm/bank/values-prod.yaml", false],
+  ])(
+    "renders Elastic Stack observability checks for %s only when enabled",
+    (namespace, valuesFile, shouldRenderElasticStackChecks) => {
+      const renderedManifest = namespace === "dev" ? manifest : renderChart(namespace, valuesFile);
+      const observabilityJob = observabilityTestJob(renderedManifest);
+      const elasticStackChecks = [
+        'check_url "Elasticsearch health" "http://elasticsearch:9200/_cluster/health"',
+        'check_url "Logstash API" "http://logstash:9600/_node/pipelines/bank-logs"',
+        "telnet://logstash:5000",
+        'check_url "Kibana status" "http://kibana:5601/api/status"',
+      ];
+
+      for (const check of elasticStackChecks) {
+        if (shouldRenderElasticStackChecks) {
+          expect(observabilityJob).toContain(check);
+        } else {
+          expect(observabilityJob).not.toContain(check);
+        }
+      }
+    },
+  );
 });

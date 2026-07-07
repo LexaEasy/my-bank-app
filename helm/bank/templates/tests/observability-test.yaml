@@ -34,11 +34,19 @@ spec:
               check_url "Zipkin API" "http://zipkin:9411/api/v2/services"
               check_url "Prometheus readiness" "http://prometheus-operated:9090/-/ready"
               check_url "Grafana health" "http://grafana:80/api/health"
+{{- if eq .Values.elasticsearch.enabled true }}
               check_url "Elasticsearch health" "http://elasticsearch:9200/_cluster/health"
+{{- end }}
+{{- if eq .Values.logstash.enabled true }}
               check_url "Logstash API" "http://logstash:9600/_node/pipelines/bank-logs"
+{{- end }}
+{{- if eq .Values.kibana.enabled true }}
               check_url "Kibana status" "http://kibana:5601/api/status"
+{{- end }}
 
+{{- if eq .Values.logstash.enabled true }}
               curl --silent --show-error --max-time 2 telnet://logstash:5000 </dev/null || test $? -eq 28
+{{- end }}
 
               targets="$(curl --fail --silent --show-error http://prometheus-operated:9090/api/v1/targets)"
               echo "${targets}" | grep -q '"activeTargets"'
