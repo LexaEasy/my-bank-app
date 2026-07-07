@@ -1,5 +1,7 @@
 package ru.practicum.bank.transfer.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ru.practicum.bank.common.dto.blocker.OperationCheckRequest;
 import ru.practicum.bank.common.dto.exchange.ConversionResponse;
@@ -26,6 +28,8 @@ import java.util.UUID;
 @Service
 public class TransferService {
 
+    private static final Logger log = LoggerFactory.getLogger(TransferService.class);
+
     private final TransferExecutor transferExecutor;
     private final BlockerClient blockerClient;
     private final ExchangeClient exchangeClient;
@@ -47,8 +51,13 @@ public class TransferService {
     }
 
     public TransferResponse transfer(String senderLogin, TransferRequest request, UUID operationId) {
-        validateAmount(request.amount());
+        validateAmount(request.amount(), operationId, request.currency());
         if (senderLogin.equals(request.recipientLogin())) {
+            log.warn(
+                    "Transfer operation rejected operationId={} operationType=TRANSFER currency={} status=rejected errorCode=SELF_TRANSFER_FORBIDDEN source=transfer-service",
+                    operationId,
+                    request.currency()
+            );
             throw new SelfTransferForbiddenException();
         }
 
@@ -65,6 +74,11 @@ public class TransferService {
                 operationId.toString()
         ));
         publishNotifications(senderLogin, request, conversion, operationId);
+        log.info(
+                "Transfer operation completed operationId={} operationType=TRANSFER currency={} status=success source=transfer-service targetService=accounts-service",
+                operationId,
+                request.currency()
+        );
 
         return new TransferResponse(
                 result.senderLogin(),
@@ -75,11 +89,21 @@ public class TransferService {
         );
     }
 
-    private void validateAmount(BigDecimal amount) {
+    private void validateAmount(BigDecimal amount, UUID operationId, Currency currency) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            log.warn(
+                    "Transfer operation rejected operationId={} operationType=TRANSFER currency={} status=rejected errorCode=INVALID_AMOUNT source=transfer-service",
+                    operationId,
+                    currency
+            );
             throw new InvalidAmountException();
         }
         if (amount.scale() > 2) {
+            log.warn(
+                    "Transfer operation rejected operationId={} operationType=TRANSFER currency={} status=rejected errorCode=INVALID_AMOUNT_SCALE source=transfer-service",
+                    operationId,
+                    currency
+            );
             throw new InvalidAmountScaleException();
         }
     }
@@ -90,6 +114,13 @@ public class TransferService {
             UUID operationId,
             BigDecimal normalizedAmount
     ) {
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "Transfer blocker check prepared operationId={} operationType=TRANSFER currency={} source=transfer-service targetService=blocker-service",
+                    operationId,
+                    request.currency()
+            );
+        }
         var response = blockerClient.check(new OperationCheckRequest(
                 operationId.toString(),
                 OperationType.TRANSFER,
@@ -102,6 +133,11 @@ public class TransferService {
                 Currency.RUB
         ));
         if (!response.allowed()) {
+            log.warn(
+                    "Transfer operation rejected operationId={} operationType=TRANSFER currency={} status=blocked errorCode=OPERATION_BLOCKED source=transfer-service targetService=blocker-service",
+                    operationId,
+                    request.currency()
+            );
             throw new OperationBlockedException(response.reason());
         }
     }
@@ -111,12 +147,25 @@ public class TransferService {
             return request.amount();
         }
 
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "Transfer amount normalization prepared operationType=EXCHANGE currency={} targetCurrency=RUB source=transfer-service targetService=exchange-service",
+                    request.currency()
+            );
+        }
         ConversionResponse conversion = exchangeClient.convert(request.currency(), Currency.RUB, request.amount());
         return conversion.targetAmount();
     }
 
     private ConversionResponse convert(TransferRequest request) {
         if (request.currency() == request.resolvedTargetCurrency()) {
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "Transfer currency conversion skipped operationType=TRANSFER currency={} targetCurrency={} source=transfer-service",
+                        request.currency(),
+                        request.resolvedTargetCurrency()
+                );
+            }
             return new ConversionResponse(
                     request.currency(),
                     request.currency(),
@@ -127,6 +176,13 @@ public class TransferService {
             );
         }
 
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "Transfer currency conversion prepared operationType=EXCHANGE currency={} targetCurrency={} source=transfer-service targetService=exchange-service",
+                    request.currency(),
+                    request.resolvedTargetCurrency()
+            );
+        }
         return exchangeClient.convert(request.currency(), request.resolvedTargetCurrency(), request.amount());
     }
 

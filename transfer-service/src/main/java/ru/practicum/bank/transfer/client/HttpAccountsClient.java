@@ -2,6 +2,8 @@ package ru.practicum.bank.transfer.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -17,6 +19,8 @@ import ru.practicum.bank.transfer.service.TransferResult;
 
 @Component
 public class HttpAccountsClient implements TransferExecutor {
+
+    private static final Logger log = LoggerFactory.getLogger(HttpAccountsClient.class);
 
     private final RestClient restClient;
     private final ServiceTokenProvider serviceTokenProvider;
@@ -80,6 +84,13 @@ public class HttpAccountsClient implements TransferExecutor {
 
     private TransferResult executeWithoutCircuitBreaker(TransferOperation operation) {
         try {
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "Accounts downstream request prepared operationId={} operationType=TRANSFER currency={} source=transfer-service targetService=accounts-service",
+                        operation.operationId(),
+                        operation.currency()
+                );
+            }
             var response = restClient.post()
                     .uri("/api/accounts/internal/balance/transfer")
                     .headers(headers -> headers.setBearerAuth(serviceTokenProvider.getAccessToken()))
@@ -102,6 +113,12 @@ public class HttpAccountsClient implements TransferExecutor {
                     exception
             );
         } catch (RestClientException exception) {
+            log.error(
+                    "Accounts downstream request failed operationId={} operationType=TRANSFER currency={} status=error errorCategory=downstream_unavailable errorType={} source=transfer-service targetService=accounts-service",
+                    operation.operationId(),
+                    operation.currency(),
+                    exception.getClass().getSimpleName()
+            );
             throw new AccountsClientException("Accounts service request failed", exception);
         }
     }
@@ -115,8 +132,20 @@ public class HttpAccountsClient implements TransferExecutor {
 
     private TransferResult accountsFallback(Throwable exception) {
         if (exception instanceof AccountsClientException accountsClientException) {
+            if (accountsClientException.getStatusCode().is5xxServerError()) {
+                log.error(
+                        "Accounts downstream retries exhausted status={} errorCode={} errorCategory=downstream_unavailable errorType={} source=transfer-service targetService=accounts-service",
+                        accountsClientException.getStatusCode().value(),
+                        accountsClientException.getCode(),
+                        accountsClientException.getClass().getSimpleName()
+                );
+            }
             throw accountsClientException;
         }
+        log.error(
+                "Accounts downstream retries exhausted status=error errorCategory=downstream_unavailable errorType={} source=transfer-service targetService=accounts-service",
+                exception.getClass().getSimpleName()
+        );
         throw new AccountsClientException("Сервис счетов временно недоступен", exception);
     }
 
