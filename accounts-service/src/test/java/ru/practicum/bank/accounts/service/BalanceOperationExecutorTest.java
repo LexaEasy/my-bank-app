@@ -2,6 +2,9 @@ package ru.practicum.bank.accounts.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import ru.practicum.bank.accounts.dto.BalanceOperationRequest;
 import ru.practicum.bank.accounts.dto.TransferBalanceRequest;
@@ -27,6 +30,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(OutputCaptureExtension.class)
 class BalanceOperationExecutorTest {
 
     private final AccountRepository accountRepository = mock(AccountRepository.class);
@@ -152,12 +156,22 @@ class BalanceOperationExecutorTest {
     }
 
     @Test
-    void shouldRejectWithdrawWhenBalanceIsInsufficient() {
+    void shouldRejectWithdrawWhenBalanceIsInsufficient(CapturedOutput output) {
         var account = account("ivan", 1L, "100.00");
         when(accountRepository.findByLogin("ivan")).thenReturn(Optional.of(account));
 
         assertThatThrownBy(() -> executor.withdraw(operationRequest("ivan", "150.00")))
                 .isInstanceOf(InsufficientFundsException.class);
+        assertThat(output)
+                .contains("Balance operation rejected")
+                .contains("operationId=operation-1")
+                .contains("operationType=WITHDRAW")
+                .contains("currency=RUB")
+                .contains("errorCode=INSUFFICIENT_FUNDS")
+                .doesNotContain("Authorization")
+                .doesNotContain("Bearer")
+                .doesNotContain("password")
+                .doesNotContain("client_secret");
         verify(accountRepository, never()).save(any());
     }
 

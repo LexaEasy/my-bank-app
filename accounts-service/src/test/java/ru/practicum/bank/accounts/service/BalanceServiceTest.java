@@ -2,6 +2,9 @@ package ru.practicum.bank.accounts.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import ru.practicum.bank.accounts.dto.BalanceOperationRequest;
 import ru.practicum.bank.accounts.dto.BalanceResponse;
 import ru.practicum.bank.accounts.dto.TransferBalanceRequest;
@@ -18,6 +21,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(OutputCaptureExtension.class)
 class BalanceServiceTest {
 
     private final IdempotencyService idempotencyService = mock(IdempotencyService.class);
@@ -35,7 +39,7 @@ class BalanceServiceTest {
     }
 
     @Test
-    void shouldExecuteDepositThroughIdempotency() {
+    void shouldExecuteDepositThroughIdempotency(CapturedOutput output) {
         var request = operationRequest("ivan", "250.00", "deposit-1");
         when(operationExecutor.deposit(request)).thenReturn(new BalanceResponse(
                 "ivan",
@@ -46,6 +50,16 @@ class BalanceServiceTest {
         var response = balanceService.deposit(request);
 
         assertThat(response.balance()).isEqualByComparingTo(new BigDecimal("1250.00"));
+        assertThat(output)
+                .contains("Balance operation completed")
+                .contains("operationId=deposit-1")
+                .contains("operationType=DEPOSIT")
+                .contains("currency=RUB")
+                .contains("status=success")
+                .doesNotContain("Authorization")
+                .doesNotContain("Bearer")
+                .doesNotContain("password")
+                .doesNotContain("client_secret");
         verify(idempotencyService).execute(
                 eq("deposit-1"),
                 eq("DEPOSIT"),
