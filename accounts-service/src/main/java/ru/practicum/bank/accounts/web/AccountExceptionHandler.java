@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.practicum.bank.accounts.dto.ApiErrorResponse;
 import ru.practicum.bank.accounts.exception.AccountNotFoundException;
+import ru.practicum.bank.accounts.exception.CurrencyMismatchException;
 import ru.practicum.bank.accounts.exception.IdempotencyConflictException;
 import ru.practicum.bank.accounts.exception.InsufficientFundsException;
 import ru.practicum.bank.accounts.exception.InvalidAmountException;
@@ -67,6 +68,13 @@ public class AccountExceptionHandler {
     public ApiErrorResponse handleInsufficientFunds(InsufficientFundsException exception) {
         log.warn("Account request rejected status=unprocessable_entity errorCode=INSUFFICIENT_FUNDS source=accounts-service");
         return new ApiErrorResponse("INSUFFICIENT_FUNDS", exception.getMessage());
+    }
+
+    @ExceptionHandler(CurrencyMismatchException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    public ApiErrorResponse handleCurrencyMismatch(CurrencyMismatchException exception) {
+        log.warn("Account request rejected status=unprocessable_entity errorCode=CURRENCY_MISMATCH source=accounts-service");
+        return new ApiErrorResponse("CURRENCY_MISMATCH", exception.getMessage());
     }
 
     @ExceptionHandler({ObjectOptimisticLockingFailureException.class, OptimisticLockException.class})

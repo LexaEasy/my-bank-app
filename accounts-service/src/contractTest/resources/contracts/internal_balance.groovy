@@ -29,6 +29,32 @@ import org.springframework.cloud.contract.spec.Contract
             }
         },
         Contract.make {
+            name "deposit_internal_balance_currency_mismatch"
+            request {
+                method POST()
+                url "/api/accounts/internal/balance/deposit"
+                headers {
+                    contentType applicationJson()
+                }
+                body(
+                        login: "ivan",
+                        amount: "250.00",
+                        currency: "USD",
+                        operationId: "operation-currency-mismatch"
+                )
+            }
+            response {
+                status UNPROCESSABLE_ENTITY()
+                headers {
+                    contentType applicationJson()
+                }
+                body(
+                        code: "CURRENCY_MISMATCH",
+                        message: "Валюта операции не совпадает с валютой счёта"
+                )
+            }
+        },
+        Contract.make {
             name "withdraw_internal_balance"
             request {
                 method POST()

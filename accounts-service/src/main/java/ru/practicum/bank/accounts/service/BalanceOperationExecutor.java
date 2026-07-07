@@ -10,6 +10,7 @@ import ru.practicum.bank.accounts.dto.BalanceResponse;
 import ru.practicum.bank.accounts.dto.TransferBalanceRequest;
 import ru.practicum.bank.accounts.dto.TransferBalanceResponse;
 import ru.practicum.bank.accounts.exception.AccountNotFoundException;
+import ru.practicum.bank.accounts.exception.CurrencyMismatchException;
 import ru.practicum.bank.accounts.exception.InsufficientFundsException;
 import ru.practicum.bank.accounts.exception.InvalidAmountException;
 import ru.practicum.bank.accounts.exception.InvalidAmountScaleException;
@@ -17,6 +18,7 @@ import ru.practicum.bank.accounts.exception.RecipientNotFoundException;
 import ru.practicum.bank.accounts.exception.SelfTransferForbiddenException;
 import ru.practicum.bank.accounts.model.Account;
 import ru.practicum.bank.accounts.repository.AccountRepository;
+import ru.practicum.bank.common.model.Currency;
 
 import java.math.BigDecimal;
 import java.util.Comparator;
@@ -37,6 +39,7 @@ public class BalanceOperationExecutor {
     public BalanceResponse deposit(BalanceOperationRequest request) {
         validateAmount(request.amount(), request.operationId(), "DEPOSIT", request.currency().name());
         Account account = findAccount(request.login());
+        validateCurrency(account, request.currency(), request.operationId(), "DEPOSIT");
 
         account.setBalance(account.getBalance().add(request.amount()));
 
@@ -47,6 +50,7 @@ public class BalanceOperationExecutor {
     public BalanceResponse withdraw(BalanceOperationRequest request) {
         validateAmount(request.amount(), request.operationId(), "WITHDRAW", request.currency().name());
         Account account = findAccount(request.login());
+        validateCurrency(account, request.currency(), request.operationId(), "WITHDRAW");
 
         withdraw(account, request.amount(), request.operationId(), "WITHDRAW", request.currency().name());
 
@@ -74,6 +78,9 @@ public class BalanceOperationExecutor {
         Account sender = findAccount(request.senderLogin());
         Account recipient = accountRepository.findByLogin(request.recipientLogin())
                 .orElseThrow(() -> new RecipientNotFoundException(request.recipientLogin()));
+
+        validateCurrency(sender, request.currency(), request.operationId(), "TRANSFER");
+        validateCurrency(recipient, request.resolvedRecipientCurrency(), request.operationId(), "TRANSFER");
 
         withdraw(sender, request.amount(), request.operationId(), "TRANSFER", request.currency().name());
         recipient.setBalance(recipient.getBalance().add(request.resolvedRecipientAmount()));
@@ -106,6 +113,18 @@ public class BalanceOperationExecutor {
                     currency
             );
             throw new InvalidAmountScaleException();
+        }
+    }
+
+    private void validateCurrency(Account account, Currency operationCurrency, String operationId, String operationType) {
+        if (account.getCurrency() != operationCurrency) {
+            log.warn(
+                    "Balance operation rejected operationId={} operationType={} currency={} status=rejected errorCode=CURRENCY_MISMATCH source=accounts-service",
+                    operationId,
+                    operationType,
+                    operationCurrency.name()
+            );
+            throw new CurrencyMismatchException();
         }
     }
 

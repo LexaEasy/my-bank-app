@@ -8,6 +8,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import ru.practicum.bank.accounts.dto.BalanceOperationRequest;
 import ru.practicum.bank.accounts.dto.TransferBalanceRequest;
+import ru.practicum.bank.accounts.exception.CurrencyMismatchException;
 import ru.practicum.bank.accounts.exception.InsufficientFundsException;
 import ru.practicum.bank.accounts.exception.InvalidAmountException;
 import ru.practicum.bank.accounts.exception.InvalidAmountScaleException;
@@ -89,8 +90,8 @@ class BalanceOperationExecutorTest {
 
     @Test
     void shouldTransferConvertedRecipientAmount() {
-        var sender = account("ivan", 1L, "1000.00");
-        var recipient = account("petr", 2L, "500.00");
+        var sender = account("ivan", 1L, "1000.00", Currency.USD);
+        var recipient = account("petr", 2L, "500.00", Currency.CNY);
         when(accountRepository.findByLogin("ivan")).thenReturn(Optional.of(sender));
         when(accountRepository.findByLogin("petr")).thenReturn(Optional.of(recipient));
         when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -109,6 +110,74 @@ class BalanceOperationExecutorTest {
         assertThat(sender.getBalance()).isEqualByComparingTo(new BigDecimal("900.00"));
         assertThat(recipient.getBalance()).isEqualByComparingTo(new BigDecimal("1241.94"));
         assertThat(response.currency()).isEqualTo("USD");
+    }
+
+    @Test
+    void shouldRejectDepositWhenCurrencyDoesNotMatchAccount() {
+        var account = account("ivan", 1L, "1000.00");
+        when(accountRepository.findByLogin("ivan")).thenReturn(Optional.of(account));
+
+        assertThatThrownBy(() -> executor.deposit(operationRequest("ivan", "250.00", Currency.USD)))
+                .isInstanceOf(CurrencyMismatchException.class);
+
+        verify(accountRepository, never()).save(any());
+        assertThat(account.getBalance()).isEqualByComparingTo(new BigDecimal("1000.00"));
+    }
+
+    @Test
+    void shouldRejectWithdrawWhenCurrencyDoesNotMatchAccount() {
+        var account = account("ivan", 1L, "1000.00");
+        when(accountRepository.findByLogin("ivan")).thenReturn(Optional.of(account));
+
+        assertThatThrownBy(() -> executor.withdraw(operationRequest("ivan", "250.00", Currency.USD)))
+                .isInstanceOf(CurrencyMismatchException.class);
+
+        verify(accountRepository, never()).save(any());
+        assertThat(account.getBalance()).isEqualByComparingTo(new BigDecimal("1000.00"));
+    }
+
+    @Test
+    void shouldRejectTransferWhenSenderCurrencyDoesNotMatchAccount() {
+        var sender = account("ivan", 1L, "1000.00", Currency.RUB);
+        var recipient = account("petr", 2L, "500.00", Currency.CNY);
+        when(accountRepository.findByLogin("ivan")).thenReturn(Optional.of(sender));
+        when(accountRepository.findByLogin("petr")).thenReturn(Optional.of(recipient));
+
+        assertThatThrownBy(() -> executor.transfer(new TransferBalanceRequest(
+                "ivan",
+                "petr",
+                new BigDecimal("100.00"),
+                Currency.USD,
+                new BigDecimal("741.94"),
+                Currency.CNY,
+                "operation-1"
+        ))).isInstanceOf(CurrencyMismatchException.class);
+
+        verify(accountRepository, never()).save(any());
+        assertThat(sender.getBalance()).isEqualByComparingTo(new BigDecimal("1000.00"));
+        assertThat(recipient.getBalance()).isEqualByComparingTo(new BigDecimal("500.00"));
+    }
+
+    @Test
+    void shouldRejectTransferWhenRecipientCurrencyDoesNotMatchAccount() {
+        var sender = account("ivan", 1L, "1000.00", Currency.USD);
+        var recipient = account("petr", 2L, "500.00", Currency.RUB);
+        when(accountRepository.findByLogin("ivan")).thenReturn(Optional.of(sender));
+        when(accountRepository.findByLogin("petr")).thenReturn(Optional.of(recipient));
+
+        assertThatThrownBy(() -> executor.transfer(new TransferBalanceRequest(
+                "ivan",
+                "petr",
+                new BigDecimal("100.00"),
+                Currency.USD,
+                new BigDecimal("741.94"),
+                Currency.CNY,
+                "operation-1"
+        ))).isInstanceOf(CurrencyMismatchException.class);
+
+        verify(accountRepository, never()).save(any());
+        assertThat(sender.getBalance()).isEqualByComparingTo(new BigDecimal("1000.00"));
+        assertThat(recipient.getBalance()).isEqualByComparingTo(new BigDecimal("500.00"));
     }
 
     @Test
@@ -183,7 +252,11 @@ class BalanceOperationExecutorTest {
     }
 
     private BalanceOperationRequest operationRequest(String login, String amount) {
-        return new BalanceOperationRequest(login, new BigDecimal(amount), Currency.RUB, "operation-1");
+        return operationRequest(login, amount, Currency.RUB);
+    }
+
+    private BalanceOperationRequest operationRequest(String login, String amount, Currency currency) {
+        return new BalanceOperationRequest(login, new BigDecimal(amount), currency, "operation-1");
     }
 
     private TransferBalanceRequest transferRequest(String senderLogin, String recipientLogin, String amount) {
@@ -197,12 +270,16 @@ class BalanceOperationExecutorTest {
     }
 
     private Account account(String login, Long id, String balance) {
+        return account(login, id, balance, Currency.RUB);
+    }
+
+    private Account account(String login, Long id, String balance, Currency currency) {
         var account = new Account(
                 login,
                 "Account " + login,
                 LocalDate.of(1990, 1, 15),
                 new BigDecimal(balance),
-                Currency.RUB
+                currency
         );
         ReflectionTestUtils.setField(account, "id", id);
         return account;
