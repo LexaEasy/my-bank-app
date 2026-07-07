@@ -2,6 +2,7 @@ package ru.practicum.bank.common.notification;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.util.StringUtils;
 
 @ConfigurationProperties(prefix = "bank.kafka")
 public class NotificationTopicsProperties implements InitializingBean {
@@ -23,6 +24,12 @@ public class NotificationTopicsProperties implements InitializingBean {
     }
 
     void validate() {
+        if (!StringUtils.hasText(notificationsTopic)) {
+            throw new IllegalStateException("bank.kafka.notifications-topic must not be blank");
+        }
+        if (!StringUtils.hasText(notificationsDltTopic)) {
+            throw new IllegalStateException("bank.kafka.notifications-dlt-topic must not be blank");
+        }
         if (notificationsPartitions < 1) {
             throw new IllegalStateException("bank.kafka.notifications-partitions must be positive");
         }

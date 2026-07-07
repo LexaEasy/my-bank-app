@@ -69,6 +69,32 @@ class NotificationTopicsConfigurationTest {
                         ));
     }
 
+    @Test
+    void shouldFailStartupWhenNotificationsTopicIsBlank() {
+        new ApplicationContextRunner()
+                .withUserConfiguration(NotificationTopicsConfiguration.class)
+                .withPropertyValues(
+                        "bank.kafka.notifications-topic=   ",
+                        "bank.kafka.notifications-dlt-topic=bank.notifications.dlt"
+                )
+                .run(context -> assertThat(context).hasFailed()
+                        .getFailure()
+                        .hasMessageContaining("bank.kafka.notifications-topic must not be blank"));
+    }
+
+    @Test
+    void shouldFailStartupWhenNotificationsDltTopicIsBlank() {
+        new ApplicationContextRunner()
+                .withUserConfiguration(NotificationTopicsConfiguration.class)
+                .withPropertyValues(
+                        "bank.kafka.notifications-topic=bank.notifications",
+                        "bank.kafka.notifications-dlt-topic=   "
+                )
+                .run(context -> assertThat(context).hasFailed()
+                        .getFailure()
+                        .hasMessageContaining("bank.kafka.notifications-dlt-topic must not be blank"));
+    }
+
     private NotificationTopicsProperties defaultProperties() {
         var properties = new NotificationTopicsProperties();
         properties.setNotificationsTopic("bank.notifications");
