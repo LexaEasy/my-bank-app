@@ -90,9 +90,18 @@ def runUmbrellaPipeline() {
 
     stage('Helm lint and template') {
         runCommand('helm dependency update helm/bank')
+        runCommand('helm lint helm/charts/zipkin')
+        runCommand('helm lint helm/charts/elasticsearch')
+        runCommand('helm lint helm/charts/logstash')
+        runCommand('helm lint helm/charts/kibana')
         runCommand('helm lint helm/bank -f helm/bank/values-test.yaml')
         runCommand("helm template bank helm/bank --namespace test -f helm/bank/values-test.yaml --set global.imageRegistry=${params.IMAGE_REGISTRY} --set global.imageTag=${imageTag}")
+        runCommand('bun test scripts/bun/helm/observability-render.test.ts')
         runCommand('promtool test rules helm/charts/spring-service/tests/kafka-publication-alert.test.yaml')
+        runCommand(
+            'docker run --rm --entrypoint=promtool -v \"$PWD/helm/bank/files/prometheus-rules:/rules:ro\" prom/prometheus:v3.12.0 test rules /rules/bank-alerts.test.yaml',
+            'docker run --rm --entrypoint=promtool -v \"%CD%\\helm\\bank\\files\\prometheus-rules:/rules:ro\" prom/prometheus:v3.12.0 test rules /rules/bank-alerts.test.yaml'
+        )
     }
 
     stage('Deploy test') {

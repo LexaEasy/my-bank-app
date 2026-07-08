@@ -4,6 +4,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -30,6 +31,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -45,6 +47,7 @@ import static ru.practicum.bank.common.notification.NotificationTopicsProperties
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@Timeout(value = 60, unit = TimeUnit.SECONDS)
 class CashNotificationKafkaIntegrationTest {
 
     static final String TOPIC = "bank.notifications";
@@ -85,7 +88,7 @@ class CashNotificationKafkaIntegrationTest {
 
     @Test
     void shouldNotPublishNotificationForInvalidDeposit() {
-        try (var consumer = consumer()) {
+        try (var consumer = consumer("latest")) {
             assertThatThrownBy(() -> cashService.deposit("ivan", request("0.00"), UUID.randomUUID()))
                     .isInstanceOf(InvalidAmountException.class);
 
@@ -94,12 +97,16 @@ class CashNotificationKafkaIntegrationTest {
     }
 
     private Consumer<String, NotificationEvent> consumer() {
+        return consumer("earliest");
+    }
+
+    private Consumer<String, NotificationEvent> consumer(String autoOffsetReset) {
         var properties = KafkaTestUtils.consumerProps(
                 "cash-notification-" + UUID.randomUUID(),
                 "true",
                 embeddedKafka
         );
-        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset);
         var consumer = new DefaultKafkaConsumerFactory<>(
                 properties,
                 new StringDeserializer(),

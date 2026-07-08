@@ -12,13 +12,11 @@ public class NotificationService {
 
     public void notify(NotificationEvent event) {
         log.info(
-                "Notification accepted: eventId={}, operationId={}, source={}, type={}, recipientLogin={}, message={}",
+                "Notification accepted: eventId={}, operationId={}, source={}, type={}",
                 event.eventId(),
                 event.operationId(),
                 event.source(),
-                event.type(),
-                event.recipientLogin(),
-                event.message()
+                event.type()
         );
     }
 

@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.bank.accounts.dto.BalanceOperationRequest;
 import ru.practicum.bank.accounts.dto.BalanceResponse;
 import ru.practicum.bank.accounts.dto.TransferBalanceResponse;
+import ru.practicum.bank.accounts.exception.CurrencyMismatchException;
 import ru.practicum.bank.accounts.exception.IdempotencyConflictException;
 import ru.practicum.bank.accounts.exception.InsufficientFundsException;
 import ru.practicum.bank.accounts.exception.InvalidAmountScaleException;
@@ -189,6 +190,17 @@ class InternalBalanceControllerTest {
                         .content(operationRequest()))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("INSUFFICIENT_FUNDS"));
+    }
+
+    @Test
+    void shouldReturnUnprocessableEntityWhenCurrencyDoesNotMatch() throws Exception {
+        when(balanceService.deposit(any())).thenThrow(new CurrencyMismatchException());
+
+        mockMvc.perform(post("/api/accounts/internal/balance/deposit")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(operationRequest("USD")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("CURRENCY_MISMATCH"));
     }
 
     @Test

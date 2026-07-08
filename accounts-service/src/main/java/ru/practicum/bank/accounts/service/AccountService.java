@@ -1,6 +1,8 @@
 package ru.practicum.bank.accounts.service;
 
 import org.springframework.context.ApplicationEventPublisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.bank.accounts.dto.AccountResponse;
@@ -22,6 +24,8 @@ import java.util.UUID;
 @Service
 public class AccountService {
 
+    private static final Logger log = LoggerFactory.getLogger(AccountService.class);
+
     private final AccountRepository accountRepository;
     private final AccountMapper accountMapper;
     private final Clock clock;
@@ -41,7 +45,9 @@ public class AccountService {
 
     @Transactional(readOnly = true)
     public AccountResponse getCurrentAccount(String login) {
-        return accountMapper.toResponse(findAccount(login));
+        AccountResponse response = accountMapper.toResponse(findAccount(login));
+        log.info("Account profile loaded status=success source=accounts-service");
+        return response;
     }
 
     @Transactional
@@ -60,6 +66,7 @@ public class AccountService {
                 Instant.now(clock)
         ));
 
+        log.info("Account profile updated status=success source=accounts-service");
         return accountMapper.toResponse(savedAccount);
     }
 

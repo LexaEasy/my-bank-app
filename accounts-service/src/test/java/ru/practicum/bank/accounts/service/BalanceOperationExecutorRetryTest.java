@@ -1,6 +1,7 @@
 package ru.practicum.bank.accounts.service;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
@@ -27,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "bank.balance.retry.backoff-ms=0"
 })
 @DirtiesContext
+@Timeout(value = 30, unit = TimeUnit.SECONDS)
 class BalanceOperationExecutorRetryTest {
 
     @Autowired

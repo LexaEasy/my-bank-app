@@ -14,11 +14,13 @@ import ru.practicum.bank.accounts.dto.BalanceResponse;
 import ru.practicum.bank.accounts.dto.RecipientResponse;
 import ru.practicum.bank.accounts.dto.TransferBalanceResponse;
 import ru.practicum.bank.accounts.dto.UpdateAccountRequest;
+import ru.practicum.bank.accounts.exception.CurrencyMismatchException;
 import ru.practicum.bank.accounts.service.AccountService;
 import ru.practicum.bank.accounts.service.BalanceService;
 import ru.practicum.bank.accounts.web.AccountController;
 import ru.practicum.bank.accounts.web.AccountExceptionHandler;
 import ru.practicum.bank.accounts.web.InternalBalanceController;
+import ru.practicum.bank.common.model.Currency;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -26,6 +28,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -50,6 +53,8 @@ public abstract class AccountsContractBase {
                 new BigDecimal("1250.00"),
                 "RUB"
         ));
+        when(balanceService.deposit(argThat(request -> request != null && request.currency() == Currency.USD)))
+                .thenThrow(new CurrencyMismatchException());
         when(balanceService.withdraw(any())).thenReturn(new BalanceResponse(
                 "ivan",
                 new BigDecimal("900.00"),

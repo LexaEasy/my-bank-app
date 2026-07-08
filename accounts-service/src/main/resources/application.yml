@@ -24,6 +24,8 @@ spring:
         "[delivery.timeout.ms]": 120000
         "[request.timeout.ms]": 30000
         "[max.in.flight.requests.per.connection]": 5
+    template:
+      observation-enabled: true
   security:
     oauth2:
       resourceserver:
@@ -44,16 +46,49 @@ bank:
     notifications-replication-factor: ${BANK_KAFKA_NOTIFICATIONS_REPLICATION_FACTOR:1}
     notifications-topic: ${BANK_KAFKA_NOTIFICATIONS_TOPIC:bank.notifications}
 
+jdbc:
+  datasource-proxy:
+    enabled: true
+    include-parameter-values: false
+    query:
+      enable-logging: false
+  includes:
+    - CONNECTION
+    - QUERY
+  resultset-operations:
+    enabled: false
+
 management:
   server:
     port: ${MANAGEMENT_SERVER_PORT:8091}
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState
   metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
     tags:
       application: ${spring.application.name}
+      namespace: ${MANAGEMENT_METRICS_TAGS_NAMESPACE:dev}
+  tracing:
+    propagation:
+      type: ${MANAGEMENT_TRACING_PROPAGATION_TYPE:W3C}
   endpoints:
     web:
       exposure:
         include: health,info,prometheus
+  zipkin:
+    tracing:
+      endpoint: ${MANAGEMENT_ZIPKIN_TRACING_ENDPOINT:http://localhost:9411/api/v2/spans}
+      export:
+        enabled: ${MANAGEMENT_ZIPKIN_TRACING_EXPORT_ENABLED:true}
 
 server:
   port: 8081

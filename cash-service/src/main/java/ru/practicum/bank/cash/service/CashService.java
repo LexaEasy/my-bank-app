@@ -1,5 +1,7 @@
 package ru.practicum.bank.cash.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ru.practicum.bank.cash.client.AccountsBalanceOperationRequest;
 import ru.practicum.bank.cash.client.AccountsClient;
@@ -27,6 +29,8 @@ import java.util.UUID;
 @Service
 public class CashService {
 
+    private static final Logger log = LoggerFactory.getLogger(CashService.class);
+
     private final AccountsClient accountsClient;
     private final BlockerClient blockerClient;
     private final ExchangeClient exchangeClient;
@@ -48,28 +52,50 @@ public class CashService {
     }
 
     public CashOperationResponse deposit(String login, CashOperationRequest request, UUID operationId) {
-        validateAmount(request.amount());
+        validateAmount(request.amount(), operationId, OperationType.DEPOSIT, request.currency());
         checkOperation(login, request, operationId, OperationType.DEPOSIT);
         var balance = accountsClient.deposit(toAccountsRequest(login, request, operationId));
         publishNotification(login, request, operationId, NotificationType.CASH_DEPOSITED);
+        log.info(
+                "Cash operation completed operationId={} operationType=DEPOSIT currency={} status=success source=cash-service targetService=accounts-service",
+                operationId,
+                request.currency()
+        );
 
         return new CashOperationResponse(balance.balance(), balance.currency(), "Счёт пополнен");
     }
 
     public CashOperationResponse withdraw(String login, CashOperationRequest request, UUID operationId) {
-        validateAmount(request.amount());
+        validateAmount(request.amount(), operationId, OperationType.WITHDRAW, request.currency());
         checkOperation(login, request, operationId, OperationType.WITHDRAW);
         var balance = accountsClient.withdraw(toAccountsRequest(login, request, operationId));
         publishNotification(login, request, operationId, NotificationType.CASH_WITHDRAWN);
+        log.info(
+                "Cash operation completed operationId={} operationType=WITHDRAW currency={} status=success source=cash-service targetService=accounts-service",
+                operationId,
+                request.currency()
+        );
 
         return new CashOperationResponse(balance.balance(), balance.currency(), "Деньги сняты со счёта");
     }
 
-    private void validateAmount(BigDecimal amount) {
+    private void validateAmount(BigDecimal amount, UUID operationId, OperationType operationType, Currency currency) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            log.warn(
+                    "Cash operation rejected operationId={} operationType={} currency={} status=rejected errorCode=INVALID_AMOUNT source=cash-service",
+                    operationId,
+                    operationType,
+                    currency
+            );
             throw new InvalidAmountException();
         }
         if (amount.scale() > 2) {
+            log.warn(
+                    "Cash operation rejected operationId={} operationType={} currency={} status=rejected errorCode=INVALID_AMOUNT_SCALE source=cash-service",
+                    operationId,
+                    operationType,
+                    currency
+            );
             throw new InvalidAmountScaleException();
         }
     }
@@ -94,6 +120,14 @@ public class CashService {
             OperationType operationType
     ) {
         var normalizedAmount = normalizeForBlocker(request);
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "Cash blocker check prepared operationId={} operationType={} currency={} source=cash-service targetService=blocker-service",
+                    operationId,
+                    operationType,
+                    request.currency()
+            );
+        }
         var response = blockerClient.check(new OperationCheckRequest(
                 operationId.toString(),
                 operationType,
@@ -106,6 +140,12 @@ public class CashService {
                 Currency.RUB
         ));
         if (!response.allowed()) {
+            log.warn(
+                    "Cash operation rejected operationId={} operationType={} currency={} status=blocked errorCode=OPERATION_BLOCKED source=cash-service targetService=blocker-service",
+                    operationId,
+                    operationType,
+                    request.currency()
+            );
             throw new OperationBlockedException(response.reason());
         }
     }
@@ -115,6 +155,12 @@ public class CashService {
             return request.amount();
         }
 
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "Cash amount normalization prepared operationType=EXCHANGE currency={} targetCurrency=RUB source=cash-service targetService=exchange-service",
+                    request.currency()
+            );
+        }
         ConversionResponse conversion = exchangeClient.convert(request.currency(), Currency.RUB, request.amount());
         return conversion.targetAmount();
     }

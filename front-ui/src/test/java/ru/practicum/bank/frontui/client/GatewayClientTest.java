@@ -2,11 +2,14 @@ package ru.practicum.bank.frontui.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import org.junit.jupiter.api.extension.ExtendWith;
 import ru.practicum.bank.common.client.ResilientClientExecutor;
 import ru.practicum.bank.common.client.ResilientClientFactory;
 import ru.practicum.bank.common.model.Currency;
@@ -24,6 +27,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+@ExtendWith(OutputCaptureExtension.class)
 class GatewayClientTest {
 
     private static final String IDEMPOTENCY_KEY = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
@@ -155,7 +159,7 @@ class GatewayClientTest {
     }
 
     @Test
-    void shouldReturnCircuitBreakerFallbackMessage() {
+    void shouldReturnCircuitBreakerFallbackMessage(CapturedOutput output) {
         var restClientBuilder = RestClient.builder();
         var client = new GatewayClient(
                 restClientBuilder,
@@ -170,5 +174,13 @@ class GatewayClientTest {
         assertThatThrownBy(() -> client.withdraw("user-token", new CashForm(new BigDecimal("100.00"), "RUB")))
                 .isInstanceOf(GatewayClientException.class)
                 .hasMessage("Банковские сервисы временно недоступны");
+        assertThat(output)
+                .contains("Gateway client retries exhausted")
+                .contains("errorCategory=downstream_unavailable")
+                .doesNotContain("user-token")
+                .doesNotContain("Authorization")
+                .doesNotContain("Bearer")
+                .doesNotContain("password")
+                .doesNotContain("client_secret");
     }
 }

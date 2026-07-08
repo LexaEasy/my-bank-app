@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kibana
+description: Internal Kibana chart for bank logs
+type: application
+version: 0.1.0
+appVersion: "9.4.3"

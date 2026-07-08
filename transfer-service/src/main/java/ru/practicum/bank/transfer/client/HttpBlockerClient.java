@@ -1,5 +1,7 @@
 package ru.practicum.bank.transfer.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -12,6 +14,8 @@ import ru.practicum.bank.common.dto.blocker.OperationCheckResponse;
 
 @Component
 public class HttpBlockerClient implements BlockerClient {
+
+    private static final Logger log = LoggerFactory.getLogger(HttpBlockerClient.class);
 
     private final RestClient restClient;
     private final ServiceTokenProvider serviceTokenProvider;
@@ -68,6 +72,14 @@ public class HttpBlockerClient implements BlockerClient {
 
     private OperationCheckResponse checkWithoutCircuitBreaker(OperationCheckRequest request) {
         try {
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "Blocker downstream request prepared operationId={} operationType={} currency={} source=transfer-service targetService=blocker-service",
+                        request.operationId(),
+                        request.operationType(),
+                        request.currency()
+                );
+            }
             var response = restClient.post()
                     .uri("/api/blocker/check")
                     .headers(headers -> headers.setBearerAuth(serviceTokenProvider.getAccessToken()))
@@ -79,6 +91,13 @@ public class HttpBlockerClient implements BlockerClient {
             }
             return response;
         } catch (RestClientException exception) {
+            log.error(
+                    "Blocker downstream request failed operationId={} operationType={} currency={} status=error errorCategory=downstream_unavailable errorType={} source=transfer-service targetService=blocker-service",
+                    request.operationId(),
+                    request.operationType(),
+                    request.currency(),
+                    exception.getClass().getSimpleName()
+            );
             throw new BlockerClientException("Blocker service request failed", exception);
         }
     }
@@ -87,6 +106,10 @@ public class HttpBlockerClient implements BlockerClient {
         if (exception instanceof BlockerClientException blockerClientException) {
             throw blockerClientException;
         }
+        log.error(
+                "Blocker downstream retries exhausted status=error errorCategory=downstream_unavailable errorType={} source=transfer-service targetService=blocker-service",
+                exception.getClass().getSimpleName()
+        );
         throw new BlockerClientException("Сервис проверки операций временно недоступен", exception);
     }
 }

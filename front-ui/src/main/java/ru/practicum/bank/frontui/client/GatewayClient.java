@@ -1,6 +1,8 @@
 package ru.practicum.bank.frontui.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
@@ -29,6 +31,8 @@ import java.util.List;
 
 @Component
 public class GatewayClient {
+
+    private static final Logger log = LoggerFactory.getLogger(GatewayClient.class);
 
     private final RestClient accountsClient;
     private final RestClient cashClient;
@@ -81,6 +85,9 @@ public class GatewayClient {
 
     private TransferResponse transferWithoutCircuitBreaker(String accessToken, TransferForm form) {
         try {
+            if (log.isDebugEnabled()) {
+                log.debug("Gateway client request prepared operationType=TRANSFER source=front-ui targetService=bank-gateway");
+            }
             return transferClient.post()
                     .uri("/api/transfers")
                     .headers(headers -> {
@@ -97,6 +104,10 @@ public class GatewayClient {
                     .onStatus(HttpStatusCode::isError, (request, response) -> handleError(response))
                     .body(TransferResponse.class);
         } catch (RestClientException exception) {
+            log.error(
+                    "Gateway client request failed operationType=TRANSFER status=error errorCategory=downstream_unavailable errorType={} source=front-ui targetService=bank-gateway",
+                    exception.getClass().getSimpleName()
+            );
             throw new GatewayClientException("Gateway request failed", exception);
         }
     }
@@ -111,6 +122,9 @@ public class GatewayClient {
 
     private List<ExchangeRateResponse> getExchangeRatesWithoutCircuitBreaker(String accessToken) {
         try {
+            if (log.isDebugEnabled()) {
+                log.debug("Gateway client request prepared operationType=LOAD_EXCHANGE_RATES source=front-ui targetService=bank-gateway");
+            }
             ExchangeRateResponse[] rates = exchangeClient.get()
                     .uri("/api/exchange/rates")
                     .headers(headers -> headers.setBearerAuth(accessToken))
@@ -119,12 +133,19 @@ public class GatewayClient {
                     .body(ExchangeRateResponse[].class);
             return rates == null ? List.of() : Arrays.asList(rates);
         } catch (RestClientException exception) {
+            log.error(
+                    "Gateway client request failed operationType=LOAD_EXCHANGE_RATES status=error errorCategory=downstream_unavailable errorType={} source=front-ui targetService=bank-gateway",
+                    exception.getClass().getSimpleName()
+            );
             throw new GatewayClientException("Gateway request failed", exception);
         }
     }
 
     private AccountResponse getAccountWithoutCircuitBreaker(String accessToken) {
         try {
+            if (log.isDebugEnabled()) {
+                log.debug("Gateway client request prepared operationType=LOAD_ACCOUNT source=front-ui targetService=bank-gateway");
+            }
             return accountsClient.get()
                     .uri("/api/accounts/me")
                     .headers(headers -> headers.setBearerAuth(accessToken))
@@ -132,6 +153,10 @@ public class GatewayClient {
                     .onStatus(HttpStatusCode::isError, (request, response) -> handleError(response))
                     .body(AccountResponse.class);
         } catch (RestClientException exception) {
+            log.error(
+                    "Gateway client request failed operationType=LOAD_ACCOUNT status=error errorCategory=downstream_unavailable errorType={} source=front-ui targetService=bank-gateway",
+                    exception.getClass().getSimpleName()
+            );
             throw new GatewayClientException("Gateway request failed", exception);
         }
     }
@@ -142,6 +167,9 @@ public class GatewayClient {
 
     private AccountResponse updateAccountWithoutCircuitBreaker(String accessToken, AccountForm form) {
         try {
+            if (log.isDebugEnabled()) {
+                log.debug("Gateway client request prepared operationType=UPDATE_PROFILE source=front-ui targetService=bank-gateway");
+            }
             return accountsClient.put()
                     .uri("/api/accounts/me")
                     .headers(headers -> headers.setBearerAuth(accessToken))
@@ -150,6 +178,10 @@ public class GatewayClient {
                     .onStatus(HttpStatusCode::isError, (request, response) -> handleError(response))
                     .body(AccountResponse.class);
         } catch (RestClientException exception) {
+            log.error(
+                    "Gateway client request failed operationType=UPDATE_PROFILE status=error errorCategory=downstream_unavailable errorType={} source=front-ui targetService=bank-gateway",
+                    exception.getClass().getSimpleName()
+            );
             throw new GatewayClientException("Gateway request failed", exception);
         }
     }
@@ -160,6 +192,9 @@ public class GatewayClient {
 
     private List<RecipientResponse> getRecipientsWithoutCircuitBreaker(String accessToken) {
         try {
+            if (log.isDebugEnabled()) {
+                log.debug("Gateway client request prepared operationType=LOAD_RECIPIENTS source=front-ui targetService=bank-gateway");
+            }
             RecipientResponse[] recipients = accountsClient.get()
                     .uri("/api/accounts/recipients")
                     .headers(headers -> headers.setBearerAuth(accessToken))
@@ -168,6 +203,10 @@ public class GatewayClient {
                     .body(RecipientResponse[].class);
             return recipients == null ? List.of() : Arrays.asList(recipients);
         } catch (RestClientException exception) {
+            log.error(
+                    "Gateway client request failed operationType=LOAD_RECIPIENTS status=error errorCategory=downstream_unavailable errorType={} source=front-ui targetService=bank-gateway",
+                    exception.getClass().getSimpleName()
+            );
             throw new GatewayClientException("Gateway request failed", exception);
         }
     }
@@ -186,6 +225,12 @@ public class GatewayClient {
 
     private CashOperationResponse cashOperationWithoutCircuitBreaker(String accessToken, String uri, CashForm form) {
         try {
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "Gateway client request prepared operationType={} source=front-ui targetService=bank-gateway",
+                        cashOperationType(uri)
+                );
+            }
             return cashClient.post()
                     .uri(uri)
                     .headers(headers -> {
@@ -197,6 +242,11 @@ public class GatewayClient {
                     .onStatus(HttpStatusCode::isError, (request, response) -> handleError(response))
                     .body(CashOperationResponse.class);
         } catch (RestClientException exception) {
+            log.error(
+                    "Gateway client request failed operationType={} status=error errorCategory=downstream_unavailable errorType={} source=front-ui targetService=bank-gateway",
+                    cashOperationType(uri),
+                    exception.getClass().getSimpleName()
+            );
             throw new GatewayClientException("Gateway request failed", exception);
         }
     }
@@ -214,6 +264,10 @@ public class GatewayClient {
         if (exception instanceof GatewayClientException gatewayClientException) {
             throw gatewayClientException;
         }
+        log.error(
+                "Gateway client retries exhausted status=error errorCategory=downstream_unavailable errorType={} source=front-ui targetService=bank-gateway",
+                exception.getClass().getSimpleName()
+        );
         throw new GatewayClientException("Банковские сервисы временно недоступны", exception);
     }
 
@@ -239,6 +293,10 @@ public class GatewayClient {
             // Fall back to the HTTP status when Gateway does not return the expected error body.
         }
         return null;
+    }
+
+    private String cashOperationType(String uri) {
+        return uri.endsWith("/deposit") ? "DEPOSIT" : "WITHDRAW";
     }
 
     @FunctionalInterface

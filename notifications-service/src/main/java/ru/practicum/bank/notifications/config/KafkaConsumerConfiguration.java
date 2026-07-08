@@ -1,10 +1,13 @@
 package ru.practicum.bank.notifications.config;
 
 import jakarta.validation.ConstraintViolationException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,6 +16,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.DelegatingByTypeSerializer;
 import org.springframework.kafka.support.serializer.DeserializationException;
@@ -20,6 +24,7 @@ import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.util.backoff.FixedBackOff;
 import ru.practicum.bank.common.notification.NotificationEvent;
 import ru.practicum.bank.common.notification.NotificationTopicsConfiguration;
+import ru.practicum.bank.notifications.metrics.NotificationDeliveryFailureRecoverer;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -57,7 +62,9 @@ public class KafkaConsumerConfiguration {
 
     @Bean
     KafkaTemplate<Object, Object> dltKafkaTemplate(ProducerFactory<Object, Object> dltProducerFactory) {
-        return new KafkaTemplate<>(dltProducerFactory);
+        var kafkaTemplate = new KafkaTemplate<>(dltProducerFactory);
+        kafkaTemplate.setObservationEnabled(true);
+        return kafkaTemplate;
     }
 
     @Bean
@@ -74,7 +81,18 @@ public class KafkaConsumerConfiguration {
     }
 
     @Bean
-    DefaultErrorHandler kafkaErrorHandler(DeadLetterPublishingRecoverer recoverer) {
+    ConsumerRecordRecoverer notificationDeliveryFailureRecoverer(
+            DeadLetterPublishingRecoverer recoverer,
+            MeterRegistry meterRegistry,
+            ObjectMapper objectMapper
+    ) {
+        return new NotificationDeliveryFailureRecoverer(recoverer, meterRegistry, objectMapper);
+    }
+
+    @Bean
+    DefaultErrorHandler kafkaErrorHandler(
+            @Qualifier("notificationDeliveryFailureRecoverer") ConsumerRecordRecoverer recoverer
+    ) {
         var errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(1_000L, 2L));
         errorHandler.addNotRetryableExceptions(
                 DeserializationException.class,

@@ -325,11 +325,9 @@ docker build -t my-bank-accounts-service:local accounts-service
 
 Для проверки Gateway API в локальном Docker Desktop-кластере заранее должны быть установлены Gateway API CRD и совместимый контроллер, создающий `GatewayClass nginx`.
 
-Для ресурсов `ServiceMonitor` и `PrometheusRule` также должны быть заранее
-установлены CRD Prometheus Operator:
-`servicemonitors.monitoring.coreos.com` и
-`prometheusrules.monitoring.coreos.com`. Helm chart не устанавливает
-Prometheus Operator и полный monitoring stack.
+Umbrella chart устанавливает Prometheus Operator, Prometheus, Alertmanager,
+Grafana, Zipkin и внутренний Elastic Stack. Отдельно устанавливать CRD
+`ServiceMonitor` и `PrometheusRule` не требуется.
 
 Команды, которые использовались для локальной проверки:
 
@@ -346,6 +344,8 @@ kubectl get gatewayclass nginx
 - `keycloak-credentials` с ключами `admin-username`, `admin-password`.
 - `keycloak-realm` с ключом `bank-realm.json`, созданный из локально
   расшифрованного SOPS-файла.
+- `grafana-admin-credentials` с ключами `admin-user`, `admin-password`,
+  созданный из локального SOPS-зашифрованного файла.
 
 Значения секретов не хранятся в Git. Создание или обновление realm Secret:
 
@@ -484,6 +484,29 @@ promtool test rules helm/charts/spring-service/tests/kafka-publication-alert.tes
 Transactional Outbox, CDC и durable retry остаются отдельным архитектурным
 backlog и не входят в Sprint 11.
 
+## Runbook алертов Sprint 12
+
+### Bank HTTP 5xx ratio high
+
+Проверить приложение из label `application`, последние HTTP 5xx и связанные
+логи/трейсы. Сопоставить рост ошибок с недоступностью зависимостей.
+
+### Bank HTTP p95 latency high
+
+Проверить медленные URI, загрузку JVM и внешние HTTP/JDBC-вызовы приложения.
+
+### Bank withdrawal failures high
+
+Проверить причины отказов снятия и исключить массовые невалидные запросы.
+
+### Bank transfer failures high
+
+Проверить причины отказов переводов и доступность Accounts, Exchange и Blocker.
+
+### Bank notification delivery failed
+
+Проверить DLT, consumer lag и ошибку окончательной обработки Notifications.
+
 ## Jenkins CI/CD
 
 В репозитории есть root `Jenkinsfile` для umbrella pipeline и Jenkinsfile рядом с каждым микросервисом. Pipeline покрывает validate, unit/integration/contract tests, `clean bootJar` и Helm lint/template. Docker build, image push и deploy отключены по умолчанию и выполняются только при явном включении соответствующих параметров.
@@ -503,6 +526,63 @@ backlog и не входят в Sprint 11.
 - `DEPLOY_PROD` - после ручного подтверждения выполнить deploy в namespace `prod`.
 
 Параметры сервисных pipeline аналогичны, но управляют одним образом и одним service chart. Значения registry credentials, kubeconfig и Kubernetes Secret не хранятся в Jenkinsfile.
+
+## Наблюдаемость Sprint 12
+
+Конфигурация предназначена только для локального учебного `dev`-окружения.
+Перед развёртыванием Docker Desktop Kubernetes должен иметь не менее 6 CPU,
+12 GiB RAM и 20 GiB свободного диска.
+
+Собрать приложения и проверить chart:
+
+```powershell
+.\gradlew.bat --no-daemon --console=plain clean bootJar
+docker compose build
+helm dependency update helm/bank
+helm lint helm/bank -f helm/bank/values-dev.yaml
+bun test scripts/bun/helm/observability-render.test.ts
+```
+
+Credentials создаются только через локальный SOPS + age workflow. Перед
+установкой должен существовать Secret `grafana-admin-credentials` с ключами
+`admin-user` и `admin-password`. Пароль нельзя передавать через Helm values,
+командную строку или сохранять в README.
+
+После подготовки images и Secrets установить release:
+
+```powershell
+helm upgrade --install bank helm/bank --namespace dev --create-namespace -f helm/bank/values-dev.yaml
+kubectl wait --for=condition=Ready pods --all -n dev --timeout=900s
+helm test bank --namespace dev --logs
+```
+
+Интерфейсы доступны только через port-forward:
+
+```powershell
+kubectl port-forward -n dev service/zipkin 9411:9411
+kubectl port-forward -n dev service/grafana 3000:80
+kubectl port-forward -n dev service/kibana 5601:5601
+kubectl port-forward -n dev service/prometheus-operated 9090:9090
+```
+
+Для поиска trace выполнить банковскую операцию, открыть
+`http://localhost:9411`, выбрать имя приложения и найти цепочку HTTP, Kafka и
+JDBC spans. В Grafana `http://localhost:3000` проверить dashboards `Bank HTTP
+Overview`, `Bank JVM Overview` и `Bank Business Failures`.
+
+Логи искать в Kibana `http://localhost:5601` через автоматически созданный data
+view `bank-logs`. При отсутствии данных проверить Logstash API, индекс
+`bank-logs-*`, TCP endpoint `logstash:5000` и доступность Elasticsearch.
+
+Alerts диагностируются через Prometheus `http://localhost:9090/alerts`.
+Генерировать тестовые ошибки следует только контролируемыми запросами:
+несколько HTTP 5xx, четыре неуспешных снятия/перевода или событие в
+Notifications DLT. После проверки убедиться, что метрика вернулась к обычному
+уровню; внешние email/Slack receivers не настроены.
+
+Учебные ограничения: Zipkin хранит трейсы в памяти, Elasticsearch работает
+single-node без security только в `dev`, retention Prometheus равен 24 часам,
+а конфигурация не является production-ready.
 
 ## Ручная проверка
 
@@ -529,11 +609,9 @@ docker compose up -d --wait
 
 ## Ограничения спринта
 
-В рамках Sprint 11 намеренно не реализуются:
+В рамках Sprint 12 намеренно не реализуются:
 
-- ELK или другое централизованное хранение и анализ логов;
-- полный production-grade monitoring stack и Grafana;
-- аудит и distributed tracing;
+- production-grade high availability, backup и security для observability;
 - Kafka Exactly Once Semantics и сквозная гарантия между PostgreSQL commit и Kafka send;
 - глобальный порядок сообщений и multi-node Kafka;
 - ZooKeeper, внешний Gateway/Ingress для Kafka и REST fallback Notifications;
@@ -546,9 +624,7 @@ docker compose up -d --wait
 - хранение credentials в Compose, Helm values, Java config или README;
 - изменение истории Git и push без явного подтверждения.
 
-Технические health endpoints, Kubernetes probes, Micrometer counter,
-внутренние management Service, ServiceMonitor и PrometheusRule добавлены как
-узкие исключения для закрытия требований Sprint 11. Они не означают
-production readiness. В клиентских модулях остаётся учебная локальная защита
-`SimpleCircuitBreaker`; полноценный Circuit Breaker и Transactional Outbox
-требуют отдельного решения.
+Observability stack предназначен только для локального учебного `dev`-стенда
+и не означает production readiness. В клиентских модулях остаётся учебная
+локальная защита `SimpleCircuitBreaker`; полноценный Circuit Breaker и
+Transactional Outbox требуют отдельного решения.

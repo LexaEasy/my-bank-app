@@ -98,7 +98,8 @@ class CashKafkaFailureBusinessTest {
                 .contains("eventId=" + event.eventId())
                 .contains("operationId=" + event.operationId())
                 .contains("topic=" + TOPIC)
-                .contains("reason=kafka unavailable");
+                .contains("errorType=IllegalStateException")
+                .doesNotContain("kafka unavailable");
     }
 
     private enum KafkaFailureMode {

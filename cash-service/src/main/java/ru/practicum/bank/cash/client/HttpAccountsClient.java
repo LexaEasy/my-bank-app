@@ -2,6 +2,8 @@ package ru.practicum.bank.cash.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -14,6 +16,8 @@ import ru.practicum.bank.common.client.ResilientClientFactory;
 
 @Component
 public class HttpAccountsClient implements AccountsClient {
+
+    private static final Logger log = LoggerFactory.getLogger(HttpAccountsClient.class);
 
     private final RestClient restClient;
     private final ServiceTokenProvider serviceTokenProvider;
@@ -86,6 +90,14 @@ public class HttpAccountsClient implements AccountsClient {
 
     private AccountsBalanceResponse postWithoutCircuitBreaker(String uri, AccountsBalanceOperationRequest request) {
         try {
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "Accounts downstream request prepared operationId={} operationType={} currency={} source=cash-service targetService=accounts-service",
+                        request.operationId(),
+                        operationType(uri),
+                        request.currency()
+                );
+            }
             return restClient.post()
                     .uri(uri)
                     .headers(headers -> headers.setBearerAuth(serviceTokenProvider.getAccessToken()))
@@ -101,6 +113,13 @@ public class HttpAccountsClient implements AccountsClient {
                     exception
             );
         } catch (RestClientException exception) {
+            log.error(
+                    "Accounts downstream request failed operationId={} operationType={} currency={} status=error errorCategory=downstream_unavailable errorType={} source=cash-service targetService=accounts-service",
+                    request.operationId(),
+                    operationType(uri),
+                    request.currency(),
+                    exception.getClass().getSimpleName()
+            );
             throw new AccountsClientException("Accounts service request failed", exception);
         }
     }
@@ -114,8 +133,20 @@ public class HttpAccountsClient implements AccountsClient {
 
     private AccountsBalanceResponse accountsFallback(Throwable exception) {
         if (exception instanceof AccountsClientException accountsClientException) {
+            if (accountsClientException.getStatusCode().is5xxServerError()) {
+                log.error(
+                        "Accounts downstream retries exhausted status={} errorCode={} errorCategory=downstream_unavailable errorType={} source=cash-service targetService=accounts-service",
+                        accountsClientException.getStatusCode().value(),
+                        accountsClientException.getCode(),
+                        accountsClientException.getClass().getSimpleName()
+                );
+            }
             throw accountsClientException;
         }
+        log.error(
+                "Accounts downstream retries exhausted status=error errorCategory=downstream_unavailable errorType={} source=cash-service targetService=accounts-service",
+                exception.getClass().getSimpleName()
+        );
         throw new AccountsClientException("Сервис счетов временно недоступен", exception);
     }
 
@@ -133,5 +164,9 @@ public class HttpAccountsClient implements AccountsClient {
 
     private boolean isNotBlank(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private String operationType(String uri) {
+        return uri.endsWith("/deposit") ? "DEPOSIT" : "WITHDRAW";
     }
 }

@@ -10,8 +10,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: {{ include "spring-service.name" . }}
       app.kubernetes.io/instance: {{ .Release.Name }}
+      bank/management-service: "true"
   endpoints:
     - port: management
       path: /actuator/prometheus
       interval: {{ .Values.management.monitoring.interval }}
+      scrapeTimeout: {{ .Values.management.monitoring.scrapeTimeout }}
 {{- end }}

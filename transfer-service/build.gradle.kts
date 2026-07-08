@@ -14,6 +14,8 @@ contracts {
 
 dependencies {
     implementation(project(":shared"))
+    implementation(libs.logstash.logback.encoder)
+    implementation(libs.micrometer.tracing.bridge.brave)
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.spring.boot.starter.aop)
     implementation(libs.spring.boot.starter.oauth2.client)
@@ -21,6 +23,7 @@ dependencies {
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.kafka)
+    implementation(libs.zipkin.reporter.brave)
 
     runtimeOnly(libs.micrometer.registry.prometheus)
     "contractTestImplementation"(libs.spring.boot.starter.test)

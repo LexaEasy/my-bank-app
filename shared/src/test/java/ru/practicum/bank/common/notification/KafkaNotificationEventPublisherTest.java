@@ -5,6 +5,9 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import ru.practicum.bank.common.model.Currency;
@@ -21,6 +24,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @SuppressWarnings("unchecked")
+@ExtendWith(OutputCaptureExtension.class)
 class KafkaNotificationEventPublisherTest {
 
     private static final String TOPIC = "bank.notifications";
@@ -66,6 +70,20 @@ class KafkaNotificationEventPublisherTest {
         assertThatCode(() -> publisher.publish(event))
                 .doesNotThrowAnyException();
         assertThat(failureCount()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldNotLogSensitiveFailureMessage(CapturedOutput output) {
+        var event = event();
+        when(kafkaTemplate.send(TOPIC, event.recipientLogin(), event))
+                .thenThrow(new IllegalStateException("Authorization: Bearer secret.jwt.value"));
+
+        publisher.publish(event);
+
+        assertThat(output)
+                .contains("errorType=IllegalStateException")
+                .doesNotContain("secret.jwt.value")
+                .doesNotContain("Authorization: Bearer");
     }
 
     private double failureCount() {

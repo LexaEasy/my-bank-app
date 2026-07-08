@@ -1,6 +1,7 @@
 package ru.practicum.bank.notifications.messaging;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
@@ -10,6 +11,7 @@ import ru.practicum.bank.notifications.service.NotificationService;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -31,6 +33,7 @@ import static ru.practicum.bank.common.notification.NotificationTopicsProperties
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@Timeout(value = 60, unit = TimeUnit.SECONDS)
 class NotificationRecoveryKafkaIntegrationTest extends KafkaIntegrationTestSupport {
 
     @MockitoBean
@@ -44,7 +47,8 @@ class NotificationRecoveryKafkaIntegrationTest extends KafkaIntegrationTestSuppo
                 .notify(argThat(event -> event.eventId().equals(eventId)));
 
         try (var dltConsumer = dltConsumer("retry-dlt-" + eventId)) {
-            var result = eventTemplate().send(TOPIC, "retry-user", event(eventId, "retry-user")).get();
+            var result = eventTemplate().send(TOPIC, "retry-user", event(eventId, "retry-user"))
+                    .get(KAFKA_OPERATION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             var dltRecord = awaitRecord(dltConsumer, record -> "retry-user".equals(record.key()));
 
             assertThat(dltRecord.value()).isNotEmpty();
@@ -61,7 +65,8 @@ class NotificationRecoveryKafkaIntegrationTest extends KafkaIntegrationTestSuppo
         byte[] malformedJson = "{not-json".getBytes(StandardCharsets.UTF_8);
 
         try (var dltConsumer = dltConsumer("malformed-dlt-" + key)) {
-            byteTemplate().send(TOPIC, key, malformedJson).get();
+            byteTemplate().send(TOPIC, key, malformedJson)
+                    .get(KAFKA_OPERATION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             var dltRecord = awaitRecord(dltConsumer, record -> key.equals(record.key()));
 
             assertThat(dltRecord.value()).isEqualTo(malformedJson);
@@ -88,7 +93,8 @@ class NotificationRecoveryKafkaIntegrationTest extends KafkaIntegrationTestSuppo
         );
 
         try (var dltConsumer = dltConsumer("invalid-money-dlt-" + eventId)) {
-            var result = eventTemplate().send(TOPIC, key, event).get();
+            var result = eventTemplate().send(TOPIC, key, event)
+                    .get(KAFKA_OPERATION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             var dltRecord = awaitRecord(dltConsumer, record -> key.equals(record.key()));
 
             assertThat(dltRecord.value()).isNotEmpty();

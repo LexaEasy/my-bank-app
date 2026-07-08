@@ -32,11 +32,10 @@ public class NotificationEventListener {
         }
 
         log.info(
-                "Kafka notification received: topic={}, partition={}, offset={}, key={}, eventId={}",
+                "Kafka notification received: topic={}, partition={}, offset={}, eventId={}",
                 record.topic(),
                 record.partition(),
                 record.offset(),
-                record.key(),
                 event.eventId()
         );
         notificationService.notify(event);

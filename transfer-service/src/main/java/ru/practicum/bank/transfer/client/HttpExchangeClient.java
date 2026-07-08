@@ -1,5 +1,7 @@
 package ru.practicum.bank.transfer.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -14,6 +16,8 @@ import java.math.BigDecimal;
 
 @Component
 public class HttpExchangeClient implements ExchangeClient {
+
+    private static final Logger log = LoggerFactory.getLogger(HttpExchangeClient.class);
 
     private final RestClient restClient;
     private final ServiceTokenProvider serviceTokenProvider;
@@ -74,6 +78,13 @@ public class HttpExchangeClient implements ExchangeClient {
             BigDecimal amount
     ) {
         try {
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "Exchange downstream request prepared operationType=EXCHANGE currency={} targetCurrency={} source=transfer-service targetService=exchange-service",
+                        sourceCurrency,
+                        targetCurrency
+                );
+            }
             var response = restClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/api/exchange/conversion")
@@ -89,6 +100,12 @@ public class HttpExchangeClient implements ExchangeClient {
             }
             return response;
         } catch (RestClientException exception) {
+            log.error(
+                    "Exchange downstream request failed operationType=EXCHANGE currency={} targetCurrency={} status=error errorCategory=downstream_unavailable errorType={} source=transfer-service targetService=exchange-service",
+                    sourceCurrency,
+                    targetCurrency,
+                    exception.getClass().getSimpleName()
+            );
             throw new ExchangeClientException("Exchange service request failed", exception);
         }
     }
@@ -97,6 +114,10 @@ public class HttpExchangeClient implements ExchangeClient {
         if (exception instanceof ExchangeClientException exchangeClientException) {
             throw exchangeClientException;
         }
+        log.error(
+                "Exchange downstream retries exhausted status=error errorCategory=downstream_unavailable errorType={} source=transfer-service targetService=exchange-service",
+                exception.getClass().getSimpleName()
+        );
         throw new ExchangeClientException("Сервис курсов валют временно недоступен", exception);
     }
 }

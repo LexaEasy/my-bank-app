@@ -1,0 +1,34 @@
+fullnameOverride: kibana
+replicaCount: 1
+
+image:
+  repository: docker.elastic.co/kibana/kibana
+  tag: "9.4.3"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 5601
+
+config:
+  elasticsearchUrl: http://elasticsearch:9200
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+readinessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+
+dataView:
+  image: curlimages/curl:8.21.0
+  id: bank-logs
+  title: bank-logs-*
+  timeFieldName: "@timestamp"

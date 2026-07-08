@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -31,6 +33,8 @@ import java.util.function.Supplier;
 
 @Service
 public class IdempotencyService {
+
+    private static final Logger log = LoggerFactory.getLogger(IdempotencyService.class);
 
     private static final Duration PROCESSING_TIMEOUT = Duration.ofMinutes(5);
 
@@ -96,7 +100,22 @@ public class IdempotencyService {
             });
             return true;
         } catch (DataIntegrityViolationException exception) {
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "Processed operation already exists operationId={} operationType={} status=conflict source=accounts-service",
+                        operationId,
+                        operationType
+                );
+            }
             return retryStaleOperation(operationId, operationType, requestHash);
+        } catch (RuntimeException exception) {
+            log.error(
+                    "Processed operation write failed operationId={} operationType={} status=error errorCategory=database errorType={} source=accounts-service",
+                    operationId,
+                    operationType,
+                    exception.getClass().getSimpleName()
+            );
+            throw exception;
         }
     }
 
@@ -106,6 +125,14 @@ public class IdempotencyService {
 
         validateFingerprint(operationId, operationType, requestHash, operation);
         if (operation.getStatus() != ProcessedOperationStatus.PROCESSING) {
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "Processed operation result reused operationId={} operationType={} status={} source=accounts-service",
+                        operationId,
+                        operationType,
+                        operation.getStatus()
+                );
+            }
             return false;
         }
 
@@ -116,7 +143,15 @@ public class IdempotencyService {
 
         int deleted = claimTransaction.execute(status ->
                 operationRepository.deleteStaleProcessing(operationId, staleBefore));
-        return deleted == 1 && tryStartOperation(operationId, operationType, requestHash);
+        boolean retryStarted = deleted == 1 && tryStartOperation(operationId, operationType, requestHash);
+        if (retryStarted && log.isDebugEnabled()) {
+            log.debug(
+                    "Stale processed operation retry applied operationId={} operationType={} status=retry source=accounts-service",
+                    operationId,
+                    operationType
+            );
+        }
+        return retryStarted;
     }
 
     private <T> T handleExistingOperation(
@@ -130,14 +165,38 @@ public class IdempotencyService {
 
         validateFingerprint(operationId, operationType, requestHash, operation);
         if (operation.getStatus() == ProcessedOperationStatus.PROCESSING) {
+            log.warn(
+                    "Processed operation rejected operationId={} operationType={} status=in_progress errorCode=OPERATION_IN_PROGRESS source=accounts-service",
+                    operationId,
+                    operationType
+            );
             throw new OperationInProgressException(operationId);
         }
         if (operation.getStatus() == ProcessedOperationStatus.FAILED) {
+            log.warn(
+                    "Processed operation rejected operationId={} operationType={} status=failed errorCode=OPERATION_ALREADY_FAILED source=accounts-service",
+                    operationId,
+                    operationType
+            );
             throw new OperationAlreadyFailedException(operationId);
         }
         try {
-            return objectMapper.readValue(operation.getResponseJson(), responseType);
+            T response = objectMapper.readValue(operation.getResponseJson(), responseType);
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "Stored processed operation response returned operationId={} operationType={} status=completed source=accounts-service",
+                        operationId,
+                        operationType
+                );
+            }
+            return response;
         } catch (JsonProcessingException exception) {
+            log.error(
+                    "Processed operation response read failed operationId={} operationType={} status=error errorCategory=serialization errorType={} source=accounts-service",
+                    operationId,
+                    operationType,
+                    exception.getClass().getSimpleName()
+            );
             throw new StoredOperationReadException(operationId, exception);
         }
     }
@@ -150,20 +209,43 @@ public class IdempotencyService {
     ) {
         if (!operation.getOperationType().equals(operationType)
                 || !operation.getRequestHash().equals(requestHash)) {
+            log.warn(
+                    "Processed operation rejected operationId={} operationType={} status=conflict errorCode=IDEMPOTENCY_CONFLICT source=accounts-service",
+                    operationId,
+                    operationType
+            );
             throw new IdempotencyConflictException(operationId);
         }
     }
 
     private void completeOperation(String operationId, Object response) {
         String responseJson = writeJson(operationId, response);
-        ProcessedOperation operation = operationRepository.findById(operationId)
-                .orElseThrow(() -> new OperationInProgressException(operationId));
-        operation.complete(responseJson, LocalDateTime.now(clock));
-        operationRepository.save(operation);
+        try {
+            ProcessedOperation operation = operationRepository.findById(operationId)
+                    .orElseThrow(() -> new OperationInProgressException(operationId));
+            operation.complete(responseJson, LocalDateTime.now(clock));
+            operationRepository.save(operation);
+        } catch (RuntimeException exception) {
+            log.error(
+                    "Processed operation write failed operationId={} status=error errorCategory=database errorType={} source=accounts-service",
+                    operationId,
+                    exception.getClass().getSimpleName()
+            );
+            throw exception;
+        }
     }
 
     private void releaseOperation(String operationId) {
-        claimTransaction.executeWithoutResult(status -> operationRepository.deleteById(operationId));
+        try {
+            claimTransaction.executeWithoutResult(status -> operationRepository.deleteById(operationId));
+        } catch (RuntimeException exception) {
+            log.error(
+                    "Processed operation release failed operationId={} status=error errorCategory=database errorType={} source=accounts-service",
+                    operationId,
+                    exception.getClass().getSimpleName()
+            );
+            throw exception;
+        }
     }
 
     String hashRequest(String operationType, Object request) {
@@ -196,6 +278,11 @@ public class IdempotencyService {
         try {
             return objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException exception) {
+            log.error(
+                    "Processed operation serialization failed operationId={} status=error errorCategory=serialization errorType={} source=accounts-service",
+                    operationId,
+                    exception.getClass().getSimpleName()
+            );
             throw new StoredOperationReadException(operationId, exception);
         }
     }

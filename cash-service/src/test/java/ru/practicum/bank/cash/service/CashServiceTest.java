@@ -1,7 +1,10 @@
 package ru.practicum.bank.cash.service;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import ru.practicum.bank.cash.client.AccountsBalanceOperationRequest;
 import ru.practicum.bank.cash.client.AccountsBalanceResponse;
 import ru.practicum.bank.cash.client.AccountsClient;
@@ -37,6 +40,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(OutputCaptureExtension.class)
 class CashServiceTest {
 
     private static final UUID OPERATION_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
@@ -50,7 +54,7 @@ class CashServiceTest {
             new CashService(accountsClient, blockerClient, exchangeClient, notificationEventPublisher, clock);
 
     @Test
-    void shouldDepositMoneyThroughAccountsService() {
+    void shouldDepositMoneyThroughAccountsService(CapturedOutput output) {
         when(blockerClient.check(any())).thenReturn(new OperationCheckResponse(true, null));
         when(accountsClient.deposit(any())).thenReturn(new AccountsBalanceResponse(
                 "ivan",
@@ -63,6 +67,16 @@ class CashServiceTest {
         assertThat(response.balance()).isEqualByComparingTo(new BigDecimal("1250.00"));
         assertThat(response.currency()).isEqualTo("RUB");
         assertThat(response.message()).isEqualTo("Счёт пополнен");
+        assertThat(output)
+                .contains("Cash operation completed")
+                .contains("operationId=" + OPERATION_ID)
+                .contains("operationType=DEPOSIT")
+                .contains("currency=RUB")
+                .contains("targetService=accounts-service")
+                .doesNotContain("Authorization")
+                .doesNotContain("Bearer")
+                .doesNotContain("password")
+                .doesNotContain("client_secret");
 
         var captor = ArgumentCaptor.forClass(AccountsBalanceOperationRequest.class);
         verify(accountsClient).deposit(captor.capture());
@@ -182,13 +196,22 @@ class CashServiceTest {
     }
 
     @Test
-    void shouldNotChangeBalanceWhenDepositWasBlocked() {
+    void shouldNotChangeBalanceWhenDepositWasBlocked(CapturedOutput output) {
         when(blockerClient.check(any()))
                 .thenReturn(new OperationCheckResponse(false, "Operation amount exceeds blocker limit"));
 
         assertThatThrownBy(() -> cashService.deposit("ivan", request("100000.01"), OPERATION_ID))
                 .isInstanceOf(OperationBlockedException.class)
                 .hasMessage("Operation amount exceeds blocker limit");
+        assertThat(output)
+                .contains("Cash operation rejected")
+                .contains("operationId=" + OPERATION_ID)
+                .contains("operationType=DEPOSIT")
+                .contains("errorCode=OPERATION_BLOCKED")
+                .doesNotContain("Authorization")
+                .doesNotContain("Bearer")
+                .doesNotContain("password")
+                .doesNotContain("client_secret");
 
         verify(accountsClient, never()).deposit(any());
         verify(accountsClient, never()).withdraw(any());

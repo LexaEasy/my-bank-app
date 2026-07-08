@@ -1,7 +1,10 @@
 package ru.practicum.bank.transfer.service;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import ru.practicum.bank.common.dto.blocker.OperationCheckRequest;
 import ru.practicum.bank.common.dto.blocker.OperationCheckResponse;
 import ru.practicum.bank.common.dto.exchange.ConversionResponse;
@@ -36,6 +39,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(OutputCaptureExtension.class)
 class TransferServiceTest {
 
     private static final UUID OPERATION_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
@@ -54,7 +58,7 @@ class TransferServiceTest {
     );
 
     @Test
-    void shouldTransferMoney() {
+    void shouldTransferMoney(CapturedOutput output) {
         when(blockerClient.check(any())).thenReturn(new OperationCheckResponse(true, null));
         when(transferExecutor.execute(any())).thenReturn(new TransferResult(
                 "ivan",
@@ -70,6 +74,16 @@ class TransferServiceTest {
         assertThat(response.senderBalance()).isEqualByComparingTo(new BigDecimal("800.00"));
         assertThat(response.currency()).isEqualTo("RUB");
         assertThat(response.message()).isEqualTo("Transfer completed");
+        assertThat(output)
+                .contains("Transfer operation completed")
+                .contains("operationId=" + OPERATION_ID)
+                .contains("operationType=TRANSFER")
+                .contains("currency=RUB")
+                .contains("targetService=accounts-service")
+                .doesNotContain("Authorization")
+                .doesNotContain("Bearer")
+                .doesNotContain("password")
+                .doesNotContain("client_secret");
 
         var captor = ArgumentCaptor.forClass(TransferOperation.class);
         verify(transferExecutor).execute(captor.capture());
@@ -190,13 +204,23 @@ class TransferServiceTest {
     }
 
     @Test
-    void shouldNotTransferWhenOperationWasBlocked() {
+    void shouldNotTransferWhenOperationWasBlocked(CapturedOutput output) {
         when(blockerClient.check(any()))
                 .thenReturn(new OperationCheckResponse(false, "Operation amount exceeds blocker limit"));
 
         assertThatThrownBy(() -> transferService.transfer("ivan", request("olga", "100000.01"), OPERATION_ID))
                 .isInstanceOf(OperationBlockedException.class)
                 .hasMessage("Operation amount exceeds blocker limit");
+        assertThat(output)
+                .contains("Transfer operation rejected")
+                .contains("operationId=" + OPERATION_ID)
+                .contains("operationType=TRANSFER")
+                .contains("currency=RUB")
+                .contains("errorCode=OPERATION_BLOCKED")
+                .doesNotContain("Authorization")
+                .doesNotContain("Bearer")
+                .doesNotContain("password")
+                .doesNotContain("client_secret");
 
         verify(exchangeClient, never()).convert(any(), any(), any());
         verify(transferExecutor, never()).execute(any());

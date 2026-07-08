@@ -1,4 +1,4 @@
-{{- if and .Values.test.enabled .Values.service.enabled }}
+{{- if and .Values.test.enabled .Values.management.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -24,6 +24,7 @@ spec:
             - sh
             - -ec
             - |
-              code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 5 --max-time 10 http://{{ include "spring-service.fullname" . }}:{{ .Values.service.port }}/)"
-              test "$code" != "000"
+              url="http://{{ include "spring-service.fullname" . }}-management:{{ .Values.management.port }}{{ .Values.probes.readiness.path }}"
+              actual="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 5 --max-time 10 "$url")"
+              test "$actual" = "200"
 {{- end }}

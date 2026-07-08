@@ -16,8 +16,9 @@ management:
   enabled: false
   port: 8089
   monitoring:
-    enabled: false
-    interval: 30s
+    enabled: true
+    interval: 15s
+    scrapeTimeout: 10s
     alert:
       enabled: false
       threshold: 0

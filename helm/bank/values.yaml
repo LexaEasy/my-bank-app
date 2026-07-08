@@ -21,7 +21,11 @@ global:
     BANK_KAFKA_NOTIFICATIONS_PARTITIONS: "3"
     BANK_KAFKA_NOTIFICATIONS_REPLICATION_FACTOR: "1"
     BANK_KAFKA_NOTIFICATIONS_TOPIC: bank.notifications
+    BANK_LOGGING_LOGSTASH_DESTINATION: logstash:5000
     MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
+    MANAGEMENT_TRACING_PROPAGATION_TYPE: W3C
+    MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+    MANAGEMENT_ZIPKIN_TRACING_EXPORT_ENABLED: "true"
 
 helmTest:
   enabled: true
@@ -42,6 +46,11 @@ front-ui:
     repository: my-bank-front-ui
   service:
     port: 8085
+  management:
+    enabled: true
+    port: 8095
+  probes:
+    port: management
   env:
     BANK_ACCOUNTS_BASE_URL: http://accounts-service:8081
     BANK_CASH_BASE_URL: http://cash-service:8082
@@ -51,6 +60,7 @@ front-ui:
     BANK_KEYCLOAK_REDIRECT_URI: http://localhost/login/oauth2/code/{registrationId}
     BANK_KEYCLOAK_USER_INFO_URI: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo
     BANK_TRANSFER_BASE_URL: http://transfer-service:8083
+    MANAGEMENT_SERVER_PORT: "8095"
     SERVER_PORT: "8085"
   secretEnv:
     - name: FRONT_UI_CLIENT_SECRET
@@ -70,7 +80,7 @@ accounts-service:
     monitoring:
       enabled: true
       alert:
-        enabled: true
+        enabled: false
   probes:
     port: management
   env:
@@ -101,7 +111,7 @@ cash-service:
     monitoring:
       enabled: true
       alert:
-        enabled: true
+        enabled: false
   probes:
     port: management
   env:
@@ -128,7 +138,7 @@ transfer-service:
     monitoring:
       enabled: true
       alert:
-        enabled: true
+        enabled: false
   probes:
     port: management
   env:
@@ -150,7 +160,13 @@ exchange-service:
     repository: my-bank-exchange-service
   service:
     port: 8086
+  management:
+    enabled: true
+    port: 8096
+  probes:
+    port: management
   env:
+    MANAGEMENT_SERVER_PORT: "8096"
     SERVER_PORT: "8086"
 
 exchange-generator:
@@ -160,9 +176,15 @@ exchange-generator:
     repository: my-bank-exchange-generator
   service:
     port: 8087
+  management:
+    enabled: true
+    port: 8097
+  probes:
+    port: management
   env:
     BANK_EXCHANGE_GENERATOR_FIXED_DELAY_MS: "1000"
     BANK_EXCHANGE_BASE_URL: http://exchange-service:8086
+    MANAGEMENT_SERVER_PORT: "8097"
     SERVER_PORT: "8087"
   secretEnv:
     - name: EXCHANGE_GENERATOR_CLIENT_SECRET
@@ -176,8 +198,14 @@ blocker-service:
     repository: my-bank-blocker-service
   service:
     port: 8088
+  management:
+    enabled: true
+    port: 8098
+  probes:
+    port: management
   env:
     BANK_BLOCKER_MAX_AMOUNT: "100000.00"
+    MANAGEMENT_SERVER_PORT: "8098"
     SERVER_PORT: "8088"
 
 notifications-service:
@@ -196,18 +224,25 @@ notifications-service:
   test:
     enabled: false
   env:
+    MANAGEMENT_SERVER_PORT: "8089"
     SERVER_PORT: "8089"
     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     SPRING_KAFKA_CONSUMER_GROUP_ID: bank-notifications
 
 bank-gateway:
-  enabled: false
+  enabled: true
   fullnameOverride: bank-gateway
   image:
     repository: my-bank-gateway
   service:
     port: 8080
+  management:
+    enabled: true
+    port: 8090
+  probes:
+    port: management
   env:
+    MANAGEMENT_SERVER_PORT: "8090"
     SERVER_PORT: "8080"
     SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_FILTERS_0: SetStatus=404
     SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_ID: block-accounts-internal-api
@@ -251,3 +286,93 @@ kafka:
   persistence:
     size: 2Gi
     storageClass: ""
+
+zipkin:
+  enabled: true
+  fullnameOverride: zipkin
+
+elasticsearch:
+  enabled: true
+  fullnameOverride: elasticsearch
+  environment: dev
+
+logstash:
+  enabled: true
+  fullnameOverride: logstash
+  config:
+    elasticsearchUrl: http://elasticsearch:9200
+
+kibana:
+  enabled: true
+  fullnameOverride: kibana
+  config:
+    elasticsearchUrl: http://elasticsearch:9200
+
+monitoring:
+  enabled: true
+  defaultRules:
+    create: false
+  prometheusOperator:
+    enabled: true
+  prometheus:
+    enabled: true
+    prometheusSpec:
+      retention: 24h
+      serviceMonitorSelectorNilUsesHelmValues: false
+      ruleSelectorNilUsesHelmValues: false
+      serviceMonitorSelector: {}
+      serviceMonitorNamespaceSelector:
+        matchNames:
+          - dev
+      ruleSelector: {}
+      ruleNamespaceSelector:
+        matchNames:
+          - dev
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: "2"
+          memory: 2Gi
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 5Gi
+  alertmanager:
+    enabled: true
+    alertmanagerSpec:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+  grafana:
+    enabled: true
+    fullnameOverride: grafana
+    admin:
+      existingSecret: grafana-admin-credentials
+      userKey: admin-user
+      passwordKey: admin-password
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    persistence:
+      enabled: true
+      size: 1Gi
+    sidecar:
+      datasources:
+        uid: prometheus
+      dashboards:
+        enabled: true
+        searchNamespace: dev
